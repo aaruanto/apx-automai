@@ -96,7 +96,7 @@
                 </div>
                 <a href="/contact" class="nav-item nav-link">Contact</a>
             </div>
-            <a href="/automai/auth/login.php" class="btn btn-primary py-4 px-lg-5 d-none d-lg-block">Login</a>
+           <a href="{{ route('login') }}" class="btn btn-primary py-4 px-lg-5 d-none d-lg-block">Login</a>
         </div>
     </nav>
     <!-- Navbar End -->
