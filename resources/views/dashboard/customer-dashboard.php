@@ -1,4 +1,3 @@
-<?php require_once $_SERVER['DOCUMENT_ROOT'] . '/automai/config.php'; ?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -1391,7 +1390,7 @@
                 <a href="#!"><i class="fas fa-car" style="width:16px;margin-right:8px;"></i>My Vehicles</a>
                 <a href="#!"><i class="fas fa-gear" style="width:16px;margin-right:8px;"></i>Settings</a>
                 <hr />
-                <a href="<?= BASE_URL ?>/auth/login.php" class="logout"><i class="fas fa-right-from-bracket" style="width:16px;margin-right:8px;"></i>Logout</a>
+                <a href="/auth/login.php" class="logout"><i class="fas fa-right-from-bracket" style="width:16px;margin-right:8px;"></i>Logout</a>
             </div>
         </div>
     </div>

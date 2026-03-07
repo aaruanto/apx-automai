@@ -1,4 +1,3 @@
-<?php require_once $_SERVER['DOCUMENT_ROOT'] . '/automai/config.php'; ?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -593,7 +592,7 @@
 <!-- TOP NAV -->
 <nav class="topnav">
     <button id="sidebarToggle"><i class="fas fa-bars"></i></button>
-    <a class="brand" href="<?= BASE_URL ?>/public/index.php">
+    <a class="brand" href="/public/index.php">
         <span class="brand-apx">APX</span>
         <span class="brand-auto">AUTOMAI</span>
         <span class="brand-badge">ADMIN</span>
@@ -620,7 +619,7 @@
                 <a href="#!"><i class="fas fa-user-cog" style="width:16px;margin-right:8px;"></i>Settings</a>
                 <a href="#!"><i class="fas fa-history" style="width:16px;margin-right:8px;"></i>Activity Log</a>
                 <hr />
-                <a href="<?= BASE_URL ?>/auth/login.php" class="logout"><i class="fas fa-right-from-bracket" style="width:16px;margin-right:8px;"></i>Logout</a>
+                <a href="/auth/login.php" class="logout"><i class="fas fa-right-from-bracket" style="width:16px;margin-right:8px;"></i>Logout</a>
             </div>
         </div>
     </div>
@@ -648,10 +647,10 @@
                 <i class="fas fa-chevron-right nav-arrow"></i>
             </a>
             <div class="sub-nav" id="sub-bookings">
-                <a href="<?= BASE_URL ?>/bookings/index.php">All Bookings</a>
-                <a href="<?= BASE_URL ?>/bookings/new.php">New Booking</a>
-                <a href="<?= BASE_URL ?>/bookings/schedule.php">Today's Schedule</a>
-                <a href="<?= BASE_URL ?>/bookings/cancelled.php">Cancelled</a>
+                <a href="/bookings/index.php">All Bookings</a>
+                <a href="/bookings/new.php">New Booking</a>
+                <a href="/bookings/schedule.php">Today's Schedule</a>
+                <a href="/bookings/cancelled.php">Cancelled</a>
             </div>
 
             <a class="nav-link" href="#" onclick="toggleSub(event,'sub-customers',this)">
@@ -660,9 +659,9 @@
                 <i class="fas fa-chevron-right nav-arrow"></i>
             </a>
             <div class="sub-nav" id="sub-customers">
-                <a href="<?= BASE_URL ?>/customers/index.php">All Customers</a>
-                <a href="<?= BASE_URL ?>/customers/new.php">Add Customer</a>
-                <a href="<?= BASE_URL ?>/customers/loyalty.php">Loyalty Members</a>
+                <a href="/customers/index.php">All Customers</a>
+                <a href="/customers/new.php">Add Customer</a>
+                <a href="/customers/loyalty.php">Loyalty Members</a>
             </div>
 
             <hr class="sidebar-divider" />
