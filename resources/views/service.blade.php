@@ -48,7 +48,7 @@
             <div class="col-lg-7 px-5 text-start">
                 <div class="h-100 d-inline-flex align-items-center py-3 me-4">
                     <small class="fa fa-map-marker-alt text-primary me-2"></small>
-                    <small>123 Street, New York, USA</small>
+                    <small>5 Glenn, Quezon City</small>
                 </div>
                 <div class="h-100 d-inline-flex align-items-center py-3">
                     <small class="far fa-clock text-primary me-2"></small>
@@ -75,8 +75,7 @@
     <!-- Navbar Start -->
     <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
         <a href="/" class="navbar-brand d-flex align-items-center px-4 px-lg-5">
-            <h2 class="m-0 text-primary"><i class="fa fa-car me-3"></i>CarServ</h2>
-        </a>
+            <h2 class="m-0 text-primary"><img src="/assets/img\apx-black-logo.png" alt="apx logo" width="100" height="120">AUTOMAI</h2>
         <button type="button" class="navbar-toggler me-4" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -102,132 +101,282 @@
     <!-- Navbar End -->
 
 
-    <!-- Page Header Start -->
-    <div class="container-fluid page-header mb-5 p-0" style="background-image: url(img/carousel-bg-2.jpg);">
-        <div class="container-fluid page-header-inner py-5">
-            <div class="container text-center">
-                <h1 class="display-3 text-white mb-3 animated slideInDown">Services</h1>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb justify-content-center text-uppercase">
-                        <li class="breadcrumb-item"><a href="#">Home</a></li>
-                        <li class="breadcrumb-item"><a href="#">Pages</a></li>
-                        <li class="breadcrumb-item text-white active" aria-current="page">Services</li>
-                    </ol>
-                </nav>
-            </div>
-        </div>
-    </div>
-    <!-- Page Header End -->
 
+        <!-- APX Motors Services Start -->
+    <style>
+        .apx-services-section {
+            background: #fff;
+            padding: 60px 0;
+        }
+        .apx-filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 36px;
+            justify-content: center;
+        }
+        .apx-filter-btn {
+            background: #fff;
+            color: #444;
+            border: 2px solid #ddd;
+            border-radius: 999px;
+            padding: 7px 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .apx-filter-btn:hover,
+        .apx-filter-btn.active {
+            background: #e63946;
+            color: #fff;
+            border-color: #e63946;
+        }
+        .apx-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 20px;
+        }
+        .apx-svc-card {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 14px;
+            padding: 24px 22px 20px;
+            cursor: pointer;
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+            display: flex;
+            flex-direction: column;
+            text-decoration: none;
+            color: inherit;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+        .apx-svc-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 32px rgba(230,57,70,0.18);
+            border-color: #e63946;
+            text-decoration: none;
+            color: inherit;
+        }
+        .apx-svc-cat {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 18px;
+        }
+        .apx-svc-icon-wrap {
+            font-size: 2.4rem;
+            color: #e63946;
+            margin-bottom: 18px;
+        }
+        .apx-svc-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #e63946;
+            margin-bottom: 10px;
+        }
+        .apx-svc-desc {
+            font-size: 0.82rem;
+            color: #666;
+            line-height: 1.6;
+            flex-grow: 1;
+        }
+        .apx-svc-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 18px;
+            font-size: 0.78rem;
+            color: #999;
+            border-top: 1px solid #f0f0f0;
+            padding-top: 14px;
+        }
+        .apx-svc-card.hidden { display: none; }
+    </style>
 
-    <!-- Service Start -->
-    <div class="container-xxl service py-5">
+    <div class="apx-services-section">
         <div class="container">
-            <div class="text-center wow fadeInUp" data-wow-delay="0.1s">
-                <h6 class="text-primary text-uppercase">// Our Services //</h6>
-                <h1 class="mb-5">Explore Our Services</h1>
+            <div class="text-center wow fadeInUp mb-4" data-wow-delay="0.1s">
+                <h1 class="mb-2">APX Motors Services</h1>
+                <p class="text-muted">Click any service to get started — registration required</p>
             </div>
-            <div class="row g-4 wow fadeInUp" data-wow-delay="0.3s">
-                <div class="col-lg-4">
-                    <div class="nav w-100 nav-pills me-4">
-                        <button class="nav-link w-100 d-flex align-items-center text-start p-4 mb-4 active" data-bs-toggle="pill" data-bs-target="#tab-pane-1" type="button">
-                            <i class="fa fa-car-side fa-2x me-3"></i>
-                            <h4 class="m-0">Diagnostic Test</h4>
-                        </button>
-                        <button class="nav-link w-100 d-flex align-items-center text-start p-4 mb-4" data-bs-toggle="pill" data-bs-target="#tab-pane-2" type="button">
-                            <i class="fa fa-car fa-2x me-3"></i>
-                            <h4 class="m-0">Engine Servicing</h4>
-                        </button>
-                        <button class="nav-link w-100 d-flex align-items-center text-start p-4 mb-4" data-bs-toggle="pill" data-bs-target="#tab-pane-3" type="button">
-                            <i class="fa fa-cog fa-2x me-3"></i>
-                            <h4 class="m-0">Tires Replacement</h4>
-                        </button>
-                        <button class="nav-link w-100 d-flex align-items-center text-start p-4 mb-0" data-bs-toggle="pill" data-bs-target="#tab-pane-4" type="button">
-                            <i class="fa fa-oil-can fa-2x me-3"></i>
-                            <h4 class="m-0">Oil Changing</h4>
-                        </button>
-                    </div>
-                </div>
-                <div class="col-lg-8">
-                    <div class="tab-content w-100">
-                        <div class="tab-pane fade show active" id="tab-pane-1">
-                            <div class="row g-4">
-                                <div class="col-md-6" style="min-height: 350px;">
-                                    <div class="position-relative h-100">
-                                        <img class="position-absolute img-fluid w-100 h-100" src="/assets/img/service-1.jpg"
-                                            style="object-fit: cover;" alt="">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <h3 class="mb-3">15 Years Of Experience In Auto Servicing</h3>
-                                    <p class="mb-4">Tempor erat elitr rebum at clita. Diam dolor diam ipsum sit. Aliqu diam amet diam et eos. Clita erat ipsum et lorem et sit, sed stet lorem sit clita duo justo magna dolore erat amet</p>
-                                    <p><i class="fa fa-check text-success me-3"></i>Quality Servicing</p>
-                                    <p><i class="fa fa-check text-success me-3"></i>Expert Workers</p>
-                                    <p><i class="fa fa-check text-success me-3"></i>Modern Equipment</p>
-                                    <a href="" class="btn btn-primary py-3 px-5 mt-3">Read More<i class="fa fa-arrow-right ms-3"></i></a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="tab-pane fade" id="tab-pane-2">
-                            <div class="row g-4">
-                                <div class="col-md-6" style="min-height: 350px;">
-                                    <div class="position-relative h-100">
-                                        <img class="position-absolute img-fluid w-100 h-100" src="/assets/img/service-2.jpg"
-                                            style="object-fit: cover;" alt="">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <h3 class="mb-3">15 Years Of Experience In Auto Servicing</h3>
-                                    <p class="mb-4">Tempor erat elitr rebum at clita. Diam dolor diam ipsum sit. Aliqu diam amet diam et eos. Clita erat ipsum et lorem et sit, sed stet lorem sit clita duo justo magna dolore erat amet</p>
-                                    <p><i class="fa fa-check text-success me-3"></i>Quality Servicing</p>
-                                    <p><i class="fa fa-check text-success me-3"></i>Expert Workers</p>
-                                    <p><i class="fa fa-check text-success me-3"></i>Modern Equipment</p>
-                                    <a href="" class="btn btn-primary py-3 px-5 mt-3">Read More<i class="fa fa-arrow-right ms-3"></i></a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="tab-pane fade" id="tab-pane-3">
-                            <div class="row g-4">
-                                <div class="col-md-6" style="min-height: 350px;">
-                                    <div class="position-relative h-100">
-                                        <img class="position-absolute img-fluid w-100 h-100" src="/assets/img/service-3.jpg"
-                                            style="object-fit: cover;" alt="">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <h3 class="mb-3">15 Years Of Experience In Auto Servicing</h3>
-                                    <p class="mb-4">Tempor erat elitr rebum at clita. Diam dolor diam ipsum sit. Aliqu diam amet diam et eos. Clita erat ipsum et lorem et sit, sed stet lorem sit clita duo justo magna dolore erat amet</p>
-                                    <p><i class="fa fa-check text-success me-3"></i>Quality Servicing</p>
-                                    <p><i class="fa fa-check text-success me-3"></i>Expert Workers</p>
-                                    <p><i class="fa fa-check text-success me-3"></i>Modern Equipment</p>
-                                    <a href="" class="btn btn-primary py-3 px-5 mt-3">Read More<i class="fa fa-arrow-right ms-3"></i></a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="tab-pane fade" id="tab-pane-4">
-                            <div class="row g-4">
-                                <div class="col-md-6" style="min-height: 350px;">
-                                    <div class="position-relative h-100">
-                                        <img class="position-absolute img-fluid w-100 h-100" src="/assets/img/service-4.jpg"
-                                            style="object-fit: cover;" alt="">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <h3 class="mb-3">15 Years Of Experience In Auto Servicing</h3>
-                                    <p class="mb-4">Tempor erat elitr rebum at clita. Diam dolor diam ipsum sit. Aliqu diam amet diam et eos. Clita erat ipsum et lorem et sit, sed stet lorem sit clita duo justo magna dolore erat amet</p>
-                                    <p><i class="fa fa-check text-success me-3"></i>Quality Servicing</p>
-                                    <p><i class="fa fa-check text-success me-3"></i>Expert Workers</p>
-                                    <p><i class="fa fa-check text-success me-3"></i>Modern Equipment</p>
-                                    <a href="" class="btn btn-primary py-3 px-5 mt-3">Read More<i class="fa fa-arrow-right ms-3"></i></a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+
+            <!-- Filter Bar -->
+            <div class="apx-filter-bar wow fadeInUp" data-wow-delay="0.2s">
+                <button class="apx-filter-btn active" data-filter="all">All Services</button>
+                <button class="apx-filter-btn" data-filter="engine">Engine &amp; Oil</button>
+                <button class="apx-filter-btn" data-filter="cvt">CVT &amp; Transmission</button>
+                <button class="apx-filter-btn" data-filter="inspection">Inspection</button>
+                <button class="apx-filter-btn" data-filter="cleaning">Cleaning</button>
+            </div>
+
+            <!-- Cards -->
+            <div class="apx-cards-grid wow fadeInUp" data-wow-delay="0.3s">
+
+                <a href="/register" class="apx-svc-card" data-cat="engine">
+                    <div class="apx-svc-cat">Engine &amp; Oil</div>
+                    <div class="apx-svc-icon-wrap"><i class="fa fa-oil-can"></i></div>
+                    <div class="apx-svc-name">Change Oil &amp; Filter</div>
+                    <div class="apx-svc-desc">Complete engine oil drain and refill with high-quality oil and a fresh filter for optimal engine performance.</div>
+                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 30–45 min</div>
+                </a>
+
+                <a href="/register" class="apx-svc-card" data-cat="engine">
+                    <div class="apx-svc-cat">Engine &amp; Oil</div>
+                    <div class="apx-svc-icon-wrap"><i class="fa fa-gas-pump"></i></div>
+                    <div class="apx-svc-name">Fuel Injection Cleaning</div>
+                    <div class="apx-svc-desc">Deep cleaning of fuel injectors to restore proper fuel atomization, improving throttle response and fuel economy.</div>
+                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 45–60 min</div>
+                </a>
+
+                <a href="/register" class="apx-svc-card" data-cat="engine cleaning">
+                    <div class="apx-svc-cat">Engine &amp; Oil</div>
+                    <div class="apx-svc-icon-wrap"><i class="fa fa-wind"></i></div>
+                    <div class="apx-svc-name">Throttle Body Cleaning</div>
+                    <div class="apx-svc-desc">Remove carbon buildup and deposits from the throttle body for smoother idling and improved acceleration.</div>
+                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 30–45 min</div>
+                </a>
+
+                <a href="/register" class="apx-svc-card" data-cat="engine">
+                    <div class="apx-svc-cat">Engine &amp; Oil</div>
+                    <div class="apx-svc-icon-wrap"><i class="fa fa-sliders-h"></i></div>
+                    <div class="apx-svc-name">Throttle Idle Adjustment</div>
+                    <div class="apx-svc-desc">Fine-tune idle speed to manufacturer specs, eliminating rough idle and stalling at traffic stops.</div>
+                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 20–30 min</div>
+                </a>
+
+                <a href="/register" class="apx-svc-card" data-cat="engine">
+                    <div class="apx-svc-cat">Engine &amp; Oil</div>
+                    <div class="apx-svc-icon-wrap"><i class="fa fa-cogs"></i></div>
+                    <div class="apx-svc-name">Valve Clearance Adjustment / Tune-up</div>
+                    <div class="apx-svc-desc">Inspect and adjust valve clearances to ensure proper engine breathing, reducing noise and wear.</div>
+                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 60–90 min</div>
+                </a>
+
+                <a href="/register" class="apx-svc-card" data-cat="cvt inspection cleaning">
+                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
+                    <div class="apx-svc-icon-wrap"><i class="fa fa-sync-alt"></i></div>
+                    <div class="apx-svc-name">CVT Cleaning and Inspection</div>
+                    <div class="apx-svc-desc">Full CVT belt and pulley inspection with cleaning to maintain smooth, efficient power transfer.</div>
+                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 60–90 min</div>
+                </a>
+
+                <a href="/register" class="apx-svc-card" data-cat="inspection">
+                    <div class="apx-svc-cat">Inspection</div>
+                    <div class="apx-svc-icon-wrap"><i class="fa fa-search"></i></div>
+                    <div class="apx-svc-name">Airfilter Inspection</div>
+                    <div class="apx-svc-desc">Check air filter condition and airflow restriction to ensure the engine receives clean, unrestricted air.</div>
+                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 10–15 min</div>
+                </a>
+
+                <a href="/register" class="apx-svc-card" data-cat="inspection">
+                    <div class="apx-svc-cat">Inspection</div>
+                    <div class="apx-svc-icon-wrap"><i class="fa fa-tools"></i></div>
+                    <div class="apx-svc-name">Airfilter Installation</div>
+                    <div class="apx-svc-desc">Replacement and installation of a new air filter to restore optimal engine airflow and protect internal components.</div>
+                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 10–20 min</div>
+                </a>
+
+                <a href="/register" class="apx-svc-card" data-cat="cvt inspection">
+                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
+                    <div class="apx-svc-icon-wrap"><i class="fa fa-circle-notch"></i></div>
+                    <div class="apx-svc-name">Flyball Inspection</div>
+                    <div class="apx-svc-desc">Inspect flyball weights for wear and deformation that can affect CVT engagement and acceleration response.</div>
+                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 20–30 min</div>
+                </a>
+
+                <a href="/register" class="apx-svc-card" data-cat="cvt cleaning">
+                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
+                    <div class="apx-svc-icon-wrap"><i class="fa fa-broom"></i></div>
+                    <div class="apx-svc-name">Flyball Cleaning</div>
+                    <div class="apx-svc-desc">Remove dirt and grease buildup from flyball components to restore precise CVT engagement and smooth power delivery.</div>
+                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 20–30 min</div>
+                </a>
+
+                <a href="/register" class="apx-svc-card" data-cat="cvt inspection">
+                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
+                    <div class="apx-svc-icon-wrap"><i class="fa fa-ruler-combined"></i></div>
+                    <div class="apx-svc-name">V-belt Inspection</div>
+                    <div class="apx-svc-desc">Measure V-belt width and check for cracks or fraying to prevent slippage and unexpected CVT failure.</div>
+                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 15–25 min</div>
+                </a>
+
+                <a href="/register" class="apx-svc-card" data-cat="cvt cleaning">
+                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
+                    <div class="apx-svc-icon-wrap"><i class="fa fa-magic"></i></div>
+                    <div class="apx-svc-name">V-belt Cleaning</div>
+                    <div class="apx-svc-desc">Deep clean the V-belt and surrounding components to remove residue that causes slipping and reduces belt lifespan.</div>
+                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 20–30 min</div>
+                </a>
+
+                <a href="/register" class="apx-svc-card" data-cat="cvt inspection">
+                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
+                    <div class="apx-svc-icon-wrap"><i class="fa fa-cog"></i></div>
+                    <div class="apx-svc-name">Pulley Set Inspection</div>
+                    <div class="apx-svc-desc">Check primary and secondary pulleys for wear and proper movement to ensure efficient power transmission.</div>
+                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 20–30 min</div>
+                </a>
+
+                <a href="/register" class="apx-svc-card" data-cat="cvt cleaning">
+                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
+                    <div class="apx-svc-icon-wrap"><i class="fa fa-spray-can"></i></div>
+                    <div class="apx-svc-name">Pulley Set Cleaning</div>
+                    <div class="apx-svc-desc">Thorough cleaning of pulley surfaces and grooves to remove metal dust and contaminants affecting CVT performance.</div>
+                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 25–35 min</div>
+                </a>
+
+                <a href="/register" class="apx-svc-card" data-cat="cvt inspection">
+                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
+                    <div class="apx-svc-icon-wrap"><i class="fa fa-car-side"></i></div>
+                    <div class="apx-svc-name">Torque Drive Assy Inspection</div>
+                    <div class="apx-svc-desc">Inspect the torque drive assembly for wear, proper engagement, and signs of damage that affect drivetrain efficiency.</div>
+                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 25–35 min</div>
+                </a>
+
+                <a href="/register" class="apx-svc-card" data-cat="cvt cleaning">
+                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
+                    <div class="apx-svc-icon-wrap"><i class="fa fa-shower"></i></div>
+                    <div class="apx-svc-name">Torque Drive Assy Cleaning</div>
+                    <div class="apx-svc-desc">Remove built-up grime and contaminants from the torque drive assembly to maintain reliable drivetrain operation.</div>
+                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 30–40 min</div>
+                </a>
+
+                <a href="/register" class="apx-svc-card" data-cat="cvt">
+                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
+                    <div class="apx-svc-icon-wrap"><i class="fa fa-tint"></i></div>
+                    <div class="apx-svc-name">Torque Drive Assy Greasing</div>
+                    <div class="apx-svc-desc">Apply fresh grease to torque drive assembly components to reduce friction, heat, and premature wear.</div>
+                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 20–30 min</div>
+                </a>
+
             </div>
         </div>
     </div>
-    <!-- Service End -->
+
+    <!-- Filter Script -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var btns  = document.querySelectorAll(".apx-filter-btn");
+            var cards = document.querySelectorAll(".apx-svc-card");
+            btns.forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    btns.forEach(function (b) { b.classList.remove("active"); });
+                    btn.classList.add("active");
+                    var filter = btn.getAttribute("data-filter");
+                    cards.forEach(function (card) {
+                        var cats = card.getAttribute("data-cat") || "";
+                        if (filter === "all" || cats.indexOf(filter) !== -1) {
+                            card.classList.remove("hidden");
+                        } else {
+                            card.classList.add("hidden");
+                        }
+                    });
+                });
+            });
+        });
+    </script>
+    <!-- APX Motors Services End -->
 
 
     <!-- Booking Start -->
@@ -281,62 +430,15 @@
     </div>
     <!-- Booking End -->
 
-
-    <!-- Testimonial Start -->
-    <div class="container-xxl py-5 wow fadeInUp" data-wow-delay="0.1s">
-        <div class="container">
-            <div class="text-center">
-                <h6 class="text-primary text-uppercase">// Testimonial //</h6>
-                <h1 class="mb-5">Our Clients Say!</h1>
-            </div>
-            <div class="owl-carousel testimonial-carousel position-relative">
-                <div class="testimonial-item text-center">
-                    <img class="bg-light rounded-circle p-2 mx-auto mb-3" src="/assets/img/testimonial-1.jpg" style="width: 80px; height: 80px;">
-                    <h5 class="mb-0">Client Name</h5>
-                    <p>Profession</p>
-                    <div class="testimonial-text bg-light text-center p-4">
-                    <p class="mb-0">Tempor erat elitr rebum at clita. Diam dolor diam ipsum sit diam amet diam et eos. Clita erat ipsum et lorem et sit.</p>
-                    </div>
-                </div>
-                <div class="testimonial-item text-center">
-                    <img class="bg-light rounded-circle p-2 mx-auto mb-3" src="/assets/img/testimonial-2.jpg" style="width: 80px; height: 80px;">
-                    <h5 class="mb-0">Client Name</h5>
-                    <p>Profession</p>
-                    <div class="testimonial-text bg-light text-center p-4">
-                    <p class="mb-0">Tempor erat elitr rebum at clita. Diam dolor diam ipsum sit diam amet diam et eos. Clita erat ipsum et lorem et sit.</p>
-                    </div>
-                </div>
-                <div class="testimonial-item text-center">
-                    <img class="bg-light rounded-circle p-2 mx-auto mb-3" src="/assets/img/testimonial-3.jpg" style="width: 80px; height: 80px;">
-                    <h5 class="mb-0">Client Name</h5>
-                    <p>Profession</p>
-                    <div class="testimonial-text bg-light text-center p-4">
-                    <p class="mb-0">Tempor erat elitr rebum at clita. Diam dolor diam ipsum sit diam amet diam et eos. Clita erat ipsum et lorem et sit.</p>
-                    </div>
-                </div>
-                <div class="testimonial-item text-center">
-                    <img class="bg-light rounded-circle p-2 mx-auto mb-3" src="/assets/img/testimonial-4.jpg" style="width: 80px; height: 80px;">
-                    <h5 class="mb-0">Client Name</h5>
-                    <p>Profession</p>
-                    <div class="testimonial-text bg-light text-center p-4">
-                    <p class="mb-0">Tempor erat elitr rebum at clita. Diam dolor diam ipsum sit diam amet diam et eos. Clita erat ipsum et lorem et sit.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Testimonial End -->
-
-
     <!-- Footer Start -->
     <div class="container-fluid bg-dark text-light footer pt-5 mt-5 wow fadeIn" data-wow-delay="0.1s">
         <div class="container py-5">
             <div class="row g-5">
                 <div class="col-lg-3 col-md-6">
                     <h4 class="text-light mb-4">Address</h4>
-                    <p class="mb-2"><i class="fa fa-map-marker-alt me-3"></i>123 Street, New York, USA</p>
+                    <p class="mb-2"><i class="fa fa-map-marker-alt me-3"></i>5 Glenn, Quezon City</p>
                     <p class="mb-2"><i class="fa fa-phone-alt me-3"></i>+012 345 67890</p>
-                    <p class="mb-2"><i class="fa fa-envelope me-3"></i>info@example.com</p>
+                    <p class="mb-2"><i class="fa fa-envelope me-3"></i><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="ed84838b82ad88958c809d8188c38e8280">[email&#160;protected]</a></p>
                     <div class="d-flex pt-2">
                         <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-twitter"></i></a>
                         <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-facebook-f"></i></a>
@@ -353,20 +455,13 @@
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <h4 class="text-light mb-4">Services</h4>
-                    <a class="btn btn-link" href="">Diagnostic Test</a>
-                    <a class="btn btn-link" href="">Engine Servicing</a>
-                    <a class="btn btn-link" href="">Tires Replacement</a>
-                    <a class="btn btn-link" href="">Oil Changing</a>
-                    <a class="btn btn-link" href="">Vacuam Cleaning</a>
+                    <a class="btn btn-link" href="/automai/auth/login.php">Change Oil &amp; Filter</a>
+                    <a class="btn btn-link" href="/automai/auth/login.php">Fuel Injection Cleaning</a>
+                    <a class="btn btn-link" href="/automai/auth/login.php">Throttle Body Cleaning</a>
+                    <a class="btn btn-link" href="/automai/auth/login.php">CVT Cleaning &amp; Inspection</a>
+                    <a class="btn btn-link" href="/automai/auth/login.php">Valve Clearance / Tune-up</a>
                 </div>
-                <div class="col-lg-3 col-md-6">
-                    <h4 class="text-light mb-4">Newsletter</h4>
-                    <p>Dolor amet sit justo amet elitr clita ipsum elitr est.</p>
-                    <div class="position-relative mx-auto" style="max-width: 400px;">
-                        <input class="form-control border-0 w-100 py-3 ps-4 pe-5" type="text" placeholder="Your email">
-                        <button type="button" class="btn btn-primary py-2 position-absolute top-0 end-0 mt-2 me-2">SignUp</button>
-                    </div>
-                </div>
+
             </div>
         </div>
         <div class="container">
@@ -398,19 +493,28 @@
 
 
     <!-- JavaScript Libraries -->
-    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/assets/lib/wow/wow.min.js"></script>
     <script src="/assets/lib/easing/easing.min.js"></script>
     <script src="/assets/lib/waypoints/waypoints.min.js"></script>
     <script src="/assets/lib/counterup/counterup.min.js"></script>
     <script src="/assets/lib/owlcarousel/owl.carousel.min.js"></script>
-    <script src="/assets/lib/tempusdominus/js/moment.min.js"></script>
-    <script src="/assets/lib/tempusdominus/js/moment-timezone.min.js"></script>
+    <script src="/assets/lib/tempusdominus/js/moment.min.js"></script>    <script src="/assets/lib/tempusdominus/js/moment-timezone.min.js"></script>
     <script src="/assets/lib/tempusdominus/js/tempusdominus-bootstrap-4.min.js"></script>
-
-    <!-- Template Javascript -->
     <script src="/assets/js/main.js"></script>
-</body>
 
+    <!-- Spinner Fix: hide spinner once page is ready, with a 3s fallback -->
+    <script>
+        (function () {
+            function hideSpinner() {
+                var s = document.getElementById("spinner");
+                if (s) { s.classList.remove("show"); setTimeout(function(){ s.style.display="none"; }, 400); }
+            }
+            window.addEventListener("load", hideSpinner);
+            setTimeout(hideSpinner, 3000);
+        })();
+    </script>
+
+</body>
 </html>

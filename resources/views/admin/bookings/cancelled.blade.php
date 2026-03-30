@@ -1,40 +1,21 @@
-<?php require_once $_SERVER['DOCUMENT_ROOT'] . '/automai/config.php'; ?>
-<?php
-// bookings/cancelled.php — Cancelled Bookings
-$pageTitle     = 'Cancelled Bookings';
-$activeSection = 'bookings';
-$activePage    = 'cancelled';
+@extends('layouts.admin')
 
-// ── TODO: Replace with DB query ────────────────────────────────────────────
-// $bookings = $conn->query("SELECT * FROM bookings WHERE status='cancelled' ORDER BY date DESC");
-// ──────────────────────────────────────────────────────────────────────────
+@section('title', 'Cancelled Bookings')
 
-$cancelled = [
-    ['id'=>'#BK-0036','customer'=>'Lisa Tan',     'plate'=>'MNO 1234','service'=>'Engine Check',    'datetime'=>'2024-01-13 13:30','reason'=>'Customer request','cancelled_by'=>'Customer'],
-    ['id'=>'#BK-0031','customer'=>'Kevin Sy',      'plate'=>'ABC 9999','service'=>'Full Car Wash',   'datetime'=>'2024-01-10 09:00','reason'=>'No show',         'cancelled_by'=>'Admin'],
-    ['id'=>'#BK-0028','customer'=>'Rose Villanueva','plate'=>'XYZ 0001','service'=>'Oil Change',     'datetime'=>'2024-01-09 11:00','reason'=>'Vehicle issue',   'cancelled_by'=>'Customer'],
-    ['id'=>'#BK-0025','customer'=>'Nico Bautista', 'plate'=>'DEF 7777','service'=>'Tire Rotation',  'datetime'=>'2024-01-08 14:00','reason'=>'Reschedule',      'cancelled_by'=>'Customer'],
-    ['id'=>'#BK-0020','customer'=>'Grace Padilla', 'plate'=>'GHI 5555','service'=>'Paint Protection','datetime'=>'2024-01-05 10:30','reason'=>'No show',        'cancelled_by'=>'Admin'],
-    ['id'=>'#BK-0018','customer'=>'Dante Ramos',   'plate'=>'JKL 3333','service'=>'Interior Detailing','datetime'=>'2024-01-04 09:00','reason'=>'Customer request','cancelled_by'=>'Customer'],
-];
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <title><?= $pageTitle ?> — APX AutoMai</title>
-    <?php include '../includes/styles.php'; ?>
-</head>
-<body>
+@php
+    // TODO: Replace with DB query
+    // $cancelled = Booking::where('status', 'cancelled')->orderByDesc('datetime')->get();
+    $cancelled = [
+        ['id'=>'#BK-0036','customer'=>'Lisa Tan',      'plate'=>'MNO 1234','service'=>'Engine Check',      'datetime'=>'2024-01-13 13:30','reason'=>'Customer request','cancelled_by'=>'Customer'],
+        ['id'=>'#BK-0031','customer'=>'Kevin Sy',       'plate'=>'ABC 9999','service'=>'Full Car Wash',     'datetime'=>'2024-01-10 09:00','reason'=>'No show',         'cancelled_by'=>'Admin'],
+        ['id'=>'#BK-0028','customer'=>'Rose Villanueva','plate'=>'XYZ 0001','service'=>'Oil Change',        'datetime'=>'2024-01-09 11:00','reason'=>'Vehicle issue',   'cancelled_by'=>'Customer'],
+        ['id'=>'#BK-0025','customer'=>'Nico Bautista',  'plate'=>'DEF 7777','service'=>'Tire Rotation',    'datetime'=>'2024-01-08 14:00','reason'=>'Reschedule',      'cancelled_by'=>'Customer'],
+        ['id'=>'#BK-0020','customer'=>'Grace Padilla',  'plate'=>'GHI 5555','service'=>'Paint Protection', 'datetime'=>'2024-01-05 10:30','reason'=>'No show',         'cancelled_by'=>'Admin'],
+        ['id'=>'#BK-0018','customer'=>'Dante Ramos',    'plate'=>'JKL 3333','service'=>'Interior Detailing','datetime'=>'2024-01-04 09:00','reason'=>'Customer request','cancelled_by'=>'Customer'],
+    ];
+@endphp
 
-<?php include '../includes/topnav.php'; ?>
-
-<div class="layout">
-<?php include '../includes/sidebar.php'; ?>
-
-<div class="main-content" id="mainContent">
-<main>
+@section('content')
 
     <!-- PAGE HEADER -->
     <div class="page-header">
@@ -45,7 +26,7 @@ $cancelled = [
                 <li class="active">Cancelled</li>
             </ol>
         </div>
-        <a href="<?= BASE_URL ?>/bookings/index.php" class="btn btn-ghost"><i class="fas fa-arrow-left"></i> All Bookings</a>
+        <a href="{{ route('admin.bookings.index') }}" class="btn btn-ghost"><i class="fas fa-arrow-left"></i> All Bookings</a>
     </div>
 
     <!-- ALERT BANNER -->
@@ -81,7 +62,7 @@ $cancelled = [
             <input class="filter-select" type="date" id="filterDateTo" />
             <button class="btn btn-ghost btn-sm" onclick="clearFilters()"><i class="fas fa-xmark"></i> Clear</button>
             <div class="spacer"></div>
-            <span style="font-size:.8rem;color:var(--text-muted);" id="rowCount"><?= count($cancelled) ?> records</span>
+            <span style="font-size:.8rem;color:var(--text-muted);" id="rowCount">{{ count($cancelled) }} records</span>
         </div>
     </div>
 
@@ -105,30 +86,30 @@ $cancelled = [
                     </tr>
                 </thead>
                 <tbody id="tableBody">
-                <?php foreach($cancelled as $b): ?>
-                <tr data-search="<?= strtolower($b['customer'].' '.$b['id']) ?>"
-                    data-service="<?= $b['service'] ?>"
-                    data-cancelledby="<?= $b['cancelled_by'] ?>">
+                @foreach($cancelled as $b)
+                <tr data-search="{{ strtolower($b['customer'].' '.$b['id']) }}"
+                    data-service="{{ $b['service'] }}"
+                    data-cancelledby="{{ $b['cancelled_by'] }}">
                     <td>
-                        <div class="primary-col"><?= htmlspecialchars($b['customer']) ?></div>
-                        <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;"><?= $b['id'] ?></div>
+                        <div class="primary-col">{{ $b['customer'] }}</div>
+                        <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;">{{ $b['id'] }}</div>
                     </td>
-                    <td><?= htmlspecialchars($b['plate']) ?></td>
-                    <td><?= htmlspecialchars($b['service']) ?></td>
-                    <td style="white-space:nowrap;"><?= $b['datetime'] ?></td>
+                    <td>{{ $b['plate'] }}</td>
+                    <td>{{ $b['service'] }}</td>
+                    <td style="white-space:nowrap;">{{ $b['datetime'] }}</td>
                     <td>
-                        <span style="font-size:.82rem;color:var(--text-muted);"><?= htmlspecialchars($b['reason']) ?></span>
+                        <span style="font-size:.82rem;color:var(--text-muted);">{{ $b['reason'] }}</span>
                     </td>
                     <td>
-                        <?php if($b['cancelled_by']==='Admin'): ?>
+                        @if($b['cancelled_by'] === 'Admin')
                         <span style="font-size:.78rem;font-weight:600;color:var(--red);">Admin</span>
-                        <?php else: ?>
+                        @else
                         <span style="font-size:.78rem;color:var(--text-muted);">Customer</span>
-                        <?php endif; ?>
+                        @endif
                     </td>
                     <td style="text-align:center;">
                         <div style="display:flex;gap:6px;justify-content:center;">
-                            <a href="<?= BASE_URL ?>/bookings/new.php?rebook=<?= urlencode($b['id']) ?>" class="btn btn-ghost btn-sm" title="Rebook" style="gap:5px;">
+                            <a href="{{ route('admin.bookings.rebook', ['id' => urlencode($b['id'])]) }}" class="btn btn-ghost btn-sm" title="Rebook" style="gap:5px;">
                                 <i class="fas fa-rotate-right"></i> Rebook
                             </a>
                             <button class="btn btn-danger btn-sm btn-icon" title="Delete permanently" onclick="openModal('deleteModal')">
@@ -137,12 +118,12 @@ $cancelled = [
                         </div>
                     </td>
                 </tr>
-                <?php endforeach; ?>
+                @endforeach
                 </tbody>
             </table>
         </div>
         <div class="card-footer-bar">
-            <span id="footerCount"><?= count($cancelled) ?> cancelled bookings</span>
+            <span id="footerCount">{{ count($cancelled) }} cancelled bookings</span>
             <div style="display:flex;gap:6px;">
                 <button class="btn btn-ghost btn-sm">&#8249; Prev</button>
                 <button class="btn btn-primary btn-sm">1</button>
@@ -151,8 +132,9 @@ $cancelled = [
         </div>
     </div>
 
-</main>
+@endsection
 
+@section('modals')
 <!-- DELETE CONFIRM MODAL -->
 <div class="modal-overlay" id="deleteModal">
     <div class="modal" style="max-width:400px;">
@@ -171,9 +153,9 @@ $cancelled = [
         </div>
     </div>
 </div>
+@endsection
 
-<?php include '../includes/footer.php'; ?>
-
+@push('scripts')
 <script>
 function applyFilters() {
     const search  = document.getElementById('searchInput').value.toLowerCase();
@@ -199,5 +181,4 @@ function clearFilters() {
 ['searchInput','filterService','filterBy','filterDateFrom','filterDateTo']
     .forEach(id => document.getElementById(id).addEventListener('input', applyFilters));
 </script>
-</body>
-</html>
+@endpush

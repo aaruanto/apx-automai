@@ -1,53 +1,30 @@
-<?php require_once $_SERVER['DOCUMENT_ROOT'] . '/automai/config.php'; ?>
-<?php
-// bookings/index.php — All Bookings
-$pageTitle      = 'All Bookings';
-$activeSection  = 'bookings';
-$activePage     = 'all';
+@extends('layouts.admin')
 
-// ── TODO: Replace with DB query ────────────────────────────────────────────
-// Example:
-// $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-// $bookings = $conn->query("SELECT * FROM bookings ORDER BY date DESC");
-// ──────────────────────────────────────────────────────────────────────────
+@section('title', 'All Bookings')
 
-$bookings = [
-    ['id'=>'#BK-0041','customer'=>'Juan dela Cruz','plate'=>'ABC 1234','service'=>'Full Car Wash',    'datetime'=>'2024-01-15 09:00','status'=>'confirmed'],
-    ['id'=>'#BK-0040','customer'=>'Maria Santos',  'plate'=>'XYZ 5678','service'=>'Oil Change',       'datetime'=>'2024-01-15 10:30','status'=>'inprogress'],
-    ['id'=>'#BK-0039','customer'=>'Roberto Lim',   'plate'=>'DEF 9012','service'=>'Paint Protection', 'datetime'=>'2024-01-14 08:00','status'=>'confirmed'],
-    ['id'=>'#BK-0038','customer'=>'Ana Reyes',      'plate'=>'GHI 3456','service'=>'Interior Detailing','datetime'=>'2024-01-14 14:00','status'=>'pending'],
-    ['id'=>'#BK-0037','customer'=>'Carlo Mendoza',  'plate'=>'JKL 7890','service'=>'Tire Rotation',   'datetime'=>'2024-01-13 11:00','status'=>'confirmed'],
-    ['id'=>'#BK-0036','customer'=>'Lisa Tan',       'plate'=>'MNO 1234','service'=>'Engine Check',    'datetime'=>'2024-01-13 13:30','status'=>'cancelled'],
-    ['id'=>'#BK-0035','customer'=>'Paulo Garcia',   'plate'=>'PQR 5678','service'=>'Full Car Wash',   'datetime'=>'2024-01-12 09:30','status'=>'confirmed'],
-    ['id'=>'#BK-0034','customer'=>'Diane Uy',       'plate'=>'STU 9012','service'=>'Oil Change',      'datetime'=>'2024-01-12 15:00','status'=>'confirmed'],
-    ['id'=>'#BK-0033','customer'=>'Ben Cruz',       'plate'=>'VWX 3456','service'=>'Paint Protection','datetime'=>'2024-01-11 10:00','status'=>'pending'],
-    ['id'=>'#BK-0032','customer'=>'Nina Flores',    'plate'=>'YZA 7890','service'=>'Interior Detailing','datetime'=>'2024-01-11 11:30','status'=>'confirmed'],
-];
+@php
+    $bookings = [
+        ['id'=>'#BK-0041','customer'=>'Juan dela Cruz','plate'=>'ABC 1234','service'=>'Full Car Wash',    'datetime'=>'2024-01-15 09:00','status'=>'confirmed'],
+        ['id'=>'#BK-0040','customer'=>'Maria Santos',  'plate'=>'XYZ 5678','service'=>'Oil Change',       'datetime'=>'2024-01-15 10:30','status'=>'inprogress'],
+        ['id'=>'#BK-0039','customer'=>'Roberto Lim',   'plate'=>'DEF 9012','service'=>'Paint Protection', 'datetime'=>'2024-01-14 08:00','status'=>'confirmed'],
+        ['id'=>'#BK-0038','customer'=>'Ana Reyes',      'plate'=>'GHI 3456','service'=>'Interior Detailing','datetime'=>'2024-01-14 14:00','status'=>'pending'],
+        ['id'=>'#BK-0037','customer'=>'Carlo Mendoza',  'plate'=>'JKL 7890','service'=>'Tire Rotation',   'datetime'=>'2024-01-13 11:00','status'=>'confirmed'],
+        ['id'=>'#BK-0036','customer'=>'Lisa Tan',       'plate'=>'MNO 1234','service'=>'Engine Check',    'datetime'=>'2024-01-13 13:30','status'=>'cancelled'],
+        ['id'=>'#BK-0035','customer'=>'Paulo Garcia',   'plate'=>'PQR 5678','service'=>'Full Car Wash',   'datetime'=>'2024-01-12 09:30','status'=>'confirmed'],
+        ['id'=>'#BK-0034','customer'=>'Diane Uy',       'plate'=>'STU 9012','service'=>'Oil Change',      'datetime'=>'2024-01-12 15:00','status'=>'confirmed'],
+        ['id'=>'#BK-0033','customer'=>'Ben Cruz',       'plate'=>'VWX 3456','service'=>'Paint Protection','datetime'=>'2024-01-11 10:00','status'=>'pending'],
+        ['id'=>'#BK-0032','customer'=>'Nina Flores',    'plate'=>'YZA 7890','service'=>'Interior Detailing','datetime'=>'2024-01-11 11:30','status'=>'confirmed'],
+    ];
 
-$statusLabels = [
-    'confirmed'  => ['label'=>'Confirmed',   'class'=>'badge-confirmed'],
-    'pending'    => ['label'=>'Pending',      'class'=>'badge-pending'],
-    'inprogress' => ['label'=>'In Progress',  'class'=>'badge-inprogress'],
-    'cancelled'  => ['label'=>'Cancelled',    'class'=>'badge-cancelled'],
-];
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <title><?= $pageTitle ?> — APX AutoMai</title>
-    <?php include '../includes/styles.php'; ?>
-</head>
-<body>
+    $statusLabels = [
+        'confirmed'  => ['label'=>'Confirmed',   'class'=>'badge-confirmed'],
+        'pending'    => ['label'=>'Pending',      'class'=>'badge-pending'],
+        'inprogress' => ['label'=>'In Progress',  'class'=>'badge-inprogress'],
+        'cancelled'  => ['label'=>'Cancelled',    'class'=>'badge-cancelled'],
+    ];
+@endphp
 
-<?php include '../includes/topnav.php'; ?>
-
-<div class="layout">
-<?php include '../includes/sidebar.php'; ?>
-
-<div class="main-content" id="mainContent">
-<main>
+@section('content')
 
     <!-- PAGE HEADER -->
     <div class="page-header">
@@ -58,33 +35,34 @@ $statusLabels = [
                 <li class="active">All Bookings</li>
             </ol>
         </div>
-        <a href="<?= BASE_URL ?>/bookings/new.php" class="btn btn-primary">
+        <a href="{{ route('admin.bookings.create') }}" class="btn btn-primary">
             <i class="fas fa-plus"></i> New Booking
         </a>
     </div>
 
     <!-- SUMMARY MINI-CARDS -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
-        <?php
-        $counts = ['confirmed'=>0,'pending'=>0,'inprogress'=>0,'cancelled'=>0];
-        foreach($bookings as $b) $counts[$b['status']]++;
-        $mini = [
-            ['label'=>'Confirmed',   'key'=>'confirmed',  'icon'=>'fa-circle-check',   'color'=>'var(--success)'],
-            ['label'=>'Pending',     'key'=>'pending',    'icon'=>'fa-hourglass-half', 'color'=>'var(--warning)'],
-            ['label'=>'In Progress', 'key'=>'inprogress', 'icon'=>'fa-spinner',        'color'=>'var(--info)'],
-            ['label'=>'Cancelled',   'key'=>'cancelled',  'icon'=>'fa-ban',            'color'=>'var(--red)'],
-        ];
-        foreach($mini as $m): ?>
+        @php
+            $counts = ['confirmed'=>0,'pending'=>0,'inprogress'=>0,'cancelled'=>0];
+            foreach($bookings as $b) $counts[$b['status']]++;
+            $mini = [
+                ['label'=>'Confirmed',   'key'=>'confirmed',  'icon'=>'fa-circle-check',   'color'=>'var(--success)'],
+                ['label'=>'Pending',     'key'=>'pending',    'icon'=>'fa-hourglass-half', 'color'=>'var(--warning)'],
+                ['label'=>'In Progress', 'key'=>'inprogress', 'icon'=>'fa-spinner',        'color'=>'var(--info)'],
+                ['label'=>'Cancelled',   'key'=>'cancelled',  'icon'=>'fa-ban',            'color'=>'var(--red)'],
+            ];
+        @endphp
+        @foreach($mini as $m)
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px;display:flex;align-items:center;gap:14px;">
-            <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;color:<?= $m['color'] ?>;font-size:.9rem;">
-                <i class="fas <?= $m['icon'] ?>"></i>
+            <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;color:{{ $m['color'] }};font-size:.9rem;">
+                <i class="fas {{ $m['icon'] }}"></i>
             </div>
             <div>
-                <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.5rem;font-weight:800;line-height:1;"><?= $counts[$m['key']] ?></div>
-                <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;"><?= $m['label'] ?></div>
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.5rem;font-weight:800;line-height:1;">{{ $counts[$m['key']] }}</div>
+                <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">{{ $m['label'] }}</div>
             </div>
         </div>
-        <?php endforeach; ?>
+        @endforeach
     </div>
 
     <!-- TABLE CARD -->
@@ -138,33 +116,32 @@ $statusLabels = [
                     </tr>
                 </thead>
                 <tbody id="tableBody">
-                <?php foreach($bookings as $b):
-                    $s = $statusLabels[$b['status']];
-                ?>
-                <tr data-status="<?= $b['status'] ?>" data-service="<?= $b['service'] ?>" data-search="<?= strtolower($b['customer'].' '.$b['id']) ?>">
+                @foreach($bookings as $b)
+                @php $s = $statusLabels[$b['status']]; @endphp
+                <tr data-status="{{ $b['status'] }}" data-service="{{ $b['service'] }}" data-search="{{ strtolower($b['customer'].' '.$b['id']) }}">
                     <td>
-                        <div class="primary-col"><?= htmlspecialchars($b['customer']) ?></div>
-                        <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;"><?= $b['id'] ?></div>
+                        <div class="primary-col">{{ $b['customer'] }}</div>
+                        <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;">{{ $b['id'] }}</div>
                     </td>
-                    <td><?= htmlspecialchars($b['plate']) ?></td>
-                    <td><?= htmlspecialchars($b['service']) ?></td>
-                    <td style="white-space:nowrap;"><?= $b['datetime'] ?></td>
-                    <td><span class="badge <?= $s['class'] ?>"><?= $s['label'] ?></span></td>
+                    <td>{{ $b['plate'] }}</td>
+                    <td>{{ $b['service'] }}</td>
+                    <td style="white-space:nowrap;">{{ $b['datetime'] }}</td>
+                    <td><span class="badge {{ $s['class'] }}">{{ $s['label'] }}</span></td>
                     <td style="text-align:center;">
                         <div style="display:flex;gap:6px;justify-content:center;">
                             <button class="btn btn-ghost btn-sm btn-icon" title="View" onclick="openModal('viewModal')"><i class="fas fa-eye"></i></button>
-                            <a href="<?= BASE_URL ?>/bookings/new.php?edit=<?= urlencode($b['id']) ?>" class="btn btn-ghost btn-sm btn-icon" title="Edit"><i class="fas fa-pen"></i></a>
+                            <a href="{{ route('admin.bookings.edit', ['id' => urlencode($b['id'])]) }}" class="btn btn-ghost btn-sm btn-icon" title="Edit"><i class="fas fa-pen"></i></a>
                             <button class="btn btn-danger btn-sm btn-icon" title="Cancel"><i class="fas fa-ban"></i></button>
                         </div>
                     </td>
                 </tr>
-                <?php endforeach; ?>
+                @endforeach
                 </tbody>
             </table>
         </div>
 
         <div class="card-footer-bar">
-            <span id="rowCount">Showing <?= count($bookings) ?> bookings</span>
+            <span id="rowCount">Showing {{ count($bookings) }} bookings</span>
             <div style="display:flex;gap:6px;">
                 <button class="btn btn-ghost btn-sm">&#8249; Prev</button>
                 <button class="btn btn-primary btn-sm">1</button>
@@ -174,8 +151,9 @@ $statusLabels = [
         </div>
     </div>
 
-</main>
+@endsection
 
+@section('modals')
 <!-- VIEW BOOKING MODAL -->
 <div class="modal-overlay" id="viewModal">
     <div class="modal">
@@ -213,15 +191,14 @@ $statusLabels = [
         </div>
         <div class="modal-footer">
             <button class="btn btn-ghost" onclick="closeModal('viewModal')">Close</button>
-            <a href="<?= BASE_URL ?>/bookings/new.php?edit=%23BK-0041" class="btn btn-primary"><i class="fas fa-pen"></i> Edit Booking</a>
+            <a href="{{ route('admin.bookings.edit', ['id' => '%23BK-0041']) }}" class="btn btn-primary"><i class="fas fa-pen"></i> Edit Booking</a>
         </div>
     </div>
 </div>
+@endsection
 
-<?php include '../includes/footer.php'; ?>
-
+@push('scripts')
 <script>
-// Client-side filter (replace with server-side for production)
 function applyFilters() {
     const search  = document.getElementById('searchInput').value.toLowerCase();
     const status  = document.getElementById('filterStatus').value;
@@ -246,5 +223,4 @@ function clearFilters() {
 ['searchInput','filterStatus','filterService','filterDateFrom','filterDateTo']
     .forEach(id => document.getElementById(id).addEventListener('input', applyFilters));
 </script>
-</body>
-</html>
+@endpush

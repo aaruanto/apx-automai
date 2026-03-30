@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Admin\BookingController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -20,8 +21,18 @@ Route::middleware('auth')->group(function () {
 });
 
 // Admin only
-Route::middleware(['auth', 'role:admin'])->group(function () {
-    Route::get('/admin/dashboard', fn() => view('dashboard.admin-dashboard'))->name('admin.dashboard');
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dashboard', fn() => view('dashboard.admin-dashboard'))->name('dashboard');
+
+    // Bookings
+    Route::get('/bookings',                  [BookingController::class, 'index'])   ->name('bookings.index');
+    Route::get('/bookings/create',           [BookingController::class, 'create'])  ->name('bookings.create');
+    Route::post('/bookings',                 [BookingController::class, 'store'])   ->name('bookings.store');
+    Route::get('/bookings/schedule',         [BookingController::class, 'schedule'])->name('bookings.schedule');
+    Route::get('/bookings/cancelled',        [BookingController::class, 'cancelled'])->name('bookings.cancelled');
+    Route::get('/bookings/{id}/edit',        [BookingController::class, 'edit'])    ->name('bookings.edit');
+    Route::put('/bookings/{id}',             [BookingController::class, 'update'])  ->name('bookings.update');
+    Route::get('/bookings/{id}/rebook',      [BookingController::class, 'rebook'])  ->name('bookings.rebook');
 });
 
 // Staff only

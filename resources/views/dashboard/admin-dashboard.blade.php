@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,6 +9,120 @@
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
    <link href="{{ asset('assets/css/dashboard.css') }}" rel="stylesheet" />
+    <style>
+        /* ── Light mode: override ALL CSS variables used in dashboard.css ── */
+        html.light-mode {
+            --black:      #f4f5f7;   /* body bg */
+            --surface:    #ffffff;   /* topnav, sidebar, cards, chart-card, table-card */
+            --surface-2:  #f0f1f3;   /* nav-link hover, table thead, dropdown hover */
+            --surface-3:  #e6e8ec;   /* search input bg, card-badge, user-chip bg */
+            --border:     rgba(0,0,0,0.09);
+            --text:       #1a1d23;
+            --text-muted: #6b7280;
+            --red-glow:   rgba(232,25,44,0.10);
+        }
+
+        /* ── Theme toggle button ──────────────────────────────── */
+        .theme-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+
+        /* Smooth transition for the whole page */
+        *, *::before, *::after {
+            transition: background-color 0.25s ease, color 0.18s ease,
+                        border-color 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        /* ── Topnav ───────────────────────────────────────────── */
+        html.light-mode .topnav {
+            box-shadow: 0 1px 6px rgba(0,0,0,.07);
+        }
+        html.light-mode #sidebarToggle { color: #6b7280; }
+        html.light-mode .brand-auto { color: #1a1d23; }
+
+        /* ── Sidebar: sub-nav uses var(--black) directly ─────── */
+        html.light-mode .sub-nav {
+            background: #e8eaee !important;  /* overrides the hardcoded var(--black) */
+        }
+        html.light-mode .sub-nav a {
+            color: #4b5563;
+        }
+        html.light-mode .sub-nav a::before {
+            background: #9ca3af;
+        }
+        html.light-mode .sub-nav a:hover {
+            color: #1a1d23;
+            background: #dde0e6;
+        }
+        html.light-mode .nav-link {
+            color: #6b7280;
+        }
+        html.light-mode .nav-link:hover {
+            color: #1a1d23;
+        }
+        html.light-mode .nav-link.active {
+            color: #E8192C;
+        }
+        html.light-mode .section-label { color: #9ca3af; }
+        html.light-mode .sidebar-divider { border-color: rgba(0,0,0,0.08); }
+        html.light-mode .sidebar-footer { border-color: rgba(0,0,0,0.08); }
+        html.light-mode .sidebar-footer-info .label { color: #9ca3af; }
+        html.light-mode .sidebar-footer-info .value { color: #1a1d23; }
+
+        /* ── Main content / body bg ───────────────────────────── */
+        html.light-mode body { background: #f4f5f7; }
+
+        /* ── Stat cards ───────────────────────────────────────── */
+        html.light-mode .stat-card { box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+        html.light-mode .stat-value { color: #1a1d23; }
+
+        /* ── Chart & table cards ──────────────────────────────── */
+        html.light-mode .chart-card,
+        html.light-mode .table-card { box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+        html.light-mode .card-body { background: #ffffff; }
+
+        /* ── Table ────────────────────────────────────────────── */
+        html.light-mode table#datatablesSimple thead tr { background: #f0f1f3; }
+        html.light-mode table#datatablesSimple thead th { color: #374151; }
+        html.light-mode table#datatablesSimple tbody td { color: #6b7280; }
+        html.light-mode table#datatablesSimple tbody td:first-child { color: #1a1d23; }
+        html.light-mode table#datatablesSimple tbody tr:hover { background: #f0f1f3; }
+        html.light-mode .dataTable-bottom { color: #6b7280; }
+        html.light-mode .dataTable-info { color: #6b7280; }
+        html.light-mode .dataTable-pagination li a {
+            background: #f0f1f3;
+            border-color: rgba(0,0,0,0.09);
+            color: #6b7280;
+        }
+
+        /* ── Page header ──────────────────────────────────────── */
+        html.light-mode .page-header { border-color: rgba(0,0,0,0.08); }
+        html.light-mode .page-title { color: #1a1d23; }
+        html.light-mode .breadcrumb li { color: #6b7280; }
+        html.light-mode .breadcrumb li.active { color: #E8192C; }
+        html.light-mode .page-date { color: #6b7280; }
+
+        /* ── Dropdown ─────────────────────────────────────────── */
+        html.light-mode .dropdown-menu { box-shadow: 0 4px 16px rgba(0,0,0,.10); }
+        html.light-mode .dropdown-menu .logout { color: #E8192C; }
+
+        /* ── User chip ────────────────────────────────────────── */
+        html.light-mode .user-name { color: #1a1d23; }
+
+        /* ── Notif dot border fix ─────────────────────────────── */
+        html.light-mode .notif-dot { border-color: #ffffff; }
+
+        /* ── Scrollbar ────────────────────────────────────────── */
+        html.light-mode ::-webkit-scrollbar-track { background: #f4f5f7; }
+        html.light-mode ::-webkit-scrollbar-thumb { background: #d1d5db; }
+
+        /* ── Footer ───────────────────────────────────────────── */
+        html.light-mode footer { background: #ffffff; }
+    </style>
 </head>
 <body>
 
@@ -30,6 +143,9 @@
             <i class="fas fa-bell"></i>
             <span class="notif-dot"></span>
         </a>
+        <button id="themeToggle" class="icon-btn theme-toggle" title="Toggle light/dark mode" aria-label="Toggle theme">
+            <i class="fas fa-moon" id="themeIcon"></i>
+        </button>
         <a href="#!" class="icon-btn" title="Activity Log">
             <i class="fas fa-clock-rotate-left"></i>
         </a>
@@ -63,7 +179,7 @@
         <div class="sidebar-body">
             <div class="section-label">Main</div>
 
-            <a class="nav-link active" href="admin-dashboard.php">
+            <a class="nav-link active" href="{{ route('admin.dashboard') }}">
                 <span class="nav-icon"><i class="fas fa-gauge-high"></i></span>
                 <span class="nav-label">Dashboard</span>
             </a>
@@ -77,10 +193,10 @@
                 <i class="fas fa-chevron-right nav-arrow"></i>
             </a>
             <div class="sub-nav" id="sub-bookings">
-                <a href="/bookings/index.php">All Bookings</a>
-                <a href="/bookings/new.php">New Booking</a>
-                <a href="/bookings/schedule.php">Today's Schedule</a>
-                <a href="/bookings/cancelled.php">Cancelled</a>
+                <a href="{{ route('admin.bookings.index') }}">All Bookings</a>
+                <a href="{{ route('admin.bookings.create') }}">New Booking</a>
+                <a href="{{ route('admin.bookings.schedule') }}">Today's Schedule</a>
+                <a href="{{ route('admin.bookings.cancelled') }}">Cancelled</a>
             </div>
 
             <a class="nav-link" href="#" onclick="toggleSub(event,'sub-customers',this)">
@@ -89,9 +205,9 @@
                 <i class="fas fa-chevron-right nav-arrow"></i>
             </a>
             <div class="sub-nav" id="sub-customers">
-                <a href="/customers/index.php">All Customers</a>
-                <a href="/customers/new.php">Add Customer</a>
-                <a href="/customers/loyalty.php">Loyalty Members</a>
+                <a href="#">All Customers</a>
+                <a href="#">Add Customer</a>
+                <a href="#">Loyalty Members</a>
             </div>
 
             <hr class="sidebar-divider" />
@@ -124,12 +240,6 @@
             </div>
         </div>
 
-        <div class="sidebar-footer">
-            <div class="sidebar-footer-info">
-                <div class="label">Logged in as</div>
-                <div class="value">{{ Auth::user()->name }}</div>
-            </div>
-        </div>
     </nav>
 
     <!-- MAIN CONTENT -->
@@ -418,6 +528,50 @@
             }
         }
     });
+
+    // ── Dark / Light mode toggle ──────────────────────────────
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon   = document.getElementById('themeIcon');
+    const htmlEl      = document.documentElement;
+
+    function applyTheme(mode) {
+        if (mode === 'light') {
+            htmlEl.classList.add('light-mode');
+            themeIcon.className = 'fas fa-sun';
+            themeToggle.title = 'Switch to dark mode';
+        } else {
+            htmlEl.classList.remove('light-mode');
+            themeIcon.className = 'fas fa-moon';
+            themeToggle.title = 'Switch to light mode';
+        }
+    }
+
+    // Restore saved preference (default: dark)
+    const savedTheme = localStorage.getItem('apx-theme') || 'dark';
+    applyTheme(savedTheme);
+
+    themeToggle.addEventListener('click', () => {
+        const next = htmlEl.classList.contains('light-mode') ? 'dark' : 'light';
+        localStorage.setItem('apx-theme', next);
+        applyTheme(next);
+    });
+
+    // User dropdown toggle
+    const userChip = document.querySelector('.user-chip');
+    const dropdownMenu = document.querySelector('.dropdown .dropdown-menu');
+
+    userChip.addEventListener('click', function (e) {
+        e.preventDefault();
+        dropdownMenu.classList.toggle('show');
+    });
+
+    // Close when clicking outside
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.dropdown')) {
+            dropdownMenu.classList.remove('show');
+        }
+    });
+
 </script>
 </body>
 </html>
