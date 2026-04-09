@@ -12,17 +12,16 @@
     <style>
         /* ── Light mode: override ALL CSS variables used in dashboard.css ── */
         html.light-mode {
-            --black:      #f4f5f7;   /* body bg */
-            --surface:    #ffffff;   /* topnav, sidebar, cards, chart-card, table-card */
-            --surface-2:  #f0f1f3;   /* nav-link hover, table thead, dropdown hover */
-            --surface-3:  #e6e8ec;   /* search input bg, card-badge, user-chip bg */
+            --black:      #f4f5f7;
+            --surface:    #ffffff;
+            --surface-2:  #f0f1f3;
+            --surface-3:  #e6e8ec;
             --border:     rgba(0,0,0,0.09);
             --text:       #1a1d23;
             --text-muted: #6b7280;
             --red-glow:   rgba(232,25,44,0.10);
         }
 
-        /* ── Theme toggle button ──────────────────────────────── */
         .theme-toggle {
             background: none;
             border: none;
@@ -31,61 +30,32 @@
             line-height: 1;
         }
 
-        /* Smooth transition for the whole page */
         *, *::before, *::after {
             transition: background-color 0.25s ease, color 0.18s ease,
                         border-color 0.18s ease, box-shadow 0.18s ease;
         }
 
-        /* ── Topnav ───────────────────────────────────────────── */
-        html.light-mode .topnav {
-            box-shadow: 0 1px 6px rgba(0,0,0,.07);
-        }
+        html.light-mode .topnav { box-shadow: 0 1px 6px rgba(0,0,0,.07); }
         html.light-mode #sidebarToggle { color: #6b7280; }
         html.light-mode .brand-auto { color: #1a1d23; }
-
-        /* ── Sidebar: sub-nav uses var(--black) directly ─────── */
-        html.light-mode .sub-nav {
-            background: #e8eaee !important;  /* overrides the hardcoded var(--black) */
-        }
-        html.light-mode .sub-nav a {
-            color: #4b5563;
-        }
-        html.light-mode .sub-nav a::before {
-            background: #9ca3af;
-        }
-        html.light-mode .sub-nav a:hover {
-            color: #1a1d23;
-            background: #dde0e6;
-        }
-        html.light-mode .nav-link {
-            color: #6b7280;
-        }
-        html.light-mode .nav-link:hover {
-            color: #1a1d23;
-        }
-        html.light-mode .nav-link.active {
-            color: #E8192C;
-        }
+        html.light-mode .sub-nav { background: #e8eaee !important; }
+        html.light-mode .sub-nav a { color: #4b5563; }
+        html.light-mode .sub-nav a::before { background: #9ca3af; }
+        html.light-mode .sub-nav a:hover { color: #1a1d23; background: #dde0e6; }
+        html.light-mode .nav-link { color: #6b7280; }
+        html.light-mode .nav-link:hover { color: #1a1d23; }
+        html.light-mode .nav-link.active { color: #E8192C; }
         html.light-mode .section-label { color: #9ca3af; }
         html.light-mode .sidebar-divider { border-color: rgba(0,0,0,0.08); }
         html.light-mode .sidebar-footer { border-color: rgba(0,0,0,0.08); }
         html.light-mode .sidebar-footer-info .label { color: #9ca3af; }
         html.light-mode .sidebar-footer-info .value { color: #1a1d23; }
-
-        /* ── Main content / body bg ───────────────────────────── */
         html.light-mode body { background: #f4f5f7; }
-
-        /* ── Stat cards ───────────────────────────────────────── */
         html.light-mode .stat-card { box-shadow: 0 1px 4px rgba(0,0,0,.07); }
         html.light-mode .stat-value { color: #1a1d23; }
-
-        /* ── Chart & table cards ──────────────────────────────── */
         html.light-mode .chart-card,
         html.light-mode .table-card { box-shadow: 0 1px 4px rgba(0,0,0,.07); }
         html.light-mode .card-body { background: #ffffff; }
-
-        /* ── Table ────────────────────────────────────────────── */
         html.light-mode table#datatablesSimple thead tr { background: #f0f1f3; }
         html.light-mode table#datatablesSimple thead th { color: #374151; }
         html.light-mode table#datatablesSimple tbody td { color: #6b7280; }
@@ -98,29 +68,17 @@
             border-color: rgba(0,0,0,0.09);
             color: #6b7280;
         }
-
-        /* ── Page header ──────────────────────────────────────── */
         html.light-mode .page-header { border-color: rgba(0,0,0,0.08); }
         html.light-mode .page-title { color: #1a1d23; }
         html.light-mode .breadcrumb li { color: #6b7280; }
         html.light-mode .breadcrumb li.active { color: #E8192C; }
         html.light-mode .page-date { color: #6b7280; }
-
-        /* ── Dropdown ─────────────────────────────────────────── */
         html.light-mode .dropdown-menu { box-shadow: 0 4px 16px rgba(0,0,0,.10); }
         html.light-mode .dropdown-menu .logout { color: #E8192C; }
-
-        /* ── User chip ────────────────────────────────────────── */
         html.light-mode .user-name { color: #1a1d23; }
-
-        /* ── Notif dot border fix ─────────────────────────────── */
         html.light-mode .notif-dot { border-color: #ffffff; }
-
-        /* ── Scrollbar ────────────────────────────────────────── */
         html.light-mode ::-webkit-scrollbar-track { background: #f4f5f7; }
         html.light-mode ::-webkit-scrollbar-thumb { background: #d1d5db; }
-
-        /* ── Footer ───────────────────────────────────────────── */
         html.light-mode footer { background: #ffffff; }
     </style>
 </head>
@@ -129,7 +87,7 @@
 <!-- TOP NAV -->
 <nav class="topnav">
     <button id="sidebarToggle"><i class="fas fa-bars"></i></button>
-     <a class="brand" href="{{ url('/') }}">
+    <a class="brand" href="{{ url('/') }}">
         <span class="brand-apx">APX</span>
         <span class="brand-auto">AUTOMAI</span>
         <span class="brand-badge">ADMIN</span>
@@ -239,7 +197,6 @@
                 <a href="#">Notifications</a>
             </div>
         </div>
-
     </nav>
 
     <!-- MAIN CONTENT -->
@@ -248,15 +205,15 @@
             <!-- PAGE HEADER -->
             <div class="page-header">
                 <div>
-                    <h1 class="page-title"><?php echo "<span>APX</span> AUTOMAI"; ?></h1>
+                    <h1 class="page-title"><span>APX</span> AUTOMAI</h1>
                     <ol class="breadcrumb">
                         <li>Admin</li>
-                        <li class="active"><?php echo "Dashboard"; ?></li>
+                        <li class="active">Dashboard</li>
                     </ol>
                 </div>
                 <div class="page-date">
                     <i class="far fa-calendar" style="margin-right:6px;color:var(--red);"></i>
-                    <?php echo date('l, F j, Y'); ?>
+                    {{ now()->format('l, F j, Y') }}
                 </div>
             </div>
 
@@ -267,10 +224,9 @@
                         <div class="stat-label">Today's Bookings</div>
                         <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
                     </div>
-                    <div class="stat-value">24</div>
+                    <div class="stat-value">{{ $todayBookings }}</div>
                     <div class="stat-footer">
                         <a href="#">View Details <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
-                        <span class="stat-change up">+8%</span>
                     </div>
                 </div>
                 <div class="stat-card warning">
@@ -278,10 +234,9 @@
                         <div class="stat-label">Pending</div>
                         <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
                     </div>
-                    <div class="stat-value">7</div>
+                    <div class="stat-value">{{ $pending }}</div>
                     <div class="stat-footer">
                         <a href="#">View Details <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
-                        <span class="stat-change down">+2</span>
                     </div>
                 </div>
                 <div class="stat-card success">
@@ -289,10 +244,9 @@
                         <div class="stat-label">This Week</div>
                         <div class="stat-icon"><i class="fas fa-chart-bar"></i></div>
                     </div>
-                    <div class="stat-value">138</div>
+                    <div class="stat-value">{{ $thisWeek }}</div>
                     <div class="stat-footer">
                         <a href="#">View Details <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
-                        <span class="stat-change up">+14%</span>
                     </div>
                 </div>
                 <div class="stat-card info">
@@ -300,10 +254,9 @@
                         <div class="stat-label">Completed</div>
                         <div class="stat-icon"><i class="fas fa-circle-check"></i></div>
                     </div>
-                    <div class="stat-value">512</div>
+                    <div class="stat-value">{{ $completed }}</div>
                     <div class="stat-footer">
                         <a href="#">View Details <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
-                        <span class="stat-change up">+22%</span>
                     </div>
                 </div>
             </div>
@@ -359,54 +312,24 @@
                             </tr>
                         </tfoot>
                         <tbody>
+                            @forelse($recentBookings as $booking)
                             <tr>
-                                <td>#BK-0041</td><td>Juan dela Cruz</td><td>Full Car Wash</td><td>2024-01-15</td><td>Marco R.</td>
-                                <td><span class="badge badge-confirmed">Confirmed</span></td>
+                                <td>#BK-{{ str_pad($booking->id, 4, '0', STR_PAD_LEFT) }}</td>
+                                <td>{{ $booking->customer->name ?? 'N/A' }}</td>
+                                <td>{{ $booking->service->name ?? 'N/A' }}</td>
+                                <td>{{ $booking->booking_date }}</td>
+                                <td>{{ $booking->employee->name ?? 'N/A' }}</td>
+                                <td>
+                                    <span class="badge badge-{{ strtolower(str_replace(' ', '', $booking->status)) }}">
+                                        {{ ucfirst($booking->status) }}
+                                    </span>
+                                </td>
                             </tr>
+                            @empty
                             <tr>
-                                <td>#BK-0040</td><td>Maria Santos</td><td>Oil Change</td><td>2024-01-15</td><td>Leo T.</td>
-                                <td><span class="badge badge-inprogress">In Progress</span></td>
+                                <td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);">No bookings yet.</td>
                             </tr>
-                            <tr>
-                                <td>#BK-0039</td><td>Roberto Lim</td><td>Paint Protection</td><td>2024-01-14</td><td>Marco R.</td>
-                                <td><span class="badge badge-confirmed">Confirmed</span></td>
-                            </tr>
-                            <tr>
-                                <td>#BK-0038</td><td>Ana Reyes</td><td>Interior Detailing</td><td>2024-01-14</td><td>Jay M.</td>
-                                <td><span class="badge badge-pending">Pending</span></td>
-                            </tr>
-                            <tr>
-                                <td>#BK-0037</td><td>Carlo Mendoza</td><td>Tire Rotation</td><td>2024-01-13</td><td>Leo T.</td>
-                                <td><span class="badge badge-confirmed">Confirmed</span></td>
-                            </tr>
-                            <tr>
-                                <td>#BK-0036</td><td>Lisa Tan</td><td>Engine Check</td><td>2024-01-13</td><td>Jay M.</td>
-                                <td><span class="badge badge-cancelled">Cancelled</span></td>
-                            </tr>
-                            <tr>
-                                <td>#BK-0035</td><td>Paulo Garcia</td><td>Full Car Wash</td><td>2024-01-12</td><td>Marco R.</td>
-                                <td><span class="badge badge-confirmed">Confirmed</span></td>
-                            </tr>
-                            <tr>
-                                <td>#BK-0034</td><td>Diane Uy</td><td>Oil Change</td><td>2024-01-12</td><td>Leo T.</td>
-                                <td><span class="badge badge-confirmed">Confirmed</span></td>
-                            </tr>
-                            <tr>
-                                <td>#BK-0033</td><td>Ben Cruz</td><td>Paint Protection</td><td>2024-01-11</td><td>Jay M.</td>
-                                <td><span class="badge badge-pending">Pending</span></td>
-                            </tr>
-                            <tr>
-                                <td>#BK-0032</td><td>Nina Flores</td><td>Interior Detailing</td><td>2024-01-11</td><td>Marco R.</td>
-                                <td><span class="badge badge-confirmed">Confirmed</span></td>
-                            </tr>
-                            <tr>
-                                <td>#BK-0031</td><td>Kevin Sy</td><td>Tire Rotation</td><td>2024-01-10</td><td>Leo T.</td>
-                                <td><span class="badge badge-confirmed">Confirmed</span></td>
-                            </tr>
-                            <tr>
-                                <td>#BK-0030</td><td>Rose Villanueva</td><td>Engine Check</td><td>2024-01-10</td><td>Jay M.</td>
-                                <td><span class="badge badge-inprogress">In Progress</span></td>
-                            </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
@@ -416,7 +339,7 @@
         <!-- FOOTER -->
         <footer>
             <div class="footer-brand">
-                <span>APX</span> AutoMai &mdash; Admin Portal &copy; <?php echo date('Y'); ?>
+                <span>APX</span> AutoMai &mdash; Admin Portal &copy; {{ date('Y') }}
             </div>
             <div>
                 <a href="#">Privacy Policy</a>
@@ -445,7 +368,6 @@
         e.preventDefault();
         const sub = document.getElementById(id);
         const isOpen = sub.classList.contains('open');
-        // close all
         document.querySelectorAll('.sub-nav').forEach(s => s.classList.remove('open'));
         document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('open'));
         if (!isOpen) {
@@ -481,10 +403,10 @@
     new Chart(areaCtx, {
         type: 'line',
         data: {
-            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            labels: {!! json_encode($chartLabels) !!},
             datasets: [{
                 label: 'Bookings',
-                data: [18, 22, 17, 28, 24, 35, 30],
+                data: {!! json_encode($chartData) !!},
                 borderColor: '#E8192C',
                 backgroundColor: areaGrad,
                 borderWidth: 2,
@@ -510,10 +432,10 @@
     new Chart(barCtx, {
         type: 'bar',
         data: {
-            labels: ['Car Wash', 'Oil Change', 'Detailing', 'Paint', 'Tires', 'Engine'],
+            labels: {!! json_encode($revenueLabels) !!},
             datasets: [{
                 label: 'Revenue (₱)',
-                data: [42000, 35000, 58000, 21000, 18000, 29000],
+                data: {!! json_encode($revenueData) !!},
                 backgroundColor: ['#E8192C','#B5101E','#E8192C','#B5101E','#E8192C','#B5101E'],
                 borderRadius: 4,
                 borderWidth: 0,
@@ -529,7 +451,7 @@
         }
     });
 
-    // ── Dark / Light mode toggle ──────────────────────────────
+    // Dark / Light mode toggle
     const themeToggle = document.getElementById('themeToggle');
     const themeIcon   = document.getElementById('themeIcon');
     const htmlEl      = document.documentElement;
@@ -546,7 +468,6 @@
         }
     }
 
-    // Restore saved preference (default: dark)
     const savedTheme = localStorage.getItem('apx-theme') || 'dark';
     applyTheme(savedTheme);
 
@@ -565,13 +486,11 @@
         dropdownMenu.classList.toggle('show');
     });
 
-    // Close when clicking outside
     document.addEventListener('click', function (e) {
         if (!e.target.closest('.dropdown')) {
             dropdownMenu.classList.remove('show');
         }
     });
-
 </script>
 </body>
 </html>

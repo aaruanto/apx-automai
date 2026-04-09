@@ -1,9 +1,9 @@
 <?php
-
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\BookingController;
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\Customer\DashboardController as CustomerDashboard;
 // Public routes
 Route::get('/', fn() => view('index'));
 Route::get('/about', fn() => view('about'));
@@ -22,7 +22,7 @@ Route::middleware('auth')->group(function () {
 
 // Admin only
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/dashboard', fn() => view('dashboard.admin-dashboard'))->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Bookings
     Route::get('/bookings',                  [BookingController::class, 'index'])   ->name('bookings.index');
@@ -42,7 +42,10 @@ Route::middleware(['auth', 'role:staff'])->group(function () {
 
 // Customer only
 Route::middleware(['auth', 'role:customer'])->group(function () {
-    Route::get('/customer/dashboard', fn() => view('dashboard.customer-dashboard'))->name('customer.dashboard');
+    Route::get('/customer/dashboard', [CustomerDashboard::class, 'index'])->name('customer.dashboard');
+    Route::post('/customer/bookings', [CustomerDashboard::class, 'store'])->name('customer.bookings.store');
+   Route::post('/customer/vehicles', [CustomerDashboard::class, 'storeVehicle'])->name('customer.vehicles.store');
+   Route::delete('/customer/vehicles/{id}', [CustomerDashboard::class, 'destroyVehicle'])->name('customer.vehicles.destroy');
 });
 
 require __DIR__.'/auth.php';
