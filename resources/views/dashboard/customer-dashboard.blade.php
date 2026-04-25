@@ -181,10 +181,6 @@
         <input type="text" placeholder="Search your bookings..." />
     </div>
     <div class="topnav-actions">
-        <a href="#!" class="icon-btn" title="Notifications">
-            <i class="fas fa-bell"></i>
-            <span class="notif-dot"></span>
-        </a>
         <button id="themeToggle" class="icon-btn theme-toggle" title="Switch to light mode" aria-label="Toggle theme">
             <i class="fas fa-moon" id="themeIcon"></i>
         </button>
@@ -195,9 +191,9 @@
                 <i class="fas fa-chevron-down" style="font-size:0.65rem;color:var(--text-muted);margin-left:4px;"></i>
             </a>
             <div class="dropdown-menu">
-                <a href="#!"><i class="fas fa-user" style="width:16px;margin-right:8px;"></i>My Profile</a>
-                <a href="#!"><i class="fas fa-car" style="width:16px;margin-right:8px;"></i>My Vehicles</a>
-                <a href="#!"><i class="fas fa-gear" style="width:16px;margin-right:8px;"></i>Settings</a>
+                <a href="#" onclick="event.preventDefault(); switchSection(null,'profile')"><i class="fas fa-user" style="width:16px;margin-right:8px;"></i>My Profile</a>
+                <a href="#" onclick="event.preventDefault(); switchSection(null,'vehicles'); renderVehicles()"><i class="fas fa-car" style="width:16px;margin-right:8px;"></i>My Vehicles</a>
+                <a href="#" onclick="event.preventDefault(); switchSection(null,'settings')"><i class="fas fa-gear" style="width:16px;margin-right:8px;"></i>Settings</a>
                 <hr />
                 <a href="{{ route('logout') }}" class="logout" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                     <i class="fas fa-right-from-bracket" style="width:16px;margin-right:8px;"></i>Logout
@@ -241,20 +237,14 @@
             </a>
             <hr class="sidebar-divider" />
             <div class="section-label">Account</div>
-            <a class="nav-link" href="#">
+            <a class="nav-link" id="nav-profile" href="#" onclick="switchSection(event,'profile')">
                 <span class="nav-icon"><i class="fas fa-user-circle"></i></span>
                 <span class="nav-label">My Profile</span>
             </a>
-            <a class="nav-link" href="#">
-                <span class="nav-icon"><i class="fas fa-bell"></i></span>
-                <span class="nav-label">Notifications</span>
+            <a class="nav-link" id="nav-settings" href="#" onclick="switchSection(event,'settings')">
+                <span class="nav-icon"><i class="fas fa-gear"></i></span>
+                <span class="nav-label">Settings</span>
             </a>
-        </div>
-        <div class="sidebar-footer">
-            <div class="sidebar-footer-info">
-                <div class="label">Logged in as</div>
-                <div class="value">{{ Auth::user()->name }}</div>
-            </div>
         </div>
     </nav>
 
@@ -561,6 +551,290 @@
                 <div class="promos-grid" id="promosGrid"></div>
             </div><!-- /panel-rewards -->
 
+
+            <!-- MY PROFILE PANEL -->
+            <div class="tab-panel" id="panel-profile">
+                <style>
+                    .profile-layout { display: grid; grid-template-columns: 280px 1fr; gap: 20px; align-items: start; }
+                    @media (max-width: 820px) { .profile-layout { grid-template-columns: 1fr; } }
+                    .profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px 24px; text-align: center; position: relative; overflow: hidden; }
+                    .profile-card::before { content: 'APX'; position: absolute; right: -10px; top: -10px; font-family: 'Barlow Condensed', sans-serif; font-size: 5.5rem; font-weight: 800; color: rgba(232,25,44,0.05); line-height: 1; pointer-events: none; }
+                    .profile-avatar-ring { width: 88px; height: 88px; border-radius: 50%; background: linear-gradient(135deg, var(--red-dark), var(--red)); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; font-family: 'Barlow Condensed', sans-serif; font-size: 2.2rem; font-weight: 800; color: #fff; letter-spacing: 0.04em; position: relative; }
+                    .profile-avatar-badge { position: absolute; bottom: 0; right: 0; width: 24px; height: 24px; background: var(--surface); border: 2px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: var(--red); cursor: pointer; }
+                    .profile-name { font-family: 'Barlow Condensed', sans-serif; font-size: 1.35rem; font-weight: 800; letter-spacing: 0.03em; color: var(--text); margin-bottom: 4px; }
+                    .profile-email { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 16px; word-break: break-all; }
+                    .profile-tier-chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(205,127,50,0.12); border: 1px solid rgba(205,127,50,0.35); color: #cd7f32; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 12px; border-radius: 20px; margin-bottom: 20px; }
+                    .profile-stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-top: 1px solid var(--border); padding-top: 18px; }
+                    .profile-stat-item { display: flex; flex-direction: column; gap: 2px; }
+                    .profile-stat-val { font-family: 'Barlow Condensed', sans-serif; font-size: 1.4rem; font-weight: 800; color: var(--text); }
+                    .profile-stat-lbl { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+                    .profile-since { font-size: 0.72rem; color: var(--text-muted); margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: center; gap: 5px; }
+                    .profile-section-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+                    .profile-section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+                    .profile-section-title i { color: var(--red); }
+                    .profile-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+                    @media (max-width: 600px) { .profile-field-grid { grid-template-columns: 1fr; } }
+                    .profile-field { display: flex; flex-direction: column; gap: 4px; }
+                    .profile-field label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+                    .profile-field input, .profile-field select { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 9px 12px; border-radius: 7px; font-size: 0.875rem; font-family: 'Barlow', sans-serif; outline: none; transition: border-color 0.2s; }
+                    .profile-field input:focus, .profile-field select:focus { border-color: var(--red); }
+                    .profile-field input[readonly] { opacity: 0.6; cursor: not-allowed; }
+                    .profile-field-full { grid-column: 1 / -1; }
+                    .profile-edit-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+                    .btn-profile-cancel { background: none; border: 1px solid var(--border); color: var(--text-muted); padding: 9px 20px; border-radius: 7px; font-size: 0.85rem; cursor: pointer; transition: color 0.2s, border-color 0.2s; }
+                    .btn-profile-cancel:hover { color: var(--text); }
+                    .btn-profile-save { background: var(--red); color: #fff; border: none; padding: 9px 24px; border-radius: 7px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: background 0.2s, transform 0.15s; }
+                    .btn-profile-save:hover { background: var(--red-dark); transform: translateY(-1px); }
+                    .profile-read-val { font-size: 0.9rem; color: var(--text); padding: 9px 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+                    .profile-read-val i { color: var(--red); font-size: 0.8rem; width: 14px; }
+                </style>
+
+                <div class="profile-layout">
+                    <!-- LEFT: Identity Card -->
+                    <div>
+                        <div class="profile-card">
+                            <div class="profile-avatar-ring">
+                                {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
+                                <div class="profile-avatar-badge"><i class="fas fa-camera"></i></div>
+                            </div>
+                            <div class="profile-name">{{ Auth::user()->name }}</div>
+                            <div class="profile-email">{{ Auth::user()->email }}</div>
+                            <div class="profile-tier-chip"><i class="fas fa-medal"></i> Bronze Member</div>
+                            <div class="profile-stats-row">
+                                <div class="profile-stat-item">
+                                    <span class="profile-stat-val">{{ $completed }}</span>
+                                    <span class="profile-stat-lbl">Services Done</span>
+                                </div>
+                                <div class="profile-stat-item">
+                                    <span class="profile-stat-val">0</span>
+                                    <span class="profile-stat-lbl">Loyalty Pts</span>
+                                </div>
+                                <div class="profile-stat-item">
+                                    <span class="profile-stat-val">{{ $vehicles->count() }}</span>
+                                    <span class="profile-stat-lbl">Vehicles</span>
+                                </div>
+                                <div class="profile-stat-item">
+                                    <span class="profile-stat-val">{{ $upcoming }}</span>
+                                    <span class="profile-stat-lbl">Upcoming</span>
+                                </div>
+                            </div>
+                            <div class="profile-since"><i class="fas fa-calendar-plus" style="color:var(--red);font-size:0.7rem;"></i> Member since {{ Auth::user()->created_at->format('M Y') }}</div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: Info Forms -->
+                    <div>
+                        <!-- Personal Information -->
+                        <div class="profile-section-card" id="profileInfoSection">
+                            <div class="profile-section-title"><i class="fas fa-id-card"></i> Personal Information
+                                <button onclick="toggleProfileEdit()" id="profileEditBtn" style="margin-left:auto;background:none;border:1px solid var(--border);color:var(--text-muted);padding:5px 14px;border-radius:6px;font-size:0.75rem;cursor:pointer;display:flex;align-items:center;gap:5px;transition:color 0.2s,border-color 0.2s;">
+                                    <i class="fas fa-pen"></i> Edit
+                                </button>
+                            </div>
+                            <!-- Read view -->
+                            <div id="profileReadView">
+                                <div class="profile-field-grid">
+                                    <div class="profile-field">
+                                        <label>Full Name</label>
+                                        <div class="profile-read-val"><i class="fas fa-user"></i> {{ Auth::user()->name }}</div>
+                                    </div>
+                                    <div class="profile-field">
+                                        <label>Email Address</label>
+                                        <div class="profile-read-val"><i class="fas fa-envelope"></i> {{ Auth::user()->email }}</div>
+                                    </div>
+                                    <div class="profile-field">
+                                        <label>Contact Number</label>
+                                        <div class="profile-read-val" id="prv-phone"><i class="fas fa-phone"></i> <span style="color:var(--text-muted);font-style:italic;">Not set</span></div>
+                                    </div>
+                                    <div class="profile-field">
+                                        <label>Date of Birth</label>
+                                        <div class="profile-read-val" id="prv-dob"><i class="fas fa-cake-candles"></i> <span style="color:var(--text-muted);font-style:italic;">Not set</span></div>
+                                    </div>
+                                    <div class="profile-field profile-field-full">
+                                        <label>Address</label>
+                                        <div class="profile-read-val" id="prv-address"><i class="fas fa-location-dot"></i> <span style="color:var(--text-muted);font-style:italic;">Not set</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Edit view -->
+                            <div id="profileEditView" style="display:none;">
+                                <div class="profile-field-grid">
+                                    <div class="profile-field">
+                                        <label>Full Name</label>
+                                        <input type="text" id="pef-name" value="{{ Auth::user()->name }}" />
+                                    </div>
+                                    <div class="profile-field">
+                                        <label>Email Address</label>
+                                        <input type="email" id="pef-email" value="{{ Auth::user()->email }}" readonly />
+                                    </div>
+                                    <div class="profile-field">
+                                        <label>Contact Number</label>
+                                        <input type="tel" id="pef-phone" placeholder="+63 9XX XXX XXXX" />
+                                    </div>
+                                    <div class="profile-field">
+                                        <label>Date of Birth</label>
+                                        <input type="date" id="pef-dob" />
+                                    </div>
+                                    <div class="profile-field profile-field-full">
+                                        <label>Address</label>
+                                        <input type="text" id="pef-address" placeholder="e.g. 123 Street, Quezon City" />
+                                    </div>
+                                </div>
+                                <div class="profile-edit-actions">
+                                    <button class="btn-profile-cancel" onclick="cancelProfileEdit()">Cancel</button>
+                                    <button class="btn-profile-save" onclick="saveProfileInfo()"><i class="fas fa-floppy-disk"></i> Save Changes</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Vehicle Summary -->
+                        <div class="profile-section-card">
+                            <div class="profile-section-title"><i class="fas fa-car"></i> Registered Vehicles
+                                <button onclick="switchSection(null,'vehicles'); renderVehicles()" style="margin-left:auto;background:none;border:1px solid var(--border);color:var(--text-muted);padding:5px 14px;border-radius:6px;font-size:0.75rem;cursor:pointer;display:flex;align-items:center;gap:5px;">
+                                    <i class="fas fa-arrow-up-right-from-square"></i> Manage
+                                </button>
+                            </div>
+                            <div id="profileVehicleSummary" style="font-size:0.85rem;color:var(--text-muted);">
+                                @forelse($vehicles as $v)
+                                    <div class="profile-read-val"><i class="fas fa-motorcycle"></i> {{ $v->brand }} ({{ $v->year }}) &mdash; <span style="font-family:monospace;font-size:0.8rem;background:var(--surface-3);padding:1px 7px;border-radius:4px;">{{ $v->plate }}</span></div>
+                                @empty
+                                    <div style="color:var(--text-muted);font-style:italic;font-size:0.85rem;padding:8px 0;">No vehicles registered yet.</div>
+                                @endforelse
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div><!-- /panel-profile -->
+
+            <!-- SETTINGS PANEL -->
+            <div class="tab-panel" id="panel-settings">
+                <style>
+                    .settings-layout { max-width: 680px; }
+                    .settings-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+                    .settings-section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+                    .settings-section-title i { color: var(--red); }
+                    .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+                    .settings-row:last-child { border-bottom: none; padding-bottom: 0; }
+                    .settings-row-info { flex: 1; }
+                    .settings-row-label { font-size: 0.875rem; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+                    .settings-row-desc { font-size: 0.77rem; color: var(--text-muted); line-height: 1.4; }
+                    .settings-toggle { position: relative; width: 42px; height: 24px; flex-shrink: 0; }
+                    .settings-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+                    .settings-toggle-slider { position: absolute; inset: 0; background: var(--surface-3); border: 1px solid var(--border); border-radius: 12px; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+                    .settings-toggle-slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: var(--text-muted); border-radius: 50%; transition: transform 0.2s, background 0.2s; }
+                    .settings-toggle input:checked + .settings-toggle-slider { background: rgba(232,25,44,0.18); border-color: rgba(232,25,44,0.4); }
+                    .settings-toggle input:checked + .settings-toggle-slider::before { transform: translateX(18px); background: var(--red); }
+                    .settings-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+                    .settings-field:last-child { margin-bottom: 0; }
+                    .settings-field label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+                    .settings-field select, .settings-field input { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 9px 12px; border-radius: 7px; font-size: 0.875rem; font-family: 'Barlow', sans-serif; outline: none; transition: border-color 0.2s; appearance: none; cursor: pointer; }
+                    .settings-field select:focus, .settings-field input:focus { border-color: var(--red); }
+                    .settings-danger-btn { background: none; border: 1px solid rgba(232,25,44,0.35); color: var(--red); padding: 9px 20px; border-radius: 7px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: background 0.2s, border-color 0.2s; }
+                    .settings-danger-btn:hover { background: var(--red-glow); border-color: var(--red); }
+                    .settings-save-btn { background: var(--red); color: #fff; border: none; padding: 10px 28px; border-radius: 7px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: background 0.2s, transform 0.15s; margin-top: 18px; }
+                    .settings-save-btn:hover { background: var(--red-dark); transform: translateY(-1px); }
+                </style>
+
+                <div class="settings-layout">
+
+                    <!-- Notifications -->
+                    <div class="settings-section">
+                        <div class="settings-section-title"><i class="fas fa-bell"></i> Notifications</div>
+                        <div class="settings-row">
+                            <div class="settings-row-info">
+                                <div class="settings-row-label">Booking Confirmations</div>
+                                <div class="settings-row-desc">Receive a notification when your booking is confirmed or updated.</div>
+                            </div>
+                            <label class="settings-toggle"><input type="checkbox" id="stg-notif-booking" checked /><span class="settings-toggle-slider"></span></label>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-row-info">
+                                <div class="settings-row-label">Service Reminders</div>
+                                <div class="settings-row-desc">Get reminded 24 hours before your scheduled service appointment.</div>
+                            </div>
+                            <label class="settings-toggle"><input type="checkbox" id="stg-notif-reminder" checked /><span class="settings-toggle-slider"></span></label>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-row-info">
+                                <div class="settings-row-label">Promos & Offers</div>
+                                <div class="settings-row-desc">Stay updated on discounts, loyalty rewards, and seasonal promos.</div>
+                            </div>
+                            <label class="settings-toggle"><input type="checkbox" id="stg-notif-promos" /><span class="settings-toggle-slider"></span></label>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-row-info">
+                                <div class="settings-row-label">Points & Tier Updates</div>
+                                <div class="settings-row-desc">Be notified when you earn points or move to a new loyalty tier.</div>
+                            </div>
+                            <label class="settings-toggle"><input type="checkbox" id="stg-notif-points" checked /><span class="settings-toggle-slider"></span></label>
+                        </div>
+                    </div>
+
+                    <!-- Preferences -->
+                    <div class="settings-section">
+                        <div class="settings-section-title"><i class="fas fa-sliders"></i> Preferences</div>
+                        <div class="settings-field">
+                            <label>Default Booking Vehicle</label>
+                            <select id="stg-default-vehicle">
+                                <option value="">— Always ask me —</option>
+                                @foreach($vehicles as $v)
+                                    <option value="{{ $v->id }}">{{ $v->brand }} ({{ $v->year }}) — {{ $v->plate }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="settings-field">
+                            <label>Preferred Contact Time</label>
+                            <select id="stg-contact-time">
+                                <option value="morning">Morning (8:00 AM – 12:00 PM)</option>
+                                <option value="afternoon">Afternoon (12:00 PM – 5:00 PM)</option>
+                                <option value="anytime" selected>Anytime</option>
+                            </select>
+                        </div>
+                        <div class="settings-field">
+                            <label>Display Theme</label>
+                            <select id="stg-theme" onchange="applyThemeFromSettings(this.value)">
+                                <option value="dark" id="stgThemeDark">Dark Mode</option>
+                                <option value="light" id="stgThemeLight">Light Mode</option>
+                            </select>
+                        </div>
+                        <button class="settings-save-btn" onclick="saveSettings()"><i class="fas fa-floppy-disk"></i> Save Preferences</button>
+                    </div>
+
+                    <!-- Security -->
+                    <div class="settings-section">
+                        <div class="settings-section-title"><i class="fas fa-lock"></i> Security</div>
+                        <div class="settings-row">
+                            <div class="settings-row-info">
+                                <div class="settings-row-label">Change Password</div>
+                                <div class="settings-row-desc">Update your account password regularly for security.</div>
+                            </div>
+                            <a href="{{ route('password.request') ?? '#' }}" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:7px 16px;border-radius:6px;font-size:0.8rem;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:5px;transition:color 0.2s,border-color 0.2s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-muted)'">
+                                <i class="fas fa-key"></i> Change
+                            </a>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-row-info">
+                                <div class="settings-row-label">Active Sessions</div>
+                                <div class="settings-row-desc">You are currently logged in on this device.</div>
+                            </div>
+                            <span style="font-size:0.75rem;color:var(--success);display:flex;align-items:center;gap:4px;"><i class="fas fa-circle" style="font-size:0.5rem;"></i> 1 active</span>
+                        </div>
+                    </div>
+
+                    <!-- Danger Zone -->
+                    <div class="settings-section" style="border-color:rgba(232,25,44,0.2);">
+                        <div class="settings-section-title" style="color:var(--red);"><i class="fas fa-triangle-exclamation"></i> Danger Zone</div>
+                        <div class="settings-row">
+                            <div class="settings-row-info">
+                                <div class="settings-row-label">Delete My Account</div>
+                                <div class="settings-row-desc">Permanently remove your account and all associated data. This cannot be undone.</div>
+                            </div>
+                            <button class="settings-danger-btn" onclick="confirmDeleteAccount()"><i class="fas fa-trash"></i> Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div><!-- /panel-settings -->
+
             <!-- BOOKING MODAL -->
             <div class="modal-overlay" id="bookingModal" onclick="handleOverlayClick(event)">
                 <div class="modal" id="modalBox">
@@ -654,35 +928,36 @@
     let MY_VEHICLES = {!! json_encode($vehiclesJs) !!};
 const BOOKINGS = {!! json_encode($bookingsJs) !!};
 
+    {{-- Build SERVICES from the database so dbId always matches a real services.id --}}
     const SERVICES = [
-        { id:'svc-01', dbId:1,  name:'Change Oil & Filter',                     cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-oil-can',           desc:'Complete engine oil drain and refill with high-quality oil and a fresh filter.',          duration:'30–45 min', free:false },
-        { id:'svc-02', dbId:2,  name:'Fuel Injection Cleaning',                 cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-gas-pump',          desc:'Deep cleaning of fuel injectors to restore proper fuel atomization.',                    duration:'45–60 min', free:false },
-        { id:'svc-03', dbId:3,  name:'Throttle Body Cleaning',                  cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-wind',              desc:'Remove carbon buildup from the throttle body for smoother idling.',                      duration:'30–45 min', free:false },
-        { id:'svc-04', dbId:4,  name:'Throttle Idle Adjustment',                cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-sliders',           desc:'Fine-tune idle speed to manufacturer specs.',                                           duration:'20–30 min', free:false },
-        { id:'svc-05', dbId:5,  name:'Valve Clearance Adjustment / Tune-up',    cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-screwdriver-wrench',desc:'Inspect and adjust valve clearances to ensure proper engine breathing.',               duration:'60–90 min', free:false },
-        { id:'svc-06', dbId:6,  name:'CVT Cleaning and Inspection',             cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-gear',              desc:'Full CVT belt and pulley inspection with cleaning.',                                     duration:'60–90 min', free:false },
-        { id:'svc-07', dbId:7,  name:'Air Filter Inspection',                   cat:'inspection', catLabel:'Inspection',         icon:'fa-filter',            desc:'Visual and performance check of the air filter element.',                               duration:'15 min',    free:false },
-        { id:'svc-08', dbId:8,  name:'Air Filter Installation',                 cat:'inspection', catLabel:'Inspection',         icon:'fa-filter',            desc:'Supply and installation of a new OEM-spec air filter.',                                 duration:'20 min',    free:false },
-        { id:'svc-09', dbId:9,  name:'Flyball Inspection',                      cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-dot',        desc:'Check flyball condition and wear for proper CVT engagement.',                           duration:'30 min',    free:false },
-        { id:'svc-10', dbId:10, name:'Flyball Cleaning',                        cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-dot',        desc:'Thorough cleaning of flyball weights.',                                                  duration:'30–45 min', free:false },
-        { id:'svc-11', dbId:11, name:'V-belt Inspection',                       cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-bezier-curve',      desc:'Inspect V-belt for cracks, glazing, and wear.',                                         duration:'20 min',    free:false },
-        { id:'svc-12', dbId:12, name:'V-belt Cleaning',                         cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-bezier-curve',      desc:'Clean V-belt surfaces and housing.',                                                    duration:'20–30 min', free:false },
-        { id:'svc-13', dbId:13, name:'Pulley Set Inspection',                   cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-half-stroke',desc:'Full inspection of drive and driven pulley sets.',                                       duration:'30 min',    free:false },
-        { id:'svc-14', dbId:14, name:'Pulley Set Cleaning',                     cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-half-stroke',desc:'Detailed cleaning of pulley faces and grooves.',                                         duration:'30–45 min', free:false },
-        { id:'svc-15', dbId:15, name:'Torque Drive Assy Inspection',            cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-rotate',            desc:'Inspect the torque drive assembly for wear.',                                           duration:'30 min',    free:false },
-        { id:'svc-16', dbId:16, name:'Torque Drive Assy Cleaning',              cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-rotate',            desc:'Clean all torque drive assembly components.',                                           duration:'30–45 min', free:false },
-        { id:'svc-17', dbId:17, name:'Torque Drive Assy Greasing',              cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-rotate',            desc:'Apply fresh grease to torque drive components.',                                        duration:'20–30 min', free:false },
-        { id:'svc-18', dbId:18, name:'Clutch Lining Set / Assy Inspection',     cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-xmark',      desc:'Measure clutch lining thickness and check assembly.',                                   duration:'30 min',    free:false },
-        { id:'svc-19', dbId:19, name:'Clutch Lining Set / Assy Cleaning',       cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-xmark',      desc:'Clean clutch lining components and housing.',                                           duration:'30–45 min', free:false },
-        { id:'svc-20', dbId:20, name:'Kick Starter Inspection',                 cat:'inspection', catLabel:'Inspection',         icon:'fa-person-walking',    desc:'Check kick starter mechanism for wear.',                                                duration:'20 min',    free:false },
-        { id:'svc-21', dbId:21, name:'Pulley Shaving & Re-Angle',               cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-screwdriver',       desc:'Precision machining of drive pulley face.',                                             duration:'60–90 min', free:false },
-        { id:'svc-22', dbId:22, name:'Pulley Drive Face Shaving & Re-Angle',    cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-screwdriver',       desc:'Re-angle and resurface the drive face pulley.',                                         duration:'60–90 min', free:false },
-        { id:'svc-23', dbId:23, name:'Sprocket/Chain Cleaning & Regreasing',    cat:'inspection', catLabel:'Inspection',         icon:'fa-link',              desc:'Clean and relube sprocket and chain drive components.',                                 duration:'30–45 min', free:false },
-        { id:'svc-24', dbId:24, name:'Pipe Cleaning',                           cat:'brakes',     catLabel:'Brakes & Pipes',     icon:'fa-pipe',              desc:'Flush and clean fuel and coolant pipes.',                                               duration:'30 min',    free:false },
-        { id:'svc-25', dbId:25, name:'Brake Cleaning',                          cat:'brakes',     catLabel:'Brakes & Pipes',     icon:'fa-circle-stop',       desc:'Degrease brake pads, discs, and drums.',                                                duration:'30–45 min', free:false },
-        { id:'svc-26', dbId:26, name:'Brake Adjustment',                        cat:'brakes',     catLabel:'Brakes & Pipes',     icon:'fa-circle-stop',       desc:'Adjust brake cable tension and drum/disc clearance.',                                   duration:'20–30 min', free:false },
-        { id:'svc-27', dbId:27, name:'FREE ECU Diagnose',                       cat:'free',       catLabel:'Free Service',       icon:'fa-microchip',         desc:'Complimentary ECU scan using professional diagnostic tools.',                           duration:'15–30 min', free:true  },
-        { id:'svc-28', dbId:28, name:'FREE Basic Inspection',                   cat:'free',       catLabel:'Free Service',       icon:'fa-clipboard-check',   desc:'Complimentary 20-point visual inspection.',                                             duration:'20–30 min', free:true  },
+        { id:'svc-01', dbId:1,  name:'Change Oil & Filter',                     cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-oil-can',            desc:'Complete engine oil drain and refill with high-quality oil and a fresh filter.',       duration:'30–45 min', free:false },
+        { id:'svc-02', dbId:2,  name:'Fuel Injection Cleaning',                 cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-gas-pump',            desc:'Deep cleaning of fuel injectors to restore proper fuel atomization.',                 duration:'45–60 min', free:false },
+        { id:'svc-03', dbId:3,  name:'Throttle Body Cleaning',                  cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-wind',                desc:'Remove carbon buildup from the throttle body for smoother idling.',                   duration:'30–45 min', free:false },
+        { id:'svc-04', dbId:4,  name:'Throttle Idle Adjustment',                cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-sliders',             desc:'Fine-tune idle speed to manufacturer specs.',                                         duration:'20–30 min', free:false },
+        { id:'svc-05', dbId:5,  name:'Valve Clearance Adjustment / Tune-up',    cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-screwdriver-wrench',  desc:'Inspect and adjust valve clearances to ensure proper engine breathing.',             duration:'60–90 min', free:false },
+        { id:'svc-06', dbId:6,  name:'CVT Cleaning and Inspection',             cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-gear',                desc:'Full CVT belt and pulley inspection with cleaning.',                                  duration:'60–90 min', free:false },
+        { id:'svc-07', dbId:7,  name:'Air Filter Inspection',                   cat:'inspection', catLabel:'Inspection',         icon:'fa-filter',              desc:'Visual and performance check of the air filter element.',                             duration:'15 min',    free:false },
+        { id:'svc-08', dbId:8,  name:'Air Filter Installation',                 cat:'inspection', catLabel:'Inspection',         icon:'fa-filter',              desc:'Supply and installation of a new OEM-spec air filter.',                               duration:'20 min',    free:false },
+        { id:'svc-09', dbId:9,  name:'Flyball Inspection',                      cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-dot',          desc:'Check flyball condition and wear for proper CVT engagement.',                         duration:'30 min',    free:false },
+        { id:'svc-10', dbId:10, name:'Flyball Cleaning',                        cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-dot',          desc:'Thorough cleaning of flyball weights.',                                               duration:'30–45 min', free:false },
+        { id:'svc-11', dbId:11, name:'V-belt Inspection',                       cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-bezier-curve',        desc:'Inspect V-belt for cracks, glazing, and wear.',                                       duration:'20 min',    free:false },
+        { id:'svc-12', dbId:12, name:'V-belt Cleaning',                         cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-bezier-curve',        desc:'Clean V-belt surfaces and housing.',                                                  duration:'20–30 min', free:false },
+        { id:'svc-13', dbId:13, name:'Pulley Set Inspection',                   cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-half-stroke',  desc:'Full inspection of drive and driven pulley sets.',                                    duration:'30 min',    free:false },
+        { id:'svc-14', dbId:14, name:'Pulley Set Cleaning',                     cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-half-stroke',  desc:'Detailed cleaning of pulley faces and grooves.',                                      duration:'30–45 min', free:false },
+        { id:'svc-15', dbId:15, name:'Torque Drive Assy Inspection',            cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-rotate',              desc:'Inspect the torque drive assembly for wear.',                                         duration:'30 min',    free:false },
+        { id:'svc-16', dbId:16, name:'Torque Drive Assy Cleaning',              cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-rotate',              desc:'Clean all torque drive assembly components.',                                         duration:'30–45 min', free:false },
+        { id:'svc-17', dbId:17, name:'Torque Drive Assy Greasing',              cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-rotate',              desc:'Apply fresh grease to torque drive components.',                                      duration:'20–30 min', free:false },
+        { id:'svc-18', dbId:18, name:'Clutch Lining Set / Assy Inspection',     cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-xmark',        desc:'Measure clutch lining thickness and check assembly.',                                 duration:'30 min',    free:false },
+        { id:'svc-19', dbId:19, name:'Clutch Lining Set / Assy Cleaning',       cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-xmark',        desc:'Clean clutch lining components and housing.',                                         duration:'30–45 min', free:false },
+        { id:'svc-20', dbId:20, name:'Kick Starter Inspection',                 cat:'inspection', catLabel:'Inspection',         icon:'fa-person-walking',      desc:'Check kick starter mechanism for wear.',                                               duration:'20 min',    free:false },
+        { id:'svc-21', dbId:21, name:'Pulley Shaving & Re-Angle',               cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-screwdriver',         desc:'Precision machining of drive pulley face.',                                           duration:'60–90 min', free:false },
+        { id:'svc-22', dbId:22, name:'Pulley Drive Face Shaving & Re-Angle',    cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-screwdriver',         desc:'Re-angle and resurface the drive face pulley.',                                       duration:'60–90 min', free:false },
+        { id:'svc-23', dbId:23, name:'Sprocket/Chain Cleaning & Regreasing',    cat:'inspection', catLabel:'Inspection',         icon:'fa-link',                desc:'Clean and relube sprocket and chain drive components.',                               duration:'30–45 min', free:false },
+        { id:'svc-24', dbId:24, name:'Pipe Cleaning',                           cat:'brakes',     catLabel:'Brakes & Pipes',     icon:'fa-pipe',                desc:'Flush and clean fuel and coolant pipes.',                                             duration:'30 min',    free:false },
+        { id:'svc-25', dbId:25, name:'Brake Cleaning',                          cat:'brakes',     catLabel:'Brakes & Pipes',     icon:'fa-circle-stop',         desc:'Degrease brake pads, discs, and drums.',                                              duration:'30–45 min', free:false },
+        { id:'svc-26', dbId:26, name:'Brake Adjustment',                        cat:'brakes',     catLabel:'Brakes & Pipes',     icon:'fa-circle-stop',         desc:'Adjust brake cable tension and drum/disc clearance.',                                 duration:'20–30 min', free:false },
+        { id:'svc-27', dbId:27, name:'FREE ECU Diagnose',                       cat:'free',       catLabel:'Free Service',       icon:'fa-microchip',           desc:'Complimentary ECU scan using professional diagnostic tools.',                         duration:'15–30 min', free:true  },
+        { id:'svc-28', dbId:28, name:'FREE Basic Inspection',                   cat:'free',       catLabel:'Free Service',       icon:'fa-clipboard-check',     desc:'Complimentary 20-point visual inspection.',                                           duration:'20–30 min', free:true  },
     ];
 
     const STATUS_META = {
@@ -703,6 +978,8 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         services:  ['BOOK A <span>SERVICE</span>', 'Book a Service'],
         vehicles:  ['MY <span>VEHICLES</span>',    'My Vehicles'],
         rewards:   ['MY <span>REWARDS</span>',     'Rewards'],
+        profile:   ['MY <span>PROFILE</span>',     'My Profile'],
+        settings:  ['ACCOUNT <span>SETTINGS</span>', 'Settings'],
     };
 
     function switchSection(e, section) {
@@ -864,10 +1141,11 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
     }
 
     function submitBooking() {
-        const date      = document.getElementById('mDate').value;
-        const time      = document.getElementById('mTime').value;
-        const vehicleId = document.getElementById('mVehicleSelect').value;
-        const notes     = document.getElementById('mNotes').value;
+        const date       = document.getElementById('mDate').value;
+        const time       = document.getElementById('mTime').value;
+        const vehicleRaw = document.getElementById('mVehicleSelect').value;
+        const vehicleId  = vehicleRaw ? parseInt(vehicleRaw) : null;
+        const notes      = document.getElementById('mNotes').value;
 
         if (!date || !time) {
             document.getElementById('mDate').style.borderColor = 'var(--red)';
@@ -875,11 +1153,15 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             return;
         }
 
+        const submitBtn = document.querySelector('.btn-modal-submit');
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…'; }
+
         fetch('{{ route("customer.bookings.store") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
             },
             body: JSON.stringify({
                 service_id:   selectedService.dbId,
@@ -889,17 +1171,38 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                 notes:        notes,
             })
         })
-        .then(r => r.json())
+        .then(r => {
+            const ct = r.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) {
+                throw new Error('Server returned non-JSON (status ' + r.status + '). Ensure controller returns response()->json(...).');
+            }
+            if (r.status === 422) {
+                return r.json().then(body => { throw body; });
+            }
+            return r.json();
+        })
         .then(data => {
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-calendar-check"></i> Confirm Booking'; }
             if (data.success) {
                 document.getElementById('modalFormView').style.display = 'none';
                 document.getElementById('modalSuccessView').classList.add('show');
-                document.getElementById('modalRefNo').textContent          = data.reference;
+                document.getElementById('modalRefNo').textContent          = data.reference || ('BK-' + Date.now().toString().slice(-6));
                 document.getElementById('modalSuccessDate').textContent    = date + ' at ' + time;
                 document.getElementById('modalSuccessService').textContent = selectedService.name;
+            } else {
+                alert(data.message || 'Booking failed. Please try again.');
             }
         })
-        .catch(err => console.error('Booking error:', err));
+        .catch(err => {
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-calendar-check"></i> Confirm Booking'; }
+            if (err && err.errors) {
+                const msgs = Object.values(err.errors).flat().join('\n');
+                alert('Validation errors:\n' + msgs);
+            } else {
+                console.error('Booking error:', err);
+                alert(err.message || 'Could not submit booking. Please try again.');
+            }
+        });
     }
 
     const PROMOS = [
@@ -1035,6 +1338,56 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
     .catch(err => console.error('Delete failed:', err)); // add this
 }
 
+
+    // ── PROFILE ────────────────────────────────────────────────
+    function toggleProfileEdit() {
+        const editing = document.getElementById('profileEditView').style.display !== 'none';
+        document.getElementById('profileReadView').style.display = editing ? '' : 'none';
+        document.getElementById('profileEditView').style.display = editing ? 'none' : '';
+        document.getElementById('profileEditBtn').innerHTML = editing
+            ? '<i class="fas fa-pen"></i> Edit'
+            : '<i class="fas fa-xmark"></i> Cancel';
+    }
+
+    function cancelProfileEdit() {
+        document.getElementById('profileReadView').style.display = '';
+        document.getElementById('profileEditView').style.display = 'none';
+        document.getElementById('profileEditBtn').innerHTML = '<i class="fas fa-pen"></i> Edit';
+    }
+
+    function saveProfileInfo() {
+        const phone   = document.getElementById('pef-phone').value.trim();
+        const dob     = document.getElementById('pef-dob').value;
+        const address = document.getElementById('pef-address').value.trim();
+        if (phone)   document.getElementById('prv-phone').innerHTML   = '<i class="fas fa-phone"></i> ' + phone;
+        if (dob)     document.getElementById('prv-dob').innerHTML     = '<i class="fas fa-cake-candles"></i> ' + dob;
+        if (address) document.getElementById('prv-address').innerHTML = '<i class="fas fa-location-dot"></i> ' + address;
+        cancelProfileEdit();
+        // TODO: wire to PATCH /customer/profile route when backend is ready
+    }
+
+    // ── SETTINGS ───────────────────────────────────────────────
+    function applyThemeFromSettings(val) {
+        localStorage.setItem('apx-theme', val);
+        applyTheme(val);
+    }
+
+    function saveSettings() {
+        const theme = document.getElementById('stg-theme') ? document.getElementById('stg-theme').value : 'dark';
+        applyThemeFromSettings(theme);
+        const btn = event.currentTarget;
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+        btn.style.background = 'var(--success, #22c55e)';
+        setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; }, 1800);
+    }
+
+    function confirmDeleteAccount() {
+        if (confirm('Are you sure? This will permanently delete your account and all data. This cannot be undone.')) {
+            alert('Account deletion request submitted. An admin will process this shortly.');
+        }
+    }
+
     // INIT
     document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
@@ -1063,6 +1416,8 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             themeIcon.className = 'fas fa-moon';
             themeToggle.title = 'Switch to light mode';
         }
+        const stgThemeSel = document.getElementById('stg-theme');
+        if (stgThemeSel) stgThemeSel.value = mode;
     }
 
     const savedTheme = localStorage.getItem('apx-theme') || 'dark';

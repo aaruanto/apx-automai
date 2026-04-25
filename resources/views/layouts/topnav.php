@@ -15,10 +15,6 @@
         <input type="text" placeholder="Search bookings, customers..." />
     </div>
     <div class="topnav-actions">
-        <a href="#!" class="icon-btn" title="Notifications">
-            <i class="fas fa-bell"></i>
-            <span class="notif-dot"></span>
-        </a>
         <a href="#!" class="icon-btn" title="Activity Log">
             <i class="fas fa-clock-rotate-left"></i>
         </a>

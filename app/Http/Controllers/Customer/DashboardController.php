@@ -66,7 +66,7 @@ class DashboardController extends Controller
     {
         $request->validate([
             'service_id'   => 'required|exists:services,id',
-            'vehicle_id'   => 'required|exists:vehicles,id',
+            'vehicle_id'   => 'nullable|exists:vehicles,id',
             'booking_date' => 'required|date',
             'booking_time' => 'required',
         ]);
