@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Customer\DashboardController as CustomerDashboard;
+use App\Http\Controllers\Admin\MessageTemplateController;
 use Illuminate\Support\Facades\Route;
 
 // ── Public routes ──────────────────────────────────────────────────────────
@@ -74,6 +75,11 @@ Route::middleware(['auth', 'role:admin'])
     Route::post('/settings/services',         [SettingsController::class, 'storeService'])   ->name('settings.services.store');
     Route::put('/settings/services/{id}',     [SettingsController::class, 'updateService'])  ->name('settings.services.update');
     Route::delete('/settings/services/{id}',  [SettingsController::class, 'destroyService']) ->name('settings.services.destroy');
+
+    // ── Message Templates ───────────────────────────────────────────────────────────
+    Route::get('/templates',       [MessageTemplateController::class, 'index'])   ->name('templates.index');
+    Route::post('/templates/save', [MessageTemplateController::class, 'save'])    ->name('templates.save');
+    Route::post('/templates/test', [MessageTemplateController::class, 'sendTest'])->name('templates.test');
 
 });
 

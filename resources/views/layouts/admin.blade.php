@@ -1111,6 +1111,13 @@
                     <a href="{{ route('admin.customers.loyalty') }}" class="{{ request()->routeIs('admin.customers.loyalty') ? 'active-sub' : '' }}">Loyalty Members</a>
                 </div>
 
+                <!-- MESSAGE TEMPLATES -->
+                <a class="nav-link {{ request()->routeIs('admin.templates.*') ? 'active' : '' }}"
+                    href="{{ route('admin.templates.index') }}">
+                    <span class="nav-icon"><i class="fas fa-envelope-open-text"></i></span>
+                    <span class="nav-label">Message Templates</span>
+                </a>
+
                 <hr class="sidebar-divider" />
                 <div class="section-label">Insights</div>
 
