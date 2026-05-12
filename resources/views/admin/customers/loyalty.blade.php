@@ -51,7 +51,7 @@
     @if(!empty($grouped[$key]))
     @php
         $members = $grouped[$key];
-        $maxBookings = max(array_map(fn($m) => $m->bookings_count ?? 0, $members)) ?: 1;
+        $maxBookings = $members->max('bookings_count') ?: 1;
         $nextThreshold = ['bronze'=>5,'silver'=>10,'gold'=>null];
     @endphp
     <div style="margin-bottom:32px;">

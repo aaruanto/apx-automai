@@ -16,6 +16,12 @@ class Booking extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    // Alias so both ->user and ->customer work
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
     public function service()
     {
         return $this->belongsTo(Service::class);

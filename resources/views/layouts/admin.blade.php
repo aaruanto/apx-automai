@@ -453,20 +453,6 @@
             border-top: 1px solid var(--border);
         }
 
-        .sidebar-footer-info .label {
-            font-size: .65rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: .08em;
-        }
-
-        .sidebar-footer-info .value {
-            font-size: .78rem;
-            font-weight: 600;
-            color: var(--text);
-            margin-top: 2px;
-        }
-
         /* ── Main content ── */
         .main-content {
             margin-left: 230px;
@@ -1139,13 +1125,6 @@
                     <span class="nav-icon"><i class="fas fa-user-circle"></i></span>
                     <span class="nav-label">My Profile</span>
                 </a>
-            </div>
-
-            <div class="sidebar-footer">
-                <div class="sidebar-footer-info">
-                    <div class="label">Logged in as</div>
-                    <div class="value">{{ Auth::user()->name }}</div>
-                </div>
             </div>
         </nav>
 

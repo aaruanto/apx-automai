@@ -149,7 +149,6 @@
 
         <div class="card-footer-bar">
             <span id="footerCount">{{ $customers->count() }} customers</span>
-            <!-- Pagination: replace with {{ $customers->links() }} when using paginator -->
         </div>
     </div>
 
