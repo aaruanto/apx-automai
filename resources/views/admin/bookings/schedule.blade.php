@@ -81,7 +81,17 @@
                         <span style="font-size:.75rem;color:var(--text-muted);">{{ $booking->booking_time }}</span>
                         <span class="badge {{ $badge }}">{{ $label }}</span>
                         <div style="display:flex;gap:4px;">
-                            <button class="btn btn-ghost btn-sm btn-icon" title="View"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-ghost btn-sm btn-icon" title="View"
+                                onclick="openViewModal(this)"
+                                data-id="{{ $booking->reference_number }}"
+                                data-status="{{ $booking->status }}"
+                                data-customer="{{ $booking->customer->name ?? 'N/A' }}"
+                                data-vehicle="{{ $booking->vehicle->plate_number ?? 'N/A' }}"
+                                data-model="{{ $booking->vehicle->model ?? '' }}"
+                                data-service="{{ $booking->service->name ?? 'N/A' }}"
+                                data-datetime="{{ $booking->booking_date }} {{ $booking->booking_time }}"
+                                data-notes="{{ $booking->notes ?? '—' }}"
+                            ><i class="fas fa-eye"></i></button>
                             <a href="{{ route('admin.bookings.edit', ['id' => $booking->id]) }}" class="btn btn-ghost btn-sm btn-icon" title="Edit"><i class="fas fa-pen"></i></a>
                         </div>
                     </div>
@@ -157,3 +167,79 @@
     </div>
 
 @endsection
+
+@section('modals')
+<!-- VIEW BOOKING MODAL -->
+<div class="modal-overlay" id="viewModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-calendar-check" style="color:var(--red);margin-right:8px;"></i>Booking Details</div>
+            <button class="modal-close" onclick="closeModal('viewModal')"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div>
+                    <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Booking ID</div>
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;" id="modal-booking-id">—</div>
+                </div>
+                <div>
+                    <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Status</div>
+                    <span class="badge badge-pending" id="modal-status">—</span>
+                </div>
+                <div>
+                    <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Customer</div>
+                    <div id="modal-customer">—</div>
+                </div>
+                <div>
+                    <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Vehicle</div>
+                    <div id="modal-vehicle">—</div>
+                </div>
+                <div>
+                    <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Service</div>
+                    <div id="modal-service">—</div>
+                </div>
+                <div>
+                    <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Date &amp; Time</div>
+                    <div id="modal-datetime">—</div>
+                </div>
+                <div style="grid-column:1/-1;">
+                    <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Notes</div>
+                    <div id="modal-notes">—</div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('viewModal')">Close</button>
+        </div>
+    </div>
+</div>
+@endsection
+
+@push('scripts')
+<script>
+function openViewModal(btn) {
+    document.getElementById('modal-booking-id').textContent = btn.dataset.id;
+    document.getElementById('modal-customer').textContent   = btn.dataset.customer;
+    document.getElementById('modal-service').textContent    = btn.dataset.service;
+    document.getElementById('modal-datetime').textContent   = btn.dataset.datetime;
+    document.getElementById('modal-notes').textContent      = btn.dataset.notes;
+
+    const plate = btn.dataset.vehicle;
+    const model = btn.dataset.model;
+    document.getElementById('modal-vehicle').textContent = plate + (model ? ' — ' + model : '');
+
+    const statusEl = document.getElementById('modal-status');
+    const statusMap = {
+        confirmed:   ['Confirmed',   'badge-confirmed'],
+        pending:     ['Pending',     'badge-pending'],
+        in_progress: ['In Progress', 'badge-inprogress'],
+        cancelled:   ['Cancelled',   'badge-cancelled'],
+    };
+    const s = statusMap[btn.dataset.status] ?? [btn.dataset.status, 'badge-pending'];
+    statusEl.textContent = s[0];
+    statusEl.className   = 'badge ' + s[1];
+
+    openModal('viewModal');
+}
+</script>
+@endpush

@@ -2,7 +2,9 @@
 
 @php
     $isEdit    = isset($booking);
-    $pageTitle = $isEdit ? 'Edit Booking' : 'New Booking';
+    $isRebook  = !$isEdit && isset($prefill);
+    $pageTitle = $isEdit ? 'Edit Booking' : ($isRebook ? 'Rebook' : 'New Booking');
+    $src       = $isEdit ? $booking : ($isRebook ? $prefill : null);
 @endphp
 
 @section('title', $pageTitle)
@@ -12,7 +14,12 @@
     <!-- PAGE HEADER -->
     <div class="page-header">
         <div>
-            <h1 class="page-title">{!! $isEdit ? '<span>Edit</span> Booking' : 'New <span>Booking</span>' !!}</h1>
+            <h1 class="page-title">
+                @if($isEdit) <span>Edit</span> Booking
+                @elseif($isRebook) <span>Rebook</span>
+                @else New <span>Booking</span>
+                @endif
+            </h1>
             <ol class="breadcrumb">
                 <li>Bookings</li>
                 <li class="active">{{ $pageTitle }}</li>
@@ -22,6 +29,15 @@
             <i class="fas fa-arrow-left"></i> Back to All Bookings
         </a>
     </div>
+
+    @if($isRebook)
+    <div style="background:rgba(255,180,0,.08);border:1px solid rgba(255,180,0,.2);border-radius:8px;padding:12px 18px;margin-bottom:24px;display:flex;align-items:center;gap:12px;">
+        <i class="fas fa-rotate-right" style="color:var(--warning);font-size:1rem;flex-shrink:0;"></i>
+        <span style="font-size:.85rem;color:var(--text-muted);">
+            Rebooking from <strong style="color:var(--text);">{{ $prefill->reference_number }}</strong>. Review the details below and click <strong style="color:var(--text);">Create Booking</strong> to confirm.
+        </span>
+    </div>
+    @endif
 
     <form method="POST" action="{{ $isEdit ? route('admin.bookings.update', $booking->id) : route('admin.bookings.store') }}">
         @csrf
@@ -42,20 +58,20 @@
                             <div class="form-group">
                                 <label class="form-label">Full Name <span style="color:var(--red)">*</span></label>
                                 <input class="form-control" type="text" name="customer_name"
-                                       value="{{ $booking->user->name ?? '' }}"
+                                       value="{{ $src->user->name ?? '' }}"
                                        placeholder="e.g. Juan dela Cruz" required />
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Phone Number <span style="color:var(--red)">*</span></label>
                                 <input class="form-control" type="tel" name="customer_phone"
-                                       value="{{ $booking->user->phone ?? '' }}"
+                                       value="{{ $src->user->phone ?? '' }}"
                                        placeholder="09XXXXXXXXX" required />
                             </div>
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="form-label">Email Address</label>
                             <input class="form-control" type="email" name="customer_email"
-                                   value="{{ $booking->user->email ?? '' }}"
+                                   value="{{ $src->user->email ?? '' }}"
                                    placeholder="optional" />
                         </div>
                     </div>
@@ -71,14 +87,14 @@
                             <div class="form-group">
                                 <label class="form-label">Plate Number <span style="color:var(--red)">*</span></label>
                                 <input class="form-control" type="text" name="plate"
-                                       value="{{ $booking->vehicle->plate_number ?? '' }}"
+                                       value="{{ $src->vehicle->plate_number ?? '' }}"
                                        placeholder="e.g. ABC 1234" required
                                        style="text-transform:uppercase;letter-spacing:.08em;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;" />
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Car Model</label>
                                 <input class="form-control" type="text" name="car_model"
-                                       value="{{ trim(($booking->vehicle->make ?? '').' '.($booking->vehicle->model ?? '').' '.($booking->vehicle->year ?? '')) }}"
+                                       value="{{ $src->vehicle->model ?? '' }}"
                                        placeholder="e.g. Toyota Vios 2021" />
                             </div>
                         </div>
@@ -97,7 +113,7 @@
                                 <option value="">— Select a service —</option>
                                 @foreach($services as $svc)
                                 <option value="{{ $svc->id }}"
-                                    {{ isset($booking) && $booking->service_id == $svc->id ? 'selected' : '' }}>
+                                    {{ isset($src) && $src->service_id == $svc->id ? 'selected' : '' }}>
                                     {{ $svc->name }} — ₱{{ number_format($svc->price, 2) }}
                                 </option>
                                 @endforeach
@@ -109,7 +125,7 @@
                                 <option value="">— Unassigned —</option>
                                 @foreach($employees ?? [] as $emp)
                                 <option value="{{ $emp->id }}"
-                                    {{ isset($booking) && $booking->staff_id == $emp->id ? 'selected' : '' }}>
+                                    {{ isset($src) && $src->staff_id == $emp->id ? 'selected' : '' }}>
                                     {{ $emp->name }} ({{ $emp->specialty ?? 'General' }})
                                 </option>
                                 @endforeach
@@ -118,7 +134,7 @@
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="form-label">Additional Notes</label>
                             <textarea class="form-control" name="notes"
-                                      placeholder="Special instructions, concerns, or requests...">{{ $booking->notes ?? '' }}</textarea>
+                                      placeholder="Special instructions, concerns, or requests...">{{ $src->notes ?? '' }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -137,7 +153,8 @@
                         <div class="form-group">
                             <label class="form-label">Preferred Date <span style="color:var(--red)">*</span></label>
                             <input class="form-control" type="date" name="booking_date"
-                                   value="{{ $booking->booking_date ?? '' }}" required />
+                                   value="{{ $isEdit ? ($booking->booking_date ?? '') : ($isRebook ? now()->addDay()->toDateString() : '') }}"
+                                   required />
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="form-label">Preferred Time <span style="color:var(--red)">*</span></label>
@@ -149,7 +166,7 @@
                                 @endphp
                                 @foreach($times as $t)
                                 <option value="{{ $t }}"
-                                    {{ isset($booking) && substr($booking->booking_time, 0, 5) === $t ? 'selected' : '' }}>
+                                    {{ isset($src) && substr($src->booking_time, 0, 5) === $t ? 'selected' : '' }}>
                                     {{ \Carbon\Carbon::createFromFormat('H:i', $t)->format('g:i A') }}
                                 </option>
                                 @endforeach
@@ -203,7 +220,7 @@
                         <button type="submit" class="btn btn-primary"
                                 style="width:100%;justify-content:center;padding:12px;">
                             <i class="fas fa-{{ $isEdit ? 'floppy-disk' : 'plus' }}"></i>
-                            {{ $isEdit ? 'Save Changes' : 'Create Booking' }}
+                            {{ $isEdit ? 'Save Changes' : ($isRebook ? 'Confirm Rebook' : 'Create Booking') }}
                         </button>
                         <a href="{{ route('admin.bookings.index') }}" class="btn btn-ghost"
                            style="width:100%;justify-content:center;margin-top:8px;">
@@ -256,9 +273,8 @@
 
 @push('scripts')
 <script>
-// Live service summary update
-const serviceSelect  = document.querySelector('[name="service_id"]');
-const summaryPrice   = document.getElementById('summaryPrice');
+const serviceSelect   = document.querySelector('[name="service_id"]');
+const summaryPrice    = document.getElementById('summaryPrice');
 const summaryDuration = document.getElementById('summaryDuration');
 
 const serviceData = {
@@ -278,7 +294,6 @@ serviceSelect.addEventListener('change', function() {
     }
 });
 
-// Trigger on load if editing
 if (serviceSelect.value) serviceSelect.dispatchEvent(new Event('change'));
 </script>
 @endpush

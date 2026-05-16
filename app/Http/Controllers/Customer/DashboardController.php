@@ -28,7 +28,7 @@ class DashboardController extends Controller
 
         $bookingsJs = $bookings->map(function($b) {
             return [
-                'id'        => '#BK-' . str_pad($b->id, 4, '0', STR_PAD_LEFT),
+                'id' => '#' . $b->reference_number,
                 'dbId'      => $b->id,
                 'service'   => $b->service->name ?? 'N/A',
                 'serviceId' => $b->service_id,
@@ -64,20 +64,15 @@ class DashboardController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'service_id'   => 'required|exists:services,id',
-            'vehicle_id'   => 'nullable|exists:vehicles,id',
-            'booking_date' => 'required|date',
-            'booking_time' => 'required',
-        ]);
+        $body = json_decode($request->getContent(), true);
 
         $booking = Booking::create([
             'user_id'          => Auth::id(),
-            'service_id'       => $request->service_id,
-            'vehicle_id'       => $request->vehicle_id,
-            'booking_date'     => $request->booking_date,
-            'booking_time'     => $request->booking_time,
-            'notes'            => $request->notes,
+            'service_id'       => $body['service_id'],
+            'vehicle_id'       => $body['vehicle_id'] ?? null,
+            'booking_date'     => $body['booking_date'],
+            'booking_time'     => $body['booking_time'],
+            'notes'            => $body['notes'] ?? null,
             'status'           => 'pending',
             'reference_number' => 'BK-' . str_pad(Booking::count() + 1, 4, '0', STR_PAD_LEFT),
         ]);
@@ -90,42 +85,42 @@ class DashboardController extends Controller
     }
 
     public function storeVehicle(Request $request)
-{
-    $body = json_decode($request->getContent(), true);
-    $plate = $body['plate'] ?? 'N/A';
+    {
+        $body = json_decode($request->getContent(), true);
+        $plate = $body['plate'] ?? 'N/A';
 
-    // If a soft-deleted vehicle with this plate exists, permanently delete it first
-    Vehicle::withTrashed()
-        ->where('plate_number', $plate)
-        ->whereNotNull('deleted_at')
-        ->forceDelete();
+        Vehicle::withTrashed()
+            ->where('plate_number', $plate)
+            ->whereNotNull('deleted_at')
+            ->forceDelete();
 
-    $vehicle = Vehicle::create([
-        'user_id'      => Auth::id(),
-        'make'         => $body['brand'] ?? 'Unknown',
-        'model'        => $body['model'] ?? '',
-        'plate_number' => $plate,
-        'year'         => $body['year'] ?? 2020,
-        'color'        => $body['color'] ?? '',
-    ]);
+        $vehicle = Vehicle::create([
+            'user_id'      => Auth::id(),
+            'make'         => $body['brand'] ?? 'Unknown',
+            'model'        => $body['model'] ?? '',
+            'plate_number' => $plate,
+            'year'         => $body['year'] ?? 2020,
+            'color'        => $body['color'] ?? '',
+        ]);
 
-    return response()->json([
-        'success' => true,
-        'vehicle' => [
-            'id'      => $vehicle->id,
-            'make'    => $vehicle->make . ' ' . $vehicle->model,
-            'year'    => $vehicle->year,
-            'plate'   => $vehicle->plate_number,
-            'color'   => $vehicle->color,
-            'primary' => false,
-        ]
-    ]);
-}
-            public function destroyVehicle($id)
-{
-    $vehicle = Vehicle::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
-    $vehicle->delete();
+        return response()->json([
+            'success' => true,
+            'vehicle' => [
+                'id'      => $vehicle->id,
+                'make'    => $vehicle->make . ' ' . $vehicle->model,
+                'year'    => $vehicle->year,
+                'plate'   => $vehicle->plate_number,
+                'color'   => $vehicle->color,
+                'primary' => false,
+            ]
+        ]);
+    }
 
-    return response()->json(['success' => true]);
-}
+    public function destroyVehicle($id)
+    {
+        $vehicle = Vehicle::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
+        $vehicle->delete();
+
+        return response()->json(['success' => true]);
+    }
 }

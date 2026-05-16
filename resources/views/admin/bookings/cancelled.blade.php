@@ -63,11 +63,12 @@
                 </thead>
                 <tbody id="tableBody">
                 @forelse($cancelled as $b)
-                <tr data-search="{{ strtolower(($b->customer->name ?? '').' #BK-'.str_pad($b->id,4,'0',STR_PAD_LEFT)) }}"
+                <tr id="row-{{ $b->id }}"
+                    data-search="{{ strtolower(($b->customer->name ?? '').' '.$b->reference_number) }}"
                     data-service="{{ $b->service->name ?? '' }}">
                     <td>
                         <div class="primary-col">{{ $b->customer->name ?? 'N/A' }}</div>
-                        <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;">#BK-{{ str_pad($b->id, 4, '0', STR_PAD_LEFT) }}</div>
+                        <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;">{{ $b->reference_number }}</div>
                     </td>
                     <td>{{ $b->vehicle->plate_number ?? 'N/A' }}</td>
                     <td>{{ $b->service->name ?? 'N/A' }}</td>
@@ -77,7 +78,8 @@
                             <a href="{{ route('admin.bookings.rebook', ['id' => $b->id]) }}" class="btn btn-ghost btn-sm" title="Rebook">
                                 <i class="fas fa-rotate-right"></i> Rebook
                             </a>
-                            <button class="btn btn-danger btn-sm btn-icon" title="Delete permanently" onclick="openModal('deleteModal')">
+                            <button class="btn btn-danger btn-sm btn-icon" title="Delete permanently"
+                                onclick="openDeleteModal({{ $b->id }}, '{{ $b->reference_number }}')">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
@@ -107,12 +109,12 @@
         </div>
         <div class="modal-body">
             <p style="color:var(--text-muted);font-size:.9rem;line-height:1.6;">
-                This will <strong style="color:var(--red);">permanently delete</strong> this booking record. It cannot be recovered. Are you absolutely sure?
+                This will <strong style="color:var(--red);">permanently delete</strong> booking <strong id="deleteRefNo" style="color:var(--text);"></strong>. It cannot be recovered. Are you absolutely sure?
             </p>
         </div>
         <div class="modal-footer">
             <button class="btn btn-ghost" onclick="closeModal('deleteModal')">Go Back</button>
-            <button class="btn btn-danger"><i class="fas fa-trash"></i> Delete Permanently</button>
+            <button class="btn btn-danger" onclick="confirmDelete()"><i class="fas fa-trash"></i> Delete Permanently</button>
         </div>
     </div>
 </div>
@@ -120,6 +122,35 @@
 
 @push('scripts')
 <script>
+let deleteTargetId = null;
+
+function openDeleteModal(id, refNo) {
+    deleteTargetId = id;
+    document.getElementById('deleteRefNo').textContent = refNo;
+    openModal('deleteModal');
+}
+
+function confirmDelete() {
+    if (!deleteTargetId) return;
+    fetch(`/admin/bookings/${deleteTargetId}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            closeModal('deleteModal');
+            const row = document.getElementById('row-' + deleteTargetId);
+            if (row) row.remove();
+            deleteTargetId = null;
+        }
+    })
+    .catch(err => console.error('Delete failed:', err));
+}
+
 function applyFilters() {
     const search  = document.getElementById('searchInput').value.toLowerCase();
     const service = document.getElementById('filterService').value;

@@ -47,7 +47,7 @@ Route::middleware(['auth', 'role:admin'])
     Route::put('/bookings/{id}',              [BookingController::class, 'update'])   ->name('bookings.update');
     Route::get('/bookings/{id}/rebook',       [BookingController::class, 'rebook'])   ->name('bookings.rebook');
     Route::delete('/bookings/{id}',           [BookingController::class, 'destroy'])  ->name('bookings.destroy');
-
+    Route::patch('/bookings/{id}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
     // ── Customers ──────────────────────────────────────────────────────────
     Route::get('/customers/loyalty',          [CustomerController::class, 'loyalty']) ->name('customers.loyalty');
     Route::get('/customers/create',           [CustomerController::class, 'create'])  ->name('customers.create');

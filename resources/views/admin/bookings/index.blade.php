@@ -1,9 +1,9 @@
 @extends('layouts.admin')
-
+ 
 @section('title', 'All Bookings')
-
+ 
 @section('content')
-
+ 
     <!-- PAGE HEADER -->
     <div class="page-header">
         <div>
@@ -17,7 +17,7 @@
             <i class="fas fa-plus"></i> New Booking
         </a>
     </div>
-
+ 
     <!-- SUMMARY MINI-CARDS -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
         @php
@@ -40,7 +40,7 @@
         </div>
         @endforeach
     </div>
-
+ 
     <!-- TABLE CARD -->
     <div class="card">
         <div class="card-header">
@@ -50,7 +50,7 @@
                 <button class="btn btn-ghost btn-sm"><i class="fas fa-filter"></i> Filter</button>
             </div>
         </div>
-
+ 
         <!-- FILTERS -->
         <div class="filters-bar">
             <div style="position:relative;">
@@ -74,7 +74,7 @@
             <input class="filter-select" type="date" id="filterDateTo"   title="Date to"   />
             <button class="btn btn-ghost btn-sm" onclick="clearFilters()"><i class="fas fa-xmark"></i> Clear</button>
         </div>
-
+ 
         <!-- TABLE -->
         <div class="table-wrap">
             <table class="apx-table" id="bookingsTable">
@@ -90,10 +90,10 @@
                 </thead>
                 <tbody id="tableBody">
                 @forelse($bookings as $b)
-                <tr data-status="{{ $b->status }}" data-service="{{ $b->service->name ?? '' }}" data-search="{{ strtolower(($b->customer->name ?? '').' #BK-'.str_pad($b->id,4,'0',STR_PAD_LEFT)) }}">
+                <tr data-status="{{ $b->status }}" data-service="{{ $b->service->name ?? '' }}" data-search="{{ strtolower(($b->customer->name ?? '').' '.$b->reference_number) }}">
                     <td>
                         <div class="primary-col">{{ $b->customer->name ?? 'N/A' }}</div>
-                        <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;">#BK-{{ str_pad($b->id, 4, '0', STR_PAD_LEFT) }}</div>
+                        <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;">{{ $b->reference_number }}</div>
                     </td>
                     <td>{{ $b->vehicle->plate_number ?? 'N/A' }}</td>
                     <td>{{ $b->service->name ?? 'N/A' }}</td>
@@ -112,9 +112,19 @@
                     </td>
                     <td style="text-align:center;">
                         <div style="display:flex;gap:6px;justify-content:center;">
-                            <button class="btn btn-ghost btn-sm btn-icon" title="View" onclick="openModal('viewModal')"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-ghost btn-sm btn-icon" title="View"
+                                onclick="openViewModal(this)"
+                                data-id="{{ $b->reference_number }}"
+                                data-status="{{ $b->status }}"
+                                data-customer="{{ $b->customer->name ?? 'N/A' }}"
+                                data-vehicle="{{ $b->vehicle->plate_number ?? 'N/A' }}"
+                                data-model="{{ $b->vehicle->model ?? '' }}"
+                                data-service="{{ $b->service->name ?? 'N/A' }}"
+                                data-datetime="{{ $b->booking_date }} {{ $b->booking_time }}"
+                                data-notes="{{ $b->notes ?? '—' }}"
+                            ><i class="fas fa-eye"></i></button>
                             <a href="{{ route('admin.bookings.edit', ['id' => $b->id]) }}" class="btn btn-ghost btn-sm btn-icon" title="Edit"><i class="fas fa-pen"></i></a>
-                            <button class="btn btn-danger btn-sm btn-icon" title="Cancel"><i class="fas fa-ban"></i></button>
+                            <button class="btn btn-danger btn-sm btn-icon" title="Cancel" onclick="cancelBooking({{ $b->id }}, this)"><i class="fas fa-ban"></i></button>
                         </div>
                     </td>
                 </tr>
@@ -126,7 +136,7 @@
                 </tbody>
             </table>
         </div>
-
+ 
         <div class="card-footer-bar">
             <span id="rowCount">Showing {{ $bookings->count() }} bookings</span>
             <div style="display:flex;gap:6px;">
@@ -136,9 +146,9 @@
             </div>
         </div>
     </div>
-
+ 
 @endsection
-
+ 
 @section('modals')
 <!-- VIEW BOOKING MODAL -->
 <div class="modal-overlay" id="viewModal">
@@ -155,7 +165,7 @@
                 </div>
                 <div>
                     <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Status</div>
-                    <span class="badge badge-confirmed" id="modal-status">—</span>
+                    <span class="badge badge-pending" id="modal-status">—</span>
                 </div>
                 <div>
                     <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Customer</div>
@@ -173,6 +183,10 @@
                     <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Date &amp; Time</div>
                     <div id="modal-datetime">—</div>
                 </div>
+                <div style="grid-column:1/-1;">
+                    <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Notes</div>
+                    <div id="modal-notes">—</div>
+                </div>
             </div>
         </div>
         <div class="modal-footer">
@@ -181,9 +195,34 @@
     </div>
 </div>
 @endsection
-
+ 
 @push('scripts')
 <script>
+function openViewModal(btn) {
+    document.getElementById('modal-booking-id').textContent = btn.dataset.id;
+    document.getElementById('modal-customer').textContent   = btn.dataset.customer;
+    document.getElementById('modal-service').textContent    = btn.dataset.service;
+    document.getElementById('modal-datetime').textContent   = btn.dataset.datetime;
+    document.getElementById('modal-notes').textContent      = btn.dataset.notes;
+
+    const plate = btn.dataset.vehicle;
+    const model = btn.dataset.model;
+    document.getElementById('modal-vehicle').textContent = plate + (model ? ' — ' + model : '');
+
+    const statusEl = document.getElementById('modal-status');
+    const statusMap = {
+        confirmed:   ['Confirmed',   'badge-confirmed'],
+        pending:     ['Pending',     'badge-pending'],
+        in_progress: ['In Progress', 'badge-inprogress'],
+        cancelled:   ['Cancelled',   'badge-cancelled'],
+    };
+    const s = statusMap[btn.dataset.status] ?? [btn.dataset.status, 'badge-pending'];
+    statusEl.textContent = s[0];
+    statusEl.className   = 'badge ' + s[1];
+
+    openModal('viewModal');
+}
+ 
 function applyFilters() {
     const search  = document.getElementById('searchInput').value.toLowerCase();
     const status  = document.getElementById('filterStatus').value;
@@ -204,6 +243,27 @@ function clearFilters() {
     ['searchInput','filterStatus','filterService','filterDateFrom','filterDateTo']
         .forEach(id => document.getElementById(id).value = '');
     applyFilters();
+}
+function cancelBooking(id, btn) {
+    if (!confirm('Are you sure you want to cancel this booking?')) return;
+    fetch(`/admin/bookings/${id}/cancel`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const row = btn.closest('tr');
+            row.dataset.status = 'cancelled';
+            row.querySelector('.badge').className = 'badge badge-cancelled';
+            row.querySelector('.badge').textContent = 'Cancelled';
+            applyFilters();
+        }
+    })
+    .catch(err => console.error('Cancel failed:', err));
 }
 ['searchInput','filterStatus','filterService','filterDateFrom','filterDateTo']
     .forEach(id => document.getElementById(id).addEventListener('input', applyFilters));

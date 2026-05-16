@@ -47,7 +47,6 @@ class BookingController extends Controller
             'booking_time'   => 'required',
         ]);
 
-        // Find or create user
         $user = \App\Models\User::firstOrCreate(
             ['phone' => $request->customer_phone],
             [
@@ -58,13 +57,14 @@ class BookingController extends Controller
             ]
         );
 
-        // Find or create vehicle
         $vehicle = $user->vehicles()->firstOrCreate(
             ['plate_number' => strtoupper($request->plate)],
-            ['model' => $request->car_model ?? '']
+            [
+                'model' => $request->car_model ?? '',
+                'year'  => null,
+            ]
         );
 
-        // Create booking
         $booking = Booking::create([
             'user_id'          => $user->id,
             'vehicle_id'       => $vehicle->id,
@@ -74,7 +74,7 @@ class BookingController extends Controller
             'booking_time'     => $request->booking_time,
             'status'           => 'pending',
             'notes'            => $request->notes,
-            'reference_number' => 'BK-' . str_pad(Booking::max('id') + 1, 4, '0', STR_PAD_LEFT),
+           'reference_number' => 'BK-' . str_pad((Booking::withTrashed()->max('id') ?? 0) + 1, 4, '0', STR_PAD_LEFT),
         ]);
 
         return redirect()->route('admin.bookings.index')
@@ -110,7 +110,6 @@ class BookingController extends Controller
             'notes'        => $request->notes,
         ]);
 
-        // Update vehicle plate if provided
         if ($request->plate && $booking->vehicle) {
             $booking->vehicle->update([
                 'plate_number' => strtoupper($request->plate),
@@ -155,29 +154,28 @@ class BookingController extends Controller
 
     public function rebook($id)
     {
-        $original = Booking::findOrFail($id);
+        $original  = Booking::with(['user', 'vehicle', 'service', 'employee'])->findOrFail($id);
+        $services  = Service::orderBy('name')->get();
+        $employees = Employee::where('status', 'active')->orderBy('name')->get();
 
-        $newBooking = Booking::create([
-            'user_id'          => $original->user_id,
-            'vehicle_id'       => $original->vehicle_id,
-            'service_id'       => $original->service_id,
-            'staff_id'         => $original->staff_id,
-            'booking_date'     => now()->addDay()->toDateString(),
-            'booking_time'     => $original->booking_time,
-            'status'           => 'pending',
-            'notes'            => $original->notes,
-            'reference_number' => 'BK-' . str_pad(Booking::max('id') + 1, 4, '0', STR_PAD_LEFT),
+        return view('admin.bookings.create', [
+            'services'  => $services,
+            'employees' => $employees,
+            'prefill'   => $original,
         ]);
-
-        return redirect()->route('admin.bookings.edit', $newBooking->id)
-            ->with('success', 'Booking cloned. Please confirm the new date and time.');
     }
 
     public function destroy($id)
     {
         Booking::findOrFail($id)->delete();
+        return response()->json(['success' => true]);
+    }
 
-        return redirect()->route('admin.bookings.cancelled')
-            ->with('success', 'Booking permanently deleted.');
+    public function cancel($id)
+    {
+        $booking = Booking::findOrFail($id);
+        $booking->update(['status' => 'cancelled']);
+
+        return response()->json(['success' => true]);
     }
 }

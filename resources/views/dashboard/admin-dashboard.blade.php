@@ -141,7 +141,7 @@
                 @forelse($recentBookings as $booking)
                 <tr>
                     <td style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--text);">
-                        #BK-{{ str_pad($booking->id, 4, '0', STR_PAD_LEFT) }}
+                        {{ $booking->reference_number }}
                     </td>
                     <td class="primary-col">{{ $booking->customer->name ?? 'N/A' }}</td>
                     <td>{{ $booking->service->name ?? 'N/A' }}</td>

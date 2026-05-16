@@ -1183,15 +1183,43 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         })
         .then(data => {
             if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-calendar-check"></i> Confirm Booking'; }
-            if (data.success) {
-                document.getElementById('modalFormView').style.display = 'none';
-                document.getElementById('modalSuccessView').classList.add('show');
-                document.getElementById('modalRefNo').textContent          = data.reference || ('BK-' + Date.now().toString().slice(-6));
-                document.getElementById('modalSuccessDate').textContent    = date + ' at ' + time;
-                document.getElementById('modalSuccessService').textContent = selectedService.name;
-            } else {
-                alert(data.message || 'Booking failed. Please try again.');
-            }
+           if (data.success) {
+    // Add new booking to array instantly
+    const d = new Date(date);
+    BOOKINGS.unshift({
+        id:        '#' + data.reference,
+        dbId:      data.booking_id,
+        service:   selectedService.name,
+        serviceId: selectedService.dbId,
+        date:      date,
+        day:       String(d.getDate()).padStart(2, '0'),
+        mon:       d.toLocaleString('en', { month: 'short' }),
+        yr:        String(d.getFullYear()),
+        time:      time,
+        staff:     'TBA',
+        vehicle:   (() => { const v = MY_VEHICLES.find(v => v.id == vehicleId); return v ? v.make + ' (' + v.plate + ')' : 'N/A'; })(),
+        amount:    'TBA',
+        status:    'upcoming',
+    });
+
+    // Update counts
+    const cnt = document.getElementById('tabCountBookings');
+    if (cnt) cnt.textContent = BOOKINGS.length;
+    document.getElementById('cnt-all').textContent      = BOOKINGS.length;
+    document.getElementById('cnt-upcoming').textContent = BOOKINGS.filter(b => b.status === 'upcoming').length;
+
+    // Re-render bookings list
+    renderBookings();
+
+    // Show success screen
+    document.getElementById('modalFormView').style.display = 'none';
+    document.getElementById('modalSuccessView').classList.add('show');
+    document.getElementById('modalRefNo').textContent          = data.reference;
+    document.getElementById('modalSuccessDate').textContent    = date + ' at ' + time;
+    document.getElementById('modalSuccessService').textContent = selectedService.name;
+} else {
+    alert(data.message || 'Booking failed. Please try again.');
+}
         })
         .catch(err => {
             if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-calendar-check"></i> Confirm Booking'; }
