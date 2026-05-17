@@ -1,13 +1,18 @@
-public function up()
-{
-    Schema::table('bookings', function (Blueprint $table) {
-        $table->softDeletes();
-    });
-}
+<?php
 
-public function down()
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
 {
-    Schema::table('bookings', function (Blueprint $table) {
-        $table->dropSoftDeletes();
-    });
-}
+    public function up()
+    {
+        // deleted_at already exists in create_bookings_table migration
+    }
+
+    public function down()
+    {
+        // nothing to do
+    }
+};

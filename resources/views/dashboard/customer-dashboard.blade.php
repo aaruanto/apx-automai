@@ -164,6 +164,15 @@
         .btn-copy-code { background: none; border: 1px solid var(--border); color: var(--text-muted); width: 28px; height: 28px; border-radius: 5px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.72rem; transition: color 0.2s, border-color 0.2s, background 0.2s; flex-shrink: 0; }
         .btn-copy-code:hover { color: var(--red); border-color: var(--red); background: var(--red-glow); }
         .btn-copy-code.copied { color: var(--success); border-color: var(--success); }
+        .dropdown { position: relative; padding-bottom: 8px; }
+        .dropdown-menu { position: absolute; top: calc(100% + 0px); right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px; min-width: 180px; box-shadow: 0 8px 24px rgba(0,0,0,.12); display: none; z-index: 9999; }
+        .dropdown-menu.show { display: block; }
+        .dropdown-menu a { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; font-size: .83rem; color: var(--text); text-decoration: none; }
+        .dropdown-menu a:hover { background: var(--surface-2); }
+        .dropdown-menu hr { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
+        .dropdown-menu .logout { color: var(--red) !important; }
+        .dropdown-menu .logout:hover { background: var(--red-glow); }
+        .dropdown:hover .dropdown-menu { display: block; }
     </style>
 </head>
 <body>
@@ -171,7 +180,7 @@
 <!-- TOPNAV -->
 <nav class="topnav">
     <button id="sidebarToggle"><i class="fas fa-bars"></i></button>
-    <a href="{{ url('/') }}" class="brand">
+    <a href="{{ route('customer.dashboard') }}" class="brand">
         <span class="brand-apx">APX</span>
         <span class="brand-auto">AutoMai</span>
         <span class="brand-badge">CUSTOMER</span>
@@ -1421,11 +1430,28 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
 
-    document.getElementById('sidebarToggle').addEventListener('click', () => {
-        document.getElementById('sidebar').classList.toggle('collapsed');
-        document.getElementById('mainContent').classList.toggle('expanded');
-    });
-
+    // Dropdown toggle
+    let dropdownTimeout;
+    document.querySelector('.user-chip').addEventListener('click', function(e) {
+    e.preventDefault();
+    document.querySelector('.dropdown-menu').classList.toggle('show');
+});
+document.querySelector('.dropdown').addEventListener('mouseenter', function() {
+    clearTimeout(dropdownTimeout);
+    document.querySelector('.dropdown-menu').classList.add('show');
+});
+document.querySelector('.dropdown').addEventListener('mouseleave', function() {
+    dropdownTimeout = setTimeout(() => {
+        document.querySelector('.dropdown-menu').classList.remove('show');
+    }, 300);
+});
+document.querySelector('.dropdown-menu').addEventListener('mouseenter', function() {
+    clearTimeout(dropdownTimeout);
+});
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.dropdown'))
+        document.querySelector('.dropdown-menu').classList.remove('show');
+});
     renderBookings();
     filterServices();
     renderPromos();
