@@ -10,7 +10,7 @@ class Vehicle extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'user_id', 'make', 'model', 'plate_number', 'year', 'color'
+        'user_id', 'make', 'model', 'plate_number', 'year', 'color', 'is_primary'
     ];
 
     public function user()

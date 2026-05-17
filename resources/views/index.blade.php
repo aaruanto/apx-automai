@@ -5,6 +5,7 @@
 
 <head>
     <meta charset="utf-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>APX AUTOMAI</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <meta content="" name="keywords">
@@ -217,20 +218,18 @@
         });
 
         window.apxStickyBook = function() {
-            var vtype = document.getElementById('apx-sc-vtype').value;
+            var vt    = document.getElementById('apx-sc-vtype').value;
             var make  = document.getElementById('apx-sc-make').value;
-            /* sync vehicle type into modal if apxSetVtype exists */
-            if (typeof apxSetVtype === 'function') apxSetVtype(vtype);
-            /* pre-select make in modal if possible */
-            setTimeout(function() {
-                var modalMake = document.getElementById('apx-v-make');
-                if (modalMake && make) {
-                    modalMake.value = make;
-                    if (typeof apxOnMake === 'function') apxOnMake();
-                }
-            }, 200);
+            var model = document.getElementById('apx-sc-model').value;
+            if (!make) { alert('Please select a manufacturer first.'); return; }
+            // Open modal then pre-fill vehicle on step 2
             var modal = new bootstrap.Modal(document.getElementById('bookingModal'));
             modal.show();
+            // Pre-fill vehicle after modal opens and grid renders
+            setTimeout(function() {
+                if (typeof apxPreFillVehicle === 'function') apxPreFillVehicle(vt, make, model);
+                // Jump straight to step 1 (services) — vehicle will be pre-filled when they reach step 2
+            }, 200);
         };
 
         scPopMakes();
@@ -365,7 +364,7 @@
             </div>
             <div class="apx-cards-grid wow fadeInUp" data-wow-delay="0.3s">
 
-                <a href="#" class="apx-svc-card" data-bs-toggle="modal" data-bs-target="#bookingModal" data-cat="engine">
+                <a href="#" class="apx-svc-card" data-cat="engine" onclick="apxOpenWithService(event, 'Change Oil &amp; Filter')">
                     <div class="apx-svc-cat">Engine &amp; Oil</div>
                     <div class="apx-svc-icon-wrap"><i class="fa fa-oil-can"></i></div>
                     <div class="apx-svc-name">Change Oil &amp; Filter</div>
@@ -373,7 +372,7 @@
                     <div class="apx-svc-meta"><i class="fa fa-clock"></i> 30–45 min</div>
                 </a>
 
-                <a href="#" class="apx-svc-card" data-bs-toggle="modal" data-bs-target="#bookingModal" data-cat="engine">
+                <a href="#" class="apx-svc-card" data-cat="engine" onclick="apxOpenWithService(event, 'Fuel Injection Cleaning')">
                     <div class="apx-svc-cat">Engine &amp; Oil</div>
                     <div class="apx-svc-icon-wrap"><i class="fa fa-gas-pump"></i></div>
                     <div class="apx-svc-name">Fuel Injection Cleaning</div>
@@ -381,7 +380,7 @@
                     <div class="apx-svc-meta"><i class="fa fa-clock"></i> 45–60 min</div>
                 </a>
 
-                <a href="#" class="apx-svc-card" data-bs-toggle="modal" data-bs-target="#bookingModal" data-cat="engine cleaning">
+                <a href="#" class="apx-svc-card" data-cat="engine cleaning" onclick="apxOpenWithService(event, 'Throttle Body Cleaning')">
                     <div class="apx-svc-cat">Engine &amp; Oil</div>
                     <div class="apx-svc-icon-wrap"><i class="fa fa-wind"></i></div>
                     <div class="apx-svc-name">Throttle Body Cleaning</div>
@@ -389,7 +388,7 @@
                     <div class="apx-svc-meta"><i class="fa fa-clock"></i> 30–45 min</div>
                 </a>
 
-                <a href="#" class="apx-svc-card" data-bs-toggle="modal" data-bs-target="#bookingModal" data-cat="engine">
+                <a href="#" class="apx-svc-card" data-cat="engine" onclick="apxOpenWithService(event, 'Throttle Idle Adjustment')">
                     <div class="apx-svc-cat">Engine &amp; Oil</div>
                     <div class="apx-svc-icon-wrap"><i class="fa fa-sliders-h"></i></div>
                     <div class="apx-svc-name">Throttle Idle Adjustment</div>
@@ -397,7 +396,7 @@
                     <div class="apx-svc-meta"><i class="fa fa-clock"></i> 20–30 min</div>
                 </a>
 
-                <a href="#" class="apx-svc-card" data-bs-toggle="modal" data-bs-target="#bookingModal" data-cat="engine">
+                <a href="#" class="apx-svc-card" data-cat="engine" onclick="apxOpenWithService(event, 'Valve Clearance Adjustment / Tune-up')">
                     <div class="apx-svc-cat">Engine &amp; Oil</div>
                     <div class="apx-svc-icon-wrap"><i class="fa fa-cogs"></i></div>
                     <div class="apx-svc-name">Valve Clearance Adjustment / Tune-up</div>
@@ -405,7 +404,7 @@
                     <div class="apx-svc-meta"><i class="fa fa-clock"></i> 60–90 min</div>
                 </a>
 
-                <a href="#" class="apx-svc-card" data-bs-toggle="modal" data-bs-target="#bookingModal" data-cat="cvt inspection cleaning">
+                <a href="#" class="apx-svc-card" data-cat="cvt inspection cleaning" onclick="apxOpenWithService(event, 'CVT Cleaning and Inspection')">
                     <div class="apx-svc-cat">CVT &amp; Transmission</div>
                     <div class="apx-svc-icon-wrap"><i class="fa fa-sync-alt"></i></div>
                     <div class="apx-svc-name">CVT Cleaning and Inspection</div>
@@ -413,7 +412,7 @@
                     <div class="apx-svc-meta"><i class="fa fa-clock"></i> 60–90 min</div>
                 </a>
 
-                <a href="#" class="apx-svc-card" data-bs-toggle="modal" data-bs-target="#bookingModal" data-cat="inspection">
+                <a href="#" class="apx-svc-card" data-cat="inspection" onclick="apxOpenWithService(event, 'Airfilter Inspection')">
                     <div class="apx-svc-cat">Inspection</div>
                     <div class="apx-svc-icon-wrap"><i class="fa fa-search"></i></div>
                     <div class="apx-svc-name">Airfilter Inspection</div>
@@ -421,7 +420,7 @@
                     <div class="apx-svc-meta"><i class="fa fa-clock"></i> 10–15 min</div>
                 </a>
 
-                <a href="#" class="apx-svc-card" data-bs-toggle="modal" data-bs-target="#bookingModal" data-cat="inspection">
+                <a href="#" class="apx-svc-card" data-cat="inspection" onclick="apxOpenWithService(event, 'Airfilter Installation')">
                     <div class="apx-svc-cat">Inspection</div>
                     <div class="apx-svc-icon-wrap"><i class="fa fa-tools"></i></div>
                     <div class="apx-svc-name">Airfilter Installation</div>
@@ -429,7 +428,7 @@
                     <div class="apx-svc-meta"><i class="fa fa-clock"></i> 10–20 min</div>
                 </a>
 
-                <a href="#" class="apx-svc-card" data-bs-toggle="modal" data-bs-target="#bookingModal" data-cat="cvt inspection">
+                <a href="#" class="apx-svc-card" data-cat="cvt inspection" onclick="apxOpenWithService(event, 'Flyball Inspection')">
                     <div class="apx-svc-cat">CVT &amp; Transmission</div>
                     <div class="apx-svc-icon-wrap"><i class="fa fa-circle-notch"></i></div>
                     <div class="apx-svc-name">Flyball Inspection</div>
@@ -437,7 +436,7 @@
                     <div class="apx-svc-meta"><i class="fa fa-clock"></i> 20–30 min</div>
                 </a>
 
-                <a href="#" class="apx-svc-card" data-bs-toggle="modal" data-bs-target="#bookingModal" data-cat="cvt cleaning">
+                <a href="#" class="apx-svc-card" data-cat="cvt cleaning" onclick="apxOpenWithService(event, 'Flyball Cleaning')">
                     <div class="apx-svc-cat">CVT &amp; Transmission</div>
                     <div class="apx-svc-icon-wrap"><i class="fa fa-broom"></i></div>
                     <div class="apx-svc-name">Flyball Cleaning</div>
@@ -445,7 +444,7 @@
                     <div class="apx-svc-meta"><i class="fa fa-clock"></i> 20–30 min</div>
                 </a>
 
-                <a href="#" class="apx-svc-card" data-bs-toggle="modal" data-bs-target="#bookingModal" data-cat="cvt inspection">
+                <a href="#" class="apx-svc-card" data-cat="cvt inspection" onclick="apxOpenWithService(event, 'V-belt Inspection')">
                     <div class="apx-svc-cat">CVT &amp; Transmission</div>
                     <div class="apx-svc-icon-wrap"><i class="fa fa-ruler-combined"></i></div>
                     <div class="apx-svc-name">V-belt Inspection</div>
@@ -453,7 +452,7 @@
                     <div class="apx-svc-meta"><i class="fa fa-clock"></i> 15–25 min</div>
                 </a>
 
-                <a href="#" class="apx-svc-card" data-bs-toggle="modal" data-bs-target="#bookingModal" data-cat="cvt cleaning">
+                <a href="#" class="apx-svc-card" data-cat="cvt cleaning" onclick="apxOpenWithService(event, 'V-belt Cleaning')">
                     <div class="apx-svc-cat">CVT &amp; Transmission</div>
                     <div class="apx-svc-icon-wrap"><i class="fa fa-magic"></i></div>
                     <div class="apx-svc-name">V-belt Cleaning</div>
@@ -461,7 +460,7 @@
                     <div class="apx-svc-meta"><i class="fa fa-clock"></i> 20–30 min</div>
                 </a>
 
-                <a href="#" class="apx-svc-card" data-bs-toggle="modal" data-bs-target="#bookingModal" data-cat="cvt inspection">
+                <a href="#" class="apx-svc-card" data-cat="cvt inspection" onclick="apxOpenWithService(event, 'Pulley Set Inspection')">
                     <div class="apx-svc-cat">CVT &amp; Transmission</div>
                     <div class="apx-svc-icon-wrap"><i class="fa fa-cog"></i></div>
                     <div class="apx-svc-name">Pulley Set Inspection</div>
@@ -469,7 +468,7 @@
                     <div class="apx-svc-meta"><i class="fa fa-clock"></i> 20–30 min</div>
                 </a>
 
-                <a href="#" class="apx-svc-card" data-bs-toggle="modal" data-bs-target="#bookingModal" data-cat="cvt cleaning">
+                <a href="#" class="apx-svc-card" data-cat="cvt cleaning" onclick="apxOpenWithService(event, 'Pulley Set Cleaning')">
                     <div class="apx-svc-cat">CVT &amp; Transmission</div>
                     <div class="apx-svc-icon-wrap"><i class="fa fa-spray-can"></i></div>
                     <div class="apx-svc-name">Pulley Set Cleaning</div>
@@ -477,7 +476,7 @@
                     <div class="apx-svc-meta"><i class="fa fa-clock"></i> 25–35 min</div>
                 </a>
 
-                <a href="#" class="apx-svc-card" data-bs-toggle="modal" data-bs-target="#bookingModal" data-cat="cvt inspection">
+                <a href="#" class="apx-svc-card" data-cat="cvt inspection" onclick="apxOpenWithService(event, 'Torque Drive Assy Inspection')">
                     <div class="apx-svc-cat">CVT &amp; Transmission</div>
                     <div class="apx-svc-icon-wrap"><i class="fa fa-car-side"></i></div>
                     <div class="apx-svc-name">Torque Drive Assy Inspection</div>
@@ -485,7 +484,7 @@
                     <div class="apx-svc-meta"><i class="fa fa-clock"></i> 25–35 min</div>
                 </a>
 
-                <a href="#" class="apx-svc-card" data-bs-toggle="modal" data-bs-target="#bookingModal" data-cat="cvt cleaning">
+                <a href="#" class="apx-svc-card" data-cat="cvt cleaning" onclick="apxOpenWithService(event, 'Torque Drive Assy Cleaning')">
                     <div class="apx-svc-cat">CVT &amp; Transmission</div>
                     <div class="apx-svc-icon-wrap"><i class="fa fa-shower"></i></div>
                     <div class="apx-svc-name">Torque Drive Assy Cleaning</div>
@@ -493,7 +492,7 @@
                     <div class="apx-svc-meta"><i class="fa fa-clock"></i> 30–40 min</div>
                 </a>
 
-                <a href="#" class="apx-svc-card" data-bs-toggle="modal" data-bs-target="#bookingModal" data-cat="cvt">
+                <a href="#" class="apx-svc-card" data-cat="cvt" onclick="apxOpenWithService(event, 'Torque Drive Assy Greasing')">
                     <div class="apx-svc-cat">CVT &amp; Transmission</div>
                     <div class="apx-svc-icon-wrap"><i class="fa fa-tint"></i></div>
                     <div class="apx-svc-name">Torque Drive Assy Greasing</div>
@@ -1231,6 +1230,7 @@
                 var isFree = s.tag === 'free';
                 var card = document.createElement('div');
                 card.className = 'apx-modal-svc-card';
+                card.dataset.idx = i;
                 card.innerHTML = '<div class="apx-svc-check"><svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5l2 2 4-4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></div>'
                     + s.name
                     + '<br><span class="apx-modal-svc-tag' + (isFree?' free':'') + '">' + (isFree?'free':s.tag) + '</span>'
@@ -1253,6 +1253,27 @@
             document.getElementById('apx-sel-count').textContent = n===0 ? 'No services selected' : n+' service'+(n>1?'s':'')+' selected';
             document.getElementById('apx-est-total').textContent = n===0 ? '₱0' : (lo===0&&hi===0 ? 'FREE' : '₱'+lo.toLocaleString()+' – ₱'+hi.toLocaleString());
         }
+
+        // FIX 1: Open modal and pre-select a service by name
+        window.apxOpenWithService = function(e, svcName) {
+            e.preventDefault();
+            // Find matching service index
+            var idx = SERVICES.findIndex(function(s) {
+                return s.name.toLowerCase().replace(/[^a-z0-9]/g,'') === svcName.toLowerCase().replace(/[^a-z0-9]/g,'');
+            });
+            // Open modal
+            var modal = new bootstrap.Modal(document.getElementById('bookingModal'));
+            modal.show();
+            // After grid is built, select the card
+            setTimeout(function() {
+                if (idx >= 0 && !selected.has(idx)) {
+                    var card = document.querySelector('.apx-modal-svc-card[data-idx="'+idx+'"]');
+                    if (card) apxToggle(idx, card);
+                    // Scroll card into view
+                    if (card) card.scrollIntoView({block:'nearest'});
+                }
+            }, 80);
+        };
 
         window.apxSetVtype = function(t) {
             vtype = t;
@@ -1294,6 +1315,25 @@
             }
         };
 
+        // FIX 3: sticky card passes vehicle data into step 2
+        window.apxPreFillVehicle = function(vt, make, model) {
+            apxSetVtype(vt);
+            setTimeout(function() {
+                var makeEl = document.getElementById('apx-v-make');
+                if (makeEl && make) {
+                    makeEl.value = make;
+                    apxOnMake();
+                    setTimeout(function() {
+                        var modelEl = document.getElementById('apx-v-model');
+                        if (modelEl && model) {
+                            modelEl.value = model;
+                            apxOnModel();
+                        }
+                    }, 50);
+                }
+            }, 100);
+        };
+
         function apxSetStep(n) {
             step = n;
             ['apx-s1','apx-s2','apx-s3'].forEach(function(id, i) {
@@ -1317,38 +1357,93 @@
                 if (selected.size===0) { alert('Please select at least one service.'); return; }
                 apxSetStep(2);
             } else if (step===2) {
-                var name = document.getElementById('apx-f-name').value.trim();
+                var name  = document.getElementById('apx-f-name').value.trim();
                 var email = document.getElementById('apx-f-email').value.trim();
-                var date = document.getElementById('apx-f-date').value;
-                var make = document.getElementById('apx-v-make').value;
+                var date  = document.getElementById('apx-f-date').value;
+                var make  = document.getElementById('apx-v-make').value;
                 var model = document.getElementById('apx-v-model').value;
-                var year = document.getElementById('apx-v-year').value;
+                var year  = document.getElementById('apx-v-year').value;
                 if (!name||!email||!date) { alert('Please fill in name, email, and date.'); return; }
                 if (!make||!model||!year) { alert('Please complete your vehicle information.'); return; }
                 var names = Array.from(selected).map(function(i){ return SERVICES[i].name; }).join(', ');
                 var lo=0, hi=0;
                 selected.forEach(function(i){ lo+=SERVICES[i].lo; hi+=SERVICES[i].hi; });
                 var plate = document.getElementById('apx-v-plate').value;
-                var vStr = vtype.charAt(0).toUpperCase()+vtype.slice(1)+' · '+make+' '+model+' '+year+(plate?' · '+plate:'');
-                document.getElementById('apx-c-name').textContent = name;
-                document.getElementById('apx-c-email').textContent = email;
-                document.getElementById('apx-c-phone').textContent = document.getElementById('apx-f-phone').value||'—';
-                document.getElementById('apx-c-date').textContent = date;
-                document.getElementById('apx-c-vehicle').textContent = vStr;
+                var vStr  = vtype.charAt(0).toUpperCase()+vtype.slice(1)+' · '+make+' '+model+' '+year+(plate?' · '+plate:'');
+                document.getElementById('apx-c-name').textContent     = name;
+                document.getElementById('apx-c-email').textContent    = email;
+                document.getElementById('apx-c-phone').textContent    = document.getElementById('apx-f-phone').value||'—';
+                document.getElementById('apx-c-date').textContent     = date;
+                document.getElementById('apx-c-vehicle').textContent  = vStr;
                 document.getElementById('apx-c-services').textContent = names;
-                document.getElementById('apx-c-notes').textContent = document.getElementById('apx-f-notes').value||'—';
-                document.getElementById('apx-c-total').textContent = (lo===0&&hi===0?'FREE':'₱'+lo.toLocaleString()+' – ₱'+hi.toLocaleString())+' *';
+                document.getElementById('apx-c-notes').textContent    = document.getElementById('apx-f-notes').value||'—';
+                document.getElementById('apx-c-total').textContent    = (lo===0&&hi===0?'FREE':'₱'+lo.toLocaleString()+' – ₱'+hi.toLocaleString())+' *';
                 apxSetStep(3);
             } else if (step===3) {
-                var ref = 'APX-'+Math.random().toString(36).substring(2,8).toUpperCase();
-                document.getElementById('apx-ref-number').textContent = ref;
-                ['apx-view-1','apx-view-2','apx-view-3'].forEach(function(id){ document.getElementById(id).style.display='none'; });
-                document.getElementById('apx-view-success').style.display = '';
-                document.getElementById('apx-modal-footer').style.display = 'none';
-                document.getElementById('apx-step-label').textContent = 'Done';
-                ['apx-s1','apx-s2','apx-s3'].forEach(function(id){ document.getElementById(id).className='apx-step-item done'; });
+                apxSubmitBooking(false);
             }
         };
+
+        // FIX 2 + confirm: actual POST to backend
+        function apxSubmitBooking(createAccount) {
+            var btn = document.getElementById('apx-btn-next');
+            btn.disabled = true;
+            btn.textContent = 'Submitting…';
+
+            var serviceNames = Array.from(selected).map(function(i){ return SERVICES[i].name; });
+            var payload = {
+                guest_name:    document.getElementById('apx-f-name').value.trim(),
+                guest_email:   document.getElementById('apx-f-email').value.trim(),
+                guest_phone:   document.getElementById('apx-f-phone').value.trim(),
+                booking_date:  document.getElementById('apx-f-date').value,
+                booking_time:  document.getElementById('apx-f-time') ? document.getElementById('apx-f-time').value : '09:00',
+                vehicle_type:  vtype,
+                vehicle_make:  document.getElementById('apx-v-make').value,
+                vehicle_model: document.getElementById('apx-v-model').value,
+                vehicle_year:  document.getElementById('apx-v-year').value,
+                vehicle_plate: document.getElementById('apx-v-plate').value,
+                services:      serviceNames,
+                notes:         document.getElementById('apx-f-notes').value,
+                create_account: createAccount
+            };
+
+            fetch('/booking/guest', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]') ?
+                        document.querySelector('meta[name="csrf-token"]').content :
+                        document.querySelector('input[name="_token"]') ?
+                        document.querySelector('input[name="_token"]').value : ''
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(function(r) {
+                if (!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'Server error ('+r.status+')'); });
+                return r.json();
+            })
+            .then(function(data) {
+                btn.disabled = false;
+                btn.textContent = 'Confirm booking ✓';
+                if (data.success) {
+                    document.getElementById('apx-ref-number').textContent = data.reference;
+                    ['apx-view-1','apx-view-2','apx-view-3'].forEach(function(id){ document.getElementById(id).style.display='none'; });
+                    document.getElementById('apx-view-success').style.display = '';
+                    document.getElementById('apx-modal-footer').style.display = 'none';
+                    document.getElementById('apx-step-label').textContent = 'Done';
+                    ['apx-s1','apx-s2','apx-s3'].forEach(function(id){ document.getElementById(id).className='apx-step-item done'; });
+                } else {
+                    alert(data.message || 'Booking failed. Please try again.');
+                }
+            })
+            .catch(function(err) {
+                btn.disabled = false;
+                btn.textContent = 'Confirm booking ✓';
+                console.error('Booking error:', err);
+                alert(err.message || 'Could not submit booking. Please try again.');
+            });
+        }
 
         window.apxBack = function() { if (step>1) apxSetStep(step-1); };
 
@@ -1371,9 +1466,14 @@
             apxSetVtype('car');
         });
 
-        /* skip nudge — just confirm booking */
+        /* skip nudge — submit as guest */
         document.getElementById('apx-btn-skip').addEventListener('click', function() {
-            document.getElementById('apx-btn-next').click();
+            apxSubmitBooking(false);
+        });
+
+        /* create account button — submit then redirect to register */
+        document.querySelector('.apx-btn-member').addEventListener('click', function() {
+            apxSubmitBooking(true);
         });
 
         buildGrid();

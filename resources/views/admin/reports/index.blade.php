@@ -103,7 +103,7 @@
             <div class="card-body">
                 @php
                     $topServices = $serviceStats ?? [];
-                    $maxService  = $topServices ? max(array_column($topServices,'count')) : 1;
+                    $maxService  = $topServices ? (max(array_column($topServices,'count')) ?: 1) : 1;
                 @endphp
                 @forelse($topServices as $svc)
                 <div style="margin-bottom:12px;">

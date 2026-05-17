@@ -11,6 +11,12 @@
     <style>
         .theme-toggle { background: none; border: none; cursor: pointer; padding: 0; line-height: 1; }
         *, *::before, *::after { transition: background-color 0.25s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease; }
+        /* Sidebar collapse */
+        .sidebar.collapsed { width: 0 !important; min-width: 0 !important; overflow: hidden !important; padding: 0 !important; }
+        .main-content.expanded { margin-left: 0 !important; }
+        /* Fix time/date picker icons showing through dark theme */
+        input[type="time"].m-control, input[type="date"].m-control { color-scheme: dark; }
+        html.light-mode input[type="time"].m-control, html.light-mode input[type="date"].m-control { color-scheme: light; }
         html.light-mode { --black: #f4f5f7; --surface: #ffffff; --surface-2: #f0f1f3; --surface-3: #e6e8ec; --border: rgba(0,0,0,0.09); --text: #1a1d23; --text-muted: #6b7280; --red-glow: rgba(232,25,44,0.10); }
         html.light-mode body { background: #f4f5f7; }
         html.light-mode .topnav { box-shadow: 0 1px 6px rgba(0,0,0,.07); }
@@ -406,8 +412,6 @@
                                 <div class="quick-actions">
                                     <a href="#" class="quick-action-btn" onclick="switchSection(event,'services')"><i class="fas fa-circle-plus"></i>Book Service</a>
                                     <a href="#" class="quick-action-btn" onclick="switchSection(event,'vehicles')"><i class="fas fa-car"></i>My Vehicles</a>
-                                    <a href="#" class="quick-action-btn"><i class="fas fa-file-invoice"></i>Invoices</a>
-                                    <a href="#" class="quick-action-btn"><i class="fas fa-headset"></i>Support</a>
                                 </div>
                             </div>
                         </div>
@@ -653,15 +657,33 @@
                                     </div>
                                     <div class="profile-field">
                                         <label>Contact Number</label>
-                                        <div class="profile-read-val" id="prv-phone"><i class="fas fa-phone"></i> <span style="color:var(--text-muted);font-style:italic;">Not set</span></div>
+                                        <div class="profile-read-val" id="prv-phone"><i class="fas fa-phone"></i>
+                                            @if($customer->phone ?? Auth::user()->phone)
+                                                {{ $customer->phone ?? Auth::user()->phone }}
+                                            @else
+                                                <span style="color:var(--text-muted);font-style:italic;">Not set</span>
+                                            @endif
+                                        </div>
                                     </div>
                                     <div class="profile-field">
                                         <label>Date of Birth</label>
-                                        <div class="profile-read-val" id="prv-dob"><i class="fas fa-cake-candles"></i> <span style="color:var(--text-muted);font-style:italic;">Not set</span></div>
+                                        <div class="profile-read-val" id="prv-dob"><i class="fas fa-cake-candles"></i>
+                                            @if($customer->dob ?? null)
+                                                {{ $customer->dob }}
+                                            @else
+                                                <span style="color:var(--text-muted);font-style:italic;">Not set</span>
+                                            @endif
+                                        </div>
                                     </div>
                                     <div class="profile-field profile-field-full">
                                         <label>Address</label>
-                                        <div class="profile-read-val" id="prv-address"><i class="fas fa-location-dot"></i> <span style="color:var(--text-muted);font-style:italic;">Not set</span></div>
+                                        <div class="profile-read-val" id="prv-address"><i class="fas fa-location-dot"></i>
+                                            @if($customer->address ?? null)
+                                                {{ $customer->address }}
+                                            @else
+                                                <span style="color:var(--text-muted);font-style:italic;">Not set</span>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -678,15 +700,15 @@
                                     </div>
                                     <div class="profile-field">
                                         <label>Contact Number</label>
-                                        <input type="tel" id="pef-phone" placeholder="+63 9XX XXX XXXX" />
+                                        <input type="tel" id="pef-phone" placeholder="+63 9XX XXX XXXX" value="{{ $customer->phone ?? Auth::user()->phone ?? '' }}" />
                                     </div>
                                     <div class="profile-field">
                                         <label>Date of Birth</label>
-                                        <input type="date" id="pef-dob" />
+                                        <input type="date" id="pef-dob" value="{{ $customer->dob ?? '' }}" />
                                     </div>
                                     <div class="profile-field profile-field-full">
                                         <label>Address</label>
-                                        <input type="text" id="pef-address" placeholder="e.g. 123 Street, Quezon City" />
+                                        <input type="text" id="pef-address" placeholder="e.g. 123 Street, Quezon City" value="{{ $customer->address ?? '' }}" />
                                     </div>
                                 </div>
                                 <div class="profile-edit-actions">
@@ -705,7 +727,7 @@
                             </div>
                             <div id="profileVehicleSummary" style="font-size:0.85rem;color:var(--text-muted);">
                                 @forelse($vehicles as $v)
-                                    <div class="profile-read-val"><i class="fas fa-motorcycle"></i> {{ $v->brand }} ({{ $v->year }}) &mdash; <span style="font-family:monospace;font-size:0.8rem;background:var(--surface-3);padding:1px 7px;border-radius:4px;">{{ $v->plate }}</span></div>
+                                    <div class="profile-read-val"><i class="fas fa-motorcycle"></i> {{ $v->make }} {{ $v->model }}{{ $v->year ? ' (' . $v->year . ')' : '' }} &mdash; <span style="font-family:monospace;font-size:0.8rem;background:var(--surface-3);padding:1px 7px;border-radius:4px;">{{ $v->plate_number ?? 'No plate' }}</span>{{ $v->is_primary ? ' <span style="margin-left:6px;font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--red);"><i class=\"fas fa-star\" style=\"font-size:0.55rem;\"></i> Primary</span>' : '' }}</div>
                                 @empty
                                     <div style="color:var(--text-muted);font-style:italic;font-size:0.85rem;padding:8px 0;">No vehicles registered yet.</div>
                                 @endforelse
@@ -817,7 +839,7 @@
                                 <div class="settings-row-label">Change Password</div>
                                 <div class="settings-row-desc">Update your account password regularly for security.</div>
                             </div>
-                            <a href="{{ route('password.request') ?? '#' }}" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:7px 16px;border-radius:6px;font-size:0.8rem;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:5px;transition:color 0.2s,border-color 0.2s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-muted)'">
+                            <a href="/forgot-password" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:7px 16px;border-radius:6px;font-size:0.8rem;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:5px;transition:color 0.2s,border-color 0.2s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-muted)'">
                                 <i class="fas fa-key"></i> Change
                             </a>
                         </div>
@@ -876,6 +898,10 @@
                             <div class="m-form-group">
                                 <label class="m-label">Contact Number</label>
                                 <div class="m-input-wrap"><i class="fas fa-phone"></i><input class="m-control" id="mPhone" type="tel" placeholder="+63 9XX XXX XXXX" /></div>
+                                <div class="m-vehicle-hint" id="mPhoneHint" style="display:none;">
+                                    <i class="fas fa-circle-info" style="font-size:0.68rem;color:var(--red);"></i>
+                                    No number saved. <a onclick="switchSection(null,'profile'); closeModal()">Edit number in My Profile</a>
+                                </div>
                             </div>
                             <div class="m-form-group">
                                 <label class="m-label">Select Vehicle</label>
@@ -930,44 +956,128 @@
     </div>
 </div>
 
+<!-- APX CUSTOM DIALOG MODAL -->
+<div id="apxDialog" style="display:none;position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px 28px 24px;max-width:420px;width:90%;box-shadow:0 24px 64px rgba(0,0,0,0.4);animation:modalIn 0.2s ease both;position:relative;">
+        <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:20px;">
+            <div id="apxDialogIcon" style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.1rem;"></div>
+            <div style="flex:1;">
+                <div id="apxDialogTitle" style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:800;letter-spacing:0.03em;color:var(--text);margin-bottom:6px;"></div>
+                <div id="apxDialogMsg" style="font-size:0.85rem;color:var(--text-muted);line-height:1.5;"></div>
+            </div>
+        </div>
+        <div id="apxDialogBtns" style="display:flex;gap:10px;justify-content:flex-end;"></div>
+    </div>
+</div>
+
 <!-- SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
 <script>
+    // ── APX CUSTOM DIALOG ──────────────────────────────────────────────────
+    function apxDialog({ title, msg, type = 'info', confirmLabel = 'OK', cancelLabel = null, onConfirm = null, onCancel = null }) {
+        const el      = document.getElementById('apxDialog');
+        const iconEl  = document.getElementById('apxDialogIcon');
+        const titleEl = document.getElementById('apxDialogTitle');
+        const msgEl   = document.getElementById('apxDialogMsg');
+        const btnsEl  = document.getElementById('apxDialogBtns');
+
+        const styles = {
+            danger:  { bg: 'rgba(232,25,44,0.12)',  border: 'rgba(232,25,44,0.3)',  color: '#E8192C',  icon: 'fa-triangle-exclamation' },
+            warning: { bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)', color: '#f59e0b',  icon: 'fa-circle-exclamation' },
+            success: { bg: 'rgba(34,197,94,0.12)',  border: 'rgba(34,197,94,0.3)',  color: '#22c55e',  icon: 'fa-circle-check' },
+            info:    { bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.3)', color: '#3b82f6',  icon: 'fa-circle-info' },
+        };
+        const s = styles[type] || styles.info;
+
+        iconEl.style.background   = s.bg;
+        iconEl.style.border       = '1px solid ' + s.border;
+        iconEl.style.color        = s.color;
+        iconEl.innerHTML          = `<i class="fas ${s.icon}"></i>`;
+        titleEl.textContent       = title;
+        msgEl.innerHTML           = msg;
+
+        btnsEl.innerHTML = '';
+
+        if (cancelLabel) {
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = cancelLabel;
+            cancelBtn.style.cssText = 'background:none;border:1px solid var(--border);color:var(--text-muted);padding:9px 20px;border-radius:7px;font-size:0.85rem;cursor:pointer;transition:color 0.2s;';
+            cancelBtn.onmouseover = () => cancelBtn.style.color = 'var(--text)';
+            cancelBtn.onmouseout  = () => cancelBtn.style.color = 'var(--text-muted)';
+            cancelBtn.onclick = () => { closeApxDialog(); if (onCancel) onCancel(); };
+            btnsEl.appendChild(cancelBtn);
+        }
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.innerHTML = confirmLabel;
+        const iDanger = type === 'danger' || type === 'warning';
+        confirmBtn.style.cssText = `background:${iDanger ? '#E8192C' : s.color};color:#fff;border:none;padding:9px 22px;border-radius:7px;font-family:'Barlow Condensed',sans-serif;font-size:0.9rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:opacity 0.2s;`;
+        confirmBtn.onmouseover = () => confirmBtn.style.opacity = '0.88';
+        confirmBtn.onmouseout  = () => confirmBtn.style.opacity = '1';
+        confirmBtn.onclick = () => { closeApxDialog(); if (onConfirm) onConfirm(); };
+        btnsEl.appendChild(confirmBtn);
+
+        el.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeApxDialog() {
+        document.getElementById('apxDialog').style.display = 'none';
+        document.body.style.overflow = '';
+    }
+
+    // Click-outside to dismiss info/success dialogs only
+    document.getElementById('apxDialog').addEventListener('click', function(e) {
+        if (e.target === this) closeApxDialog();
+    });
+
     // DATA FROM DB
     let MY_VEHICLES = {!! json_encode($vehiclesJs) !!};
 const BOOKINGS = {!! json_encode($bookingsJs) !!};
 
-    {{-- Build SERVICES from the database so dbId always matches a real services.id --}}
-    const SERVICES = [
-        { id:'svc-01', dbId:1,  name:'Change Oil & Filter',                     cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-oil-can',            desc:'Complete engine oil drain and refill with high-quality oil and a fresh filter.',       duration:'30–45 min', free:false },
-        { id:'svc-02', dbId:2,  name:'Fuel Injection Cleaning',                 cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-gas-pump',            desc:'Deep cleaning of fuel injectors to restore proper fuel atomization.',                 duration:'45–60 min', free:false },
-        { id:'svc-03', dbId:3,  name:'Throttle Body Cleaning',                  cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-wind',                desc:'Remove carbon buildup from the throttle body for smoother idling.',                   duration:'30–45 min', free:false },
-        { id:'svc-04', dbId:4,  name:'Throttle Idle Adjustment',                cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-sliders',             desc:'Fine-tune idle speed to manufacturer specs.',                                         duration:'20–30 min', free:false },
-        { id:'svc-05', dbId:5,  name:'Valve Clearance Adjustment / Tune-up',    cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-screwdriver-wrench',  desc:'Inspect and adjust valve clearances to ensure proper engine breathing.',             duration:'60–90 min', free:false },
-        { id:'svc-06', dbId:6,  name:'CVT Cleaning and Inspection',             cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-gear',                desc:'Full CVT belt and pulley inspection with cleaning.',                                  duration:'60–90 min', free:false },
-        { id:'svc-07', dbId:7,  name:'Air Filter Inspection',                   cat:'inspection', catLabel:'Inspection',         icon:'fa-filter',              desc:'Visual and performance check of the air filter element.',                             duration:'15 min',    free:false },
-        { id:'svc-08', dbId:8,  name:'Air Filter Installation',                 cat:'inspection', catLabel:'Inspection',         icon:'fa-filter',              desc:'Supply and installation of a new OEM-spec air filter.',                               duration:'20 min',    free:false },
-        { id:'svc-09', dbId:9,  name:'Flyball Inspection',                      cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-dot',          desc:'Check flyball condition and wear for proper CVT engagement.',                         duration:'30 min',    free:false },
-        { id:'svc-10', dbId:10, name:'Flyball Cleaning',                        cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-dot',          desc:'Thorough cleaning of flyball weights.',                                               duration:'30–45 min', free:false },
-        { id:'svc-11', dbId:11, name:'V-belt Inspection',                       cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-bezier-curve',        desc:'Inspect V-belt for cracks, glazing, and wear.',                                       duration:'20 min',    free:false },
-        { id:'svc-12', dbId:12, name:'V-belt Cleaning',                         cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-bezier-curve',        desc:'Clean V-belt surfaces and housing.',                                                  duration:'20–30 min', free:false },
-        { id:'svc-13', dbId:13, name:'Pulley Set Inspection',                   cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-half-stroke',  desc:'Full inspection of drive and driven pulley sets.',                                    duration:'30 min',    free:false },
-        { id:'svc-14', dbId:14, name:'Pulley Set Cleaning',                     cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-half-stroke',  desc:'Detailed cleaning of pulley faces and grooves.',                                      duration:'30–45 min', free:false },
-        { id:'svc-15', dbId:15, name:'Torque Drive Assy Inspection',            cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-rotate',              desc:'Inspect the torque drive assembly for wear.',                                         duration:'30 min',    free:false },
-        { id:'svc-16', dbId:16, name:'Torque Drive Assy Cleaning',              cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-rotate',              desc:'Clean all torque drive assembly components.',                                         duration:'30–45 min', free:false },
-        { id:'svc-17', dbId:17, name:'Torque Drive Assy Greasing',              cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-rotate',              desc:'Apply fresh grease to torque drive components.',                                      duration:'20–30 min', free:false },
-        { id:'svc-18', dbId:18, name:'Clutch Lining Set / Assy Inspection',     cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-xmark',        desc:'Measure clutch lining thickness and check assembly.',                                 duration:'30 min',    free:false },
-        { id:'svc-19', dbId:19, name:'Clutch Lining Set / Assy Cleaning',       cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-xmark',        desc:'Clean clutch lining components and housing.',                                         duration:'30–45 min', free:false },
-        { id:'svc-20', dbId:20, name:'Kick Starter Inspection',                 cat:'inspection', catLabel:'Inspection',         icon:'fa-person-walking',      desc:'Check kick starter mechanism for wear.',                                               duration:'20 min',    free:false },
-        { id:'svc-21', dbId:21, name:'Pulley Shaving & Re-Angle',               cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-screwdriver',         desc:'Precision machining of drive pulley face.',                                           duration:'60–90 min', free:false },
-        { id:'svc-22', dbId:22, name:'Pulley Drive Face Shaving & Re-Angle',    cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-screwdriver',         desc:'Re-angle and resurface the drive face pulley.',                                       duration:'60–90 min', free:false },
-        { id:'svc-23', dbId:23, name:'Sprocket/Chain Cleaning & Regreasing',    cat:'inspection', catLabel:'Inspection',         icon:'fa-link',                desc:'Clean and relube sprocket and chain drive components.',                               duration:'30–45 min', free:false },
-        { id:'svc-24', dbId:24, name:'Pipe Cleaning',                           cat:'brakes',     catLabel:'Brakes & Pipes',     icon:'fa-pipe',                desc:'Flush and clean fuel and coolant pipes.',                                             duration:'30 min',    free:false },
-        { id:'svc-25', dbId:25, name:'Brake Cleaning',                          cat:'brakes',     catLabel:'Brakes & Pipes',     icon:'fa-circle-stop',         desc:'Degrease brake pads, discs, and drums.',                                              duration:'30–45 min', free:false },
-        { id:'svc-26', dbId:26, name:'Brake Adjustment',                        cat:'brakes',     catLabel:'Brakes & Pipes',     icon:'fa-circle-stop',         desc:'Adjust brake cable tension and drum/disc clearance.',                                 duration:'20–30 min', free:false },
-        { id:'svc-27', dbId:27, name:'FREE ECU Diagnose',                       cat:'free',       catLabel:'Free Service',       icon:'fa-microchip',           desc:'Complimentary ECU scan using professional diagnostic tools.',                         duration:'15–30 min', free:true  },
-        { id:'svc-28', dbId:28, name:'FREE Basic Inspection',                   cat:'free',       catLabel:'Free Service',       icon:'fa-clipboard-check',     desc:'Complimentary 20-point visual inspection.',                                           duration:'20–30 min', free:true  },
-    ];
+    {{-- SERVICES built from the database — dbId is the real services.id so bookings always use the correct service --}}
+    const SERVICES = (function() {
+        const META_MAP = [
+            { match: /change oil/i,                   cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-oil-can',            duration:'30–45 min', free:false },
+            { match: /fuel injection/i,               cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-gas-pump',           duration:'45–60 min', free:false },
+            { match: /throttle body/i,                cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-wind',               duration:'30–45 min', free:false },
+            { match: /throttle idle/i,                cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-sliders',            duration:'20–30 min', free:false },
+            { match: /valve clearance|tune.?up/i,     cat:'engine',     catLabel:'Engine & Oil',       icon:'fa-screwdriver-wrench', duration:'60–90 min', free:false },
+            { match: /cvt.*clean|cvt.*inspect/i,      cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-gear',               duration:'60–90 min', free:false },
+            { match: /air filter.*install/i,          cat:'inspection', catLabel:'Inspection',         icon:'fa-filter',             duration:'20 min',    free:false },
+            { match: /air filter/i,                   cat:'inspection', catLabel:'Inspection',         icon:'fa-filter',             duration:'15 min',    free:false },
+            { match: /flyball.*clean/i,               cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-dot',         duration:'30–45 min', free:false },
+            { match: /flyball/i,                      cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-dot',         duration:'30 min',    free:false },
+            { match: /v.?belt.*clean/i,               cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-bezier-curve',       duration:'20–30 min', free:false },
+            { match: /v.?belt/i,                      cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-bezier-curve',       duration:'20 min',    free:false },
+            { match: /pulley.*shav/i,                 cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-screwdriver',        duration:'60–90 min', free:false },
+            { match: /pulley.*clean/i,                cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-half-stroke', duration:'30–45 min', free:false },
+            { match: /pulley/i,                       cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-half-stroke', duration:'30 min',    free:false },
+            { match: /torque.*greas/i,                cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-rotate',             duration:'20–30 min', free:false },
+            { match: /torque.*clean/i,                cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-rotate',             duration:'30–45 min', free:false },
+            { match: /torque/i,                       cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-rotate',             duration:'30 min',    free:false },
+            { match: /clutch.*clean/i,                cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-xmark',       duration:'30–45 min', free:false },
+            { match: /clutch/i,                       cat:'cvt',        catLabel:'CVT & Transmission', icon:'fa-circle-xmark',       duration:'30 min',    free:false },
+            { match: /kick.?start/i,                  cat:'inspection', catLabel:'Inspection',         icon:'fa-person-walking',     duration:'20 min',    free:false },
+            { match: /sprocket|chain/i,               cat:'inspection', catLabel:'Inspection',         icon:'fa-link',               duration:'30–45 min', free:false },
+            { match: /pipe/i,                         cat:'brakes',     catLabel:'Brakes & Pipes',     icon:'fa-pipe',               duration:'30 min',    free:false },
+            { match: /brake.*adjust/i,                cat:'brakes',     catLabel:'Brakes & Pipes',     icon:'fa-circle-stop',        duration:'20–30 min', free:false },
+            { match: /brake/i,                        cat:'brakes',     catLabel:'Brakes & Pipes',     icon:'fa-circle-stop',        duration:'30–45 min', free:false },
+            { match: /ecu|diagnos/i,                  cat:'free',       catLabel:'Free Service',       icon:'fa-microchip',          duration:'15–30 min', free:true  },
+            { match: /free.*inspect|basic.*inspect/i, cat:'free',       catLabel:'Free Service',       icon:'fa-clipboard-check',    duration:'20–30 min', free:true  },
+        ];
+        const defaults = { cat:'inspection', catLabel:'Inspection', icon:'fa-wrench', duration:'30–60 min', free:false };
+        const dbServices = {!! json_encode($services->map(fn($s) => ['id'=>$s->id,'name'=>$s->name,'desc'=>$s->description??'','duration'=>$s->duration])->values()) !!};
+        return dbServices.map((s, i) => {
+            const meta = META_MAP.find(m => m.match.test(s.name)) || defaults;
+            let dur = meta.duration;
+            if (s.duration) {
+                const d = parseInt(s.duration);
+                dur = d < 60 ? d + ' min' : (Math.floor(d/60) + 'h' + (d%60 ? ' ' + d%60 + 'min' : ''));
+            }
+            return { id:'svc-'+String(i+1).padStart(2,'0'), dbId:s.id, name:s.name, cat:meta.cat, catLabel:meta.catLabel, icon:meta.icon, desc:s.desc||meta.catLabel+' service.', duration:dur, free:meta.free };
+        });
+    })();
 
     const STATUS_META = {
         upcoming:    { label:'Upcoming',    cls:'badge-confirmed',  icon:'fa-clock' },
@@ -1032,8 +1142,13 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         });
         if (!filtered.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
         empty.style.display = 'none';
+        // Fix 2: Show Cancel Booking button for upcoming/in-progress bookings
         list.innerHTML = filtered.map(b => {
             const meta = STATUS_META[b.status] || STATUS_META['upcoming'];
+            const canCancel = b.status === 'upcoming' || b.status === 'in_progress';
+            const cancelBtn = canCancel
+                ? `<div style="margin-top:8px;"><button onclick="cancelBooking(${b.dbId})" style="background:none;border:1px solid rgba(232,25,44,0.4);color:var(--red);padding:5px 14px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:background 0.2s;" onmouseover="this.style.background='var(--red-glow)'" onmouseout="this.style.background='none'"><i class="fas fa-ban"></i> Cancel Booking</button></div>`
+                : '';
             return `<div class="bk-card">
                 <div class="bk-card-inner">
                     <div class="bk-date-col">
@@ -1051,6 +1166,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                             <span><i class="fas fa-user"></i>${b.staff}</span>
                             <span><i class="fas fa-car"></i>${b.vehicle}</span>
                         </div>
+                        ${cancelBtn}
                     </div>
                     <div class="bk-status-col">
                         <span class="badge ${meta.cls}"><i class="fas ${meta.icon}"></i>${meta.label}</span>
@@ -1059,6 +1175,36 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                 </div>
             </div>`;
         }).join('');
+    }
+
+    function cancelBooking(bookingDbId) {
+        apxDialog({
+            type: 'danger', title: 'Cancel Booking',
+            msg: 'Are you sure you want to cancel this booking? This action <strong>cannot be undone</strong>.',
+            confirmLabel: '<i class="fas fa-ban" style="margin-right:5px;"></i> Yes, Cancel It',
+            cancelLabel: 'Keep Booking',
+            onConfirm: () => {
+                fetch(`/customer/bookings/${bookingDbId}/cancel`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        const booking = BOOKINGS.find(b => b.dbId === bookingDbId);
+                        if (booking) booking.status = 'cancelled';
+                        const cancelledCount = BOOKINGS.filter(b => b.status === 'cancelled').length;
+                        const cntEl = document.getElementById('cnt-cancelled');
+                        if (cntEl) cntEl.textContent = cancelledCount;
+                        renderBookings();
+                        apxDialog({ type: 'success', title: 'Booking Cancelled', msg: 'Your booking has been cancelled successfully.', confirmLabel: 'OK' });
+                    } else {
+                        apxDialog({ type: 'danger', title: 'Error', msg: data.message || 'Failed to cancel booking. Please try again.', confirmLabel: 'OK' });
+                    }
+                })
+                .catch(() => apxDialog({ type: 'danger', title: 'Error', msg: 'Could not connect to the server. Please try again.', confirmLabel: 'OK' }));
+            }
+        });
     }
 
     function setCat(btn) {
@@ -1121,6 +1267,11 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         document.getElementById('mTime').value  = '09:00';
         document.getElementById('mPhone').value = '';
         document.getElementById('mNotes').value = '';
+        // Auto-fill phone from profile; show hint if not set
+        const savedPhone = '{{ $customer->phone ?? Auth::user()->phone ?? '' }}';
+        document.getElementById('mPhone').value = savedPhone;
+        const phoneHint = document.getElementById('mPhoneHint');
+        if (phoneHint) phoneHint.style.display = savedPhone ? 'none' : 'flex';
         const sel = document.getElementById('mVehicleSelect');
         sel.innerHTML = '<option value="">— Choose a registered vehicle —</option>';
         MY_VEHICLES.forEach(v => {
@@ -1165,7 +1316,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         const submitBtn = document.querySelector('.btn-modal-submit');
         if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…'; }
 
-        fetch('{{ route("customer.bookings.store") }}', {
+        fetch('/customer/bookings', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1227,17 +1378,16 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
     document.getElementById('modalSuccessDate').textContent    = date + ' at ' + time;
     document.getElementById('modalSuccessService').textContent = selectedService.name;
 } else {
-    alert(data.message || 'Booking failed. Please try again.');
+    apxDialog({ type: 'danger', title: 'Booking Failed', msg: data.message || 'Booking failed. Please try again.', confirmLabel: 'OK' });
 }
         })
         .catch(err => {
             if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fas fa-calendar-check"></i> Confirm Booking'; }
             if (err && err.errors) {
-                const msgs = Object.values(err.errors).flat().join('\n');
-                alert('Validation errors:\n' + msgs);
+                const msgs = Object.values(err.errors).flat().join('<br>');
+                apxDialog({ type: 'warning', title: 'Validation Errors', msg: msgs, confirmLabel: 'OK' });
             } else {
-                console.error('Booking error:', err);
-                alert(err.message || 'Could not submit booking. Please try again.');
+                apxDialog({ type: 'danger', title: 'Error', msg: err.message || 'Could not submit booking. Please try again.', confirmLabel: 'OK' });
             }
         });
     }
@@ -1279,6 +1429,24 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         });
     }
 
+    // Fix 5: Sync profile vehicle list with live MY_VEHICLES data
+    function refreshProfileVehicleSummary() {
+        const container = document.getElementById('profileVehicleSummary');
+        if (!container) return;
+        if (!MY_VEHICLES.length) {
+            container.innerHTML = '<div style="color:var(--text-muted);font-style:italic;font-size:0.85rem;padding:8px 0;">No vehicles registered yet.</div>';
+            return;
+        }
+        container.innerHTML = MY_VEHICLES.map(v =>
+            `<div class="profile-read-val">
+                <i class="fas fa-motorcycle"></i>
+                ${v.make}${v.year ? ' (' + v.year + ')' : ''} &mdash;
+                <span style="font-family:monospace;font-size:0.8rem;background:var(--surface-3);padding:1px 7px;border-radius:4px;">${v.plate || 'No plate'}</span>
+                ${v.primary ? '<span style="margin-left:6px;font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--red);"><i class="fas fa-star" style="font-size:0.55rem;"></i> Primary</span>' : ''}
+            </div>`
+        ).join('');
+    }
+
     function renderVehicles() {
         const grid  = document.getElementById('vehiclesGrid');
         const empty = document.getElementById('vehiclesEmpty');
@@ -1304,6 +1472,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                     </div>
                 </div>
             </div>`).join('');
+        refreshProfileVehicleSummary();
     }
 
     function toggleAddVehicleForm() {
@@ -1322,58 +1491,105 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
     const color = document.getElementById('avfColor').value.trim();
 
     if (!make || !year || !plate) {
-        alert('Please fill in Make, Year, and Plate.');
+        apxDialog({ type: 'warning', title: 'Missing Fields', msg: 'Please fill in <strong>Make / Model</strong>, <strong>Year</strong>, and <strong>Plate Number</strong> before saving.', confirmLabel: 'OK' });
         return;
     }
 
-    fetch('{{ route("customer.vehicles.store") }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        },
-        body: JSON.stringify({ brand: make, model: '', plate, year: parseInt(year), color })
-    })
-    .then(r => r.json())
-    .then(data => {
-        console.log('Vehicle save response:', data);
-        if (data.success) {
-            MY_VEHICLES.push(data.vehicle);
-            toggleAddVehicleForm();
-            renderVehicles();
-        } else {
-            console.error('Errors:', data.errors);
-            alert('Failed to save vehicle. Check console.');
+    // Fix 3: Confirmation popup before registering
+    apxDialog({
+        type: 'info', title: 'Confirm Vehicle Registration',
+        msg: `Please confirm the vehicle details:<br><br>
+              <strong>Make / Model:</strong> ${make}<br>
+              <strong>Year:</strong> ${year}<br>
+              <strong>Plate:</strong> ${plate}${color ? '<br><strong>Color:</strong> ' + color : ''}`,
+        confirmLabel: '<i class="fas fa-floppy-disk" style="margin-right:5px;"></i> Register',
+        cancelLabel: 'Go Back',
+        onConfirm: () => {
+            fetch('/customer/vehicles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: JSON.stringify({ brand: make, model: '', plate, year: parseInt(year), color })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    MY_VEHICLES.push(data.vehicle);
+                    toggleAddVehicleForm();
+                    renderVehicles();
+                    apxDialog({ type: 'success', title: 'Vehicle Registered', msg: `<strong>${make}</strong> has been added to your account.`, confirmLabel: 'OK' });
+                } else {
+                    apxDialog({ type: 'danger', title: 'Registration Failed', msg: data.message || 'Failed to save vehicle. Please try again.', confirmLabel: 'OK' });
+                }
+            })
+            .catch(() => apxDialog({ type: 'danger', title: 'Error', msg: 'Could not connect to the server. Please try again.', confirmLabel: 'OK' }));
         }
-    })
-    .catch(err => console.error('Fetch error:', err));
+    });
 }
 
+    // Fix 4: Persist primary vehicle change to the backend
     function setPrimaryVehicle(id) {
-        MY_VEHICLES = MY_VEHICLES.map(v => ({ ...v, primary: v.id === id }));
-        renderVehicles();
+        fetch(`/customer/vehicles/${id}/primary`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                MY_VEHICLES = MY_VEHICLES.map(v => ({ ...v, primary: v.id == id }));
+                renderVehicles();
+                apxDialog({ type: 'success', title: 'Primary Vehicle Set', msg: 'Your primary vehicle has been updated. It will be pre-selected when booking a service.', confirmLabel: 'OK' });
+            } else {
+                apxDialog({ type: 'danger', title: 'Error', msg: data.message || 'Could not set primary vehicle. Please try again.', confirmLabel: 'OK' });
+            }
+        })
+        .catch(() => apxDialog({ type: 'danger', title: 'Error', msg: 'Could not connect to the server. Please try again.', confirmLabel: 'OK' }));
     }
 
     function deleteVehicle(id) {
-    fetch(`/customer/vehicles/${id}`, {
-        method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        // Fix 1: Block removal if the vehicle has an active booking
+        const vehicle = MY_VEHICLES.find(v => v.id === id);
+        if (vehicle) {
+            const activeStatuses = ['upcoming', 'in_progress'];
+            const hasActiveBooking = BOOKINGS.some(b =>
+                activeStatuses.includes(b.status) &&
+                (b.vehicle_id === id || b.vehicle.toLowerCase().includes(vehicle.make.toLowerCase()))
+            );
+            if (hasActiveBooking) {
+                apxDialog({
+                    type: 'warning', title: 'Vehicle Has Active Booking',
+                    msg: 'This vehicle cannot be removed because it has an active or upcoming booking. Please cancel the booking first.',
+                    confirmLabel: 'Got It'
+                });
+                return;
+            }
         }
-    })
-    .then(r => r.json())
-    .then(data => {
-        console.log('Delete response:', data); // add this
-        if (data.success) {
-            const wasPrimary = MY_VEHICLES.find(v => v.id === id)?.primary;
-            MY_VEHICLES = MY_VEHICLES.filter(v => v.id !== id);
-            if (wasPrimary && MY_VEHICLES.length) MY_VEHICLES[0].primary = true;
-            renderVehicles();
-        }
-    })
-    .catch(err => console.error('Delete failed:', err)); // add this
-}
+
+        apxDialog({
+            type: 'danger', title: 'Remove Vehicle',
+            msg: `Are you sure you want to remove <strong>${vehicle ? vehicle.make : 'this vehicle'}</strong>? This action cannot be undone.`,
+            confirmLabel: '<i class="fas fa-trash" style="margin-right:5px;"></i> Remove',
+            cancelLabel: 'Cancel',
+            onConfirm: () => {
+                fetch(`/customer/vehicles/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        const wasPrimary = MY_VEHICLES.find(v => v.id === id)?.primary;
+                        MY_VEHICLES = MY_VEHICLES.filter(v => v.id !== id);
+                        if (wasPrimary && MY_VEHICLES.length) MY_VEHICLES[0].primary = true;
+                        renderVehicles();
+                        apxDialog({ type: 'success', title: 'Vehicle Removed', msg: 'The vehicle has been removed from your account.', confirmLabel: 'OK' });
+                    } else {
+                        apxDialog({ type: 'danger', title: 'Error', msg: data.message || 'Failed to remove vehicle. Please try again.', confirmLabel: 'OK' });
+                    }
+                })
+                .catch(() => apxDialog({ type: 'danger', title: 'Error', msg: 'Could not connect to the server. Please try again.', confirmLabel: 'OK' }));
+            }
+        });
+    }
 
 
     // ── PROFILE ────────────────────────────────────────────────
@@ -1392,15 +1608,37 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         document.getElementById('profileEditBtn').innerHTML = '<i class="fas fa-pen"></i> Edit';
     }
 
+    // Fix 6: Save profile info to backend, then update read view on success
     function saveProfileInfo() {
         const phone   = document.getElementById('pef-phone').value.trim();
         const dob     = document.getElementById('pef-dob').value;
         const address = document.getElementById('pef-address').value.trim();
-        if (phone)   document.getElementById('prv-phone').innerHTML   = '<i class="fas fa-phone"></i> ' + phone;
-        if (dob)     document.getElementById('prv-dob').innerHTML     = '<i class="fas fa-cake-candles"></i> ' + dob;
-        if (address) document.getElementById('prv-address').innerHTML = '<i class="fas fa-location-dot"></i> ' + address;
-        cancelProfileEdit();
-        // TODO: wire to PATCH /customer/profile route when backend is ready
+
+        const saveBtn = document.querySelector('#profileEditView .btn-profile-save');
+        if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
+
+        fetch('/customer/profile', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: JSON.stringify({ phone, dob, address })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-floppy-disk"></i> Save Changes'; }
+            if (data.success) {
+                if (phone)   document.getElementById('prv-phone').innerHTML   = '<i class="fas fa-phone"></i> ' + phone;
+                if (dob)     document.getElementById('prv-dob').innerHTML     = '<i class="fas fa-cake-candles"></i> ' + dob;
+                if (address) document.getElementById('prv-address').innerHTML = '<i class="fas fa-location-dot"></i> ' + address;
+                cancelProfileEdit();
+                apxDialog({ type: 'success', title: 'Profile Updated', msg: 'Your personal information has been saved successfully.', confirmLabel: 'OK' });
+            } else {
+                apxDialog({ type: 'danger', title: 'Save Failed', msg: data.message || 'Failed to save profile. Please try again.', confirmLabel: 'OK' });
+            }
+        })
+        .catch(() => {
+            if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-floppy-disk"></i> Save Changes'; }
+            apxDialog({ type: 'danger', title: 'Error', msg: 'Could not connect to the server. Please try again.', confirmLabel: 'OK' });
+        });
     }
 
     // ── SETTINGS ───────────────────────────────────────────────
@@ -1420,14 +1658,26 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
     }
 
     function confirmDeleteAccount() {
-        if (confirm('Are you sure? This will permanently delete your account and all data. This cannot be undone.')) {
-            alert('Account deletion request submitted. An admin will process this shortly.');
-        }
+        apxDialog({
+            type: 'danger', title: 'Delete Account',
+            msg: 'Are you sure? This will <strong>permanently delete</strong> your account and all associated data. This cannot be undone.',
+            confirmLabel: '<i class="fas fa-trash" style="margin-right:5px;"></i> Delete My Account',
+            cancelLabel: 'Cancel',
+            onConfirm: () => {
+                apxDialog({ type: 'info', title: 'Request Submitted', msg: 'Your account deletion request has been submitted. An admin will process this shortly.', confirmLabel: 'OK' });
+            }
+        });
     }
 
     // INIT
     document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    // Sidebar toggle
+    document.getElementById('sidebarToggle').addEventListener('click', function() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        document.getElementById('mainContent').classList.toggle('expanded');
     });
 
     // Dropdown toggle

@@ -10,6 +10,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Customer\DashboardController as CustomerDashboard;
 use App\Http\Controllers\Admin\MessageTemplateController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\GuestBookingController;
 
 // ── Public routes ──────────────────────────────────────────────────────────
 Route::get('/',            fn() => view('index'));
@@ -90,10 +91,17 @@ Route::middleware(['auth', 'role:staff'])->group(function () {
 
 // ── Customer ───────────────────────────────────────────────────────────────
 Route::middleware(['auth', 'role:customer'])->group(function () {
-    Route::get('/customer/dashboard',            [CustomerDashboard::class, 'index'])         ->name('customer.dashboard');
-    Route::post('/customer/bookings',            [CustomerDashboard::class, 'store'])          ->name('customer.bookings.store');
-    Route::post('/customer/vehicles',            [CustomerDashboard::class, 'storeVehicle'])   ->name('customer.vehicles.store');
-    Route::delete('/customer/vehicles/{id}',     [CustomerDashboard::class, 'destroyVehicle'])->name('customer.vehicles.destroy');
+    Route::get('/customer/dashboard',              [CustomerDashboard::class, 'index'])          ->name('customer.dashboard');
+    Route::post('/customer/bookings',              [CustomerDashboard::class, 'store'])           ->name('customer.bookings.store');
+    Route::patch('/customer/bookings/{id}/cancel', [CustomerDashboard::class, 'cancelBooking'])   ->name('customer.bookings.cancel');
+    Route::post('/customer/vehicles',              [CustomerDashboard::class, 'storeVehicle'])    ->name('customer.vehicles.store');
+    Route::delete('/customer/vehicles/{id}',       [CustomerDashboard::class, 'destroyVehicle'])  ->name('customer.vehicles.destroy');
+    Route::patch('/customer/vehicles/{id}/primary',[CustomerDashboard::class, 'setPrimaryVehicle'])->name('customer.vehicles.setPrimary');
+    Route::patch('/customer/profile',              [CustomerDashboard::class, 'updateProfile'])   ->name('customer.profile.update');
 });
+
+// ── Guest Booking (public — no auth required) ──────────────────────────────
+    Route::post('/booking/guest', [GuestBookingController::class, 'store'])->name('booking.guest');
+
 
 require __DIR__.'/auth.php';

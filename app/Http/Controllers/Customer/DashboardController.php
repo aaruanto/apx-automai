@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\Customer;
 use App\Models\Service;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
@@ -13,7 +14,11 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $user = Auth::user();
+        $user     = Auth::user();
+        $customer = Customer::firstOrCreate(
+            ['user_id' => $user->id],
+            ['phone' => $user->phone ?? null]
+        );
 
         $bookings = Booking::with(['service', 'vehicle', 'employee'])
                         ->where('user_id', $user->id)
@@ -28,7 +33,7 @@ class DashboardController extends Controller
 
         $bookingsJs = $bookings->map(function($b) {
             return [
-                'id' => '#' . $b->reference_number,
+                'id'        => '#' . $b->reference_number,
                 'dbId'      => $b->id,
                 'service'   => $b->service->name ?? 'N/A',
                 'serviceId' => $b->service_id,
@@ -39,26 +44,28 @@ class DashboardController extends Controller
                 'time'      => date('g:i A', strtotime($b->booking_time)),
                 'staff'     => $b->employee->name ?? 'TBA',
                 'vehicle'   => ($b->vehicle->make ?? '') . ' (' . ($b->vehicle->plate_number ?? 'N/A') . ')',
+                'vehicle_id'=> $b->vehicle_id,
                 'amount'    => 'TBA',
                 'status'    => in_array($b->status, ['confirmed', 'pending']) ? 'upcoming' : $b->status,
             ];
         })->values();
 
-        $vehiclesJs = $vehicles->map(function($v, $i) {
+        $vehiclesJs = $vehicles->map(function($v) {
             return [
                 'id'      => $v->id,
                 'make'    => $v->make . ' ' . $v->model,
                 'year'    => $v->year,
                 'plate'   => $v->plate_number,
                 'color'   => $v->color ?? '',
-                'primary' => $i === 0,
+                'primary' => (bool) $v->is_primary,
             ];
         })->values();
 
         return view('dashboard.customer-dashboard', compact(
             'bookings', 'vehicles', 'services',
             'upcoming', 'completed',
-            'bookingsJs', 'vehiclesJs'
+            'bookingsJs', 'vehiclesJs',
+            'customer'
         ));
     }
 
@@ -120,6 +127,57 @@ class DashboardController extends Controller
     {
         $vehicle = Vehicle::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
         $vehicle->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function setPrimaryVehicle($id)
+    {
+        $user = Auth::user();
+
+        // Unset all primaries for this user first
+        Vehicle::where('user_id', $user->id)->update(['is_primary' => false]);
+
+        // Set the chosen one
+        $vehicle = Vehicle::where('id', $id)->where('user_id', $user->id)->firstOrFail();
+        $vehicle->update(['is_primary' => true]);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function cancelBooking($id)
+    {
+        $booking = Booking::where('id', $id)
+                          ->where('user_id', Auth::id())
+                          ->whereIn('status', ['pending', 'confirmed'])
+                          ->firstOrFail();
+
+        $booking->update(['status' => 'cancelled']);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $body = json_decode($request->getContent(), true);
+        $user = Auth::user();
+
+        // Save phone to users table
+        if (!empty($body['phone'])) {
+            $user->update(['phone' => $body['phone']]);
+        }
+
+        // Save dob and address to customers table
+        $customer = Customer::firstOrCreate(
+            ['user_id' => $user->id],
+            ['phone'   => $user->phone ?? null]
+        );
+
+        $customer->update([
+            'phone'   => $body['phone']   ?? $customer->phone,
+            'dob'     => $body['dob']     ?? $customer->dob,
+            'address' => $body['address'] ?? $customer->address,
+        ]);
 
         return response()->json(['success' => true]);
     }
