@@ -8,4 +8,5 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('reminders:send')->dailyAt('08:00');
+// Run every minute so all reminder windows (7d, 3d, 1d, 2h) are checked
+Schedule::command('reminders:send')->everyMinute();

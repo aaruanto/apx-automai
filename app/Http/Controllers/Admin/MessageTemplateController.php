@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 
 class MessageTemplateController extends Controller
 {
-    private string $templatePath = 'templates/reminder.json';
+    private string $templatePath = 'private/templates/reminder.json';
 
     // ── Load saved template or defaults ────────────────────────────────────
     private function loadTemplate(): array

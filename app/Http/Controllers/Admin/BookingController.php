@@ -7,6 +7,8 @@ use App\Models\Booking;
 use App\Models\Service;
 use App\Models\Employee;
 use Illuminate\Http\Request;
+use App\Mail\BookingConfirmed;
+use Illuminate\Support\Facades\Mail;
 
 class BookingController extends Controller
 {
@@ -60,6 +62,7 @@ class BookingController extends Controller
         $vehicle = $user->vehicles()->firstOrCreate(
             ['plate_number' => strtoupper($request->plate)],
             [
+                'make'  => $request->car_model ?? 'Unknown',
                 'model' => $request->car_model ?? '',
                 'year'  => null,
             ]
@@ -74,7 +77,7 @@ class BookingController extends Controller
             'booking_time'     => $request->booking_time,
             'status'           => 'pending',
             'notes'            => $request->notes,
-           'reference_number' => 'BK-' . str_pad((Booking::withTrashed()->max('id') ?? 0) + 1, 4, '0', STR_PAD_LEFT),
+            'reference_number' => 'BK-' . str_pad((Booking::withTrashed()->max('id') ?? 0) + 1, 4, '0', STR_PAD_LEFT),
         ]);
 
         return redirect()->route('admin.bookings.index')
@@ -92,7 +95,8 @@ class BookingController extends Controller
 
     public function update(Request $request, $id)
     {
-        $booking = Booking::findOrFail($id);
+        $booking   = Booking::findOrFail($id);
+        $oldStatus = $booking->status;
 
         $request->validate([
             'service_id'   => 'required|exists:services,id',
@@ -115,6 +119,22 @@ class BookingController extends Controller
                 'plate_number' => strtoupper($request->plate),
                 'model'        => $request->car_model ?? $booking->vehicle->model,
             ]);
+        }
+
+        // Send confirmation email when status changes to 'confirmed'
+        if ($oldStatus !== 'confirmed' && $request->status === 'confirmed') {
+            $booking->load(['user', 'service', 'vehicle']);
+            if (
+                $booking->user &&
+                $booking->user->email &&
+                !str_ends_with($booking->user->email, '@apxautomai.local')
+            ) {
+                try {
+                    Mail::to($booking->user->email)->send(new BookingConfirmed($booking));
+                } catch (\Exception $e) {
+                    \Log::error('Booking confirmation email failed: ' . $e->getMessage());
+                }
+            }
         }
 
         return redirect()->route('admin.bookings.index')

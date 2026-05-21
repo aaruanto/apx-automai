@@ -82,7 +82,7 @@ class SendBookingReminders extends Command
                 $targetDate = Carbon::today()->addDays($days)->toDateString();
                 $bookings = Booking::with(['user', 'service', 'vehicle', 'user.customer'])
                     ->whereDate('booking_date', $targetDate)
-                    ->whereIn('status', ['confirmed', 'pending'])
+                    ->where('status', 'confirmed')
                     ->get();
             } else {
                 // Same-day, time-based check (2h window)
@@ -91,7 +91,7 @@ class SendBookingReminders extends Command
                     ->whereDate('booking_date', Carbon::today())
                     ->whereTime('booking_time', '>=', $targetTime->format('H:i:00'))
                     ->whereTime('booking_time', '<=', $targetTime->addMinutes(15)->format('H:i:00'))
-                    ->whereIn('status', ['confirmed', 'pending'])
+                    ->where('status', 'confirmed')
                     ->get();
             }
 

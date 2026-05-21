@@ -804,15 +804,7 @@
                     <!-- Preferences -->
                     <div class="settings-section">
                         <div class="settings-section-title"><i class="fas fa-sliders"></i> Preferences</div>
-                        <div class="settings-field">
-                            <label>Default Booking Vehicle</label>
-                            <select id="stg-default-vehicle">
-                                <option value="">— Always ask me —</option>
-                                @foreach($vehicles as $v)
-                                    <option value="{{ $v->id }}">{{ $v->brand }} ({{ $v->year }}) — {{ $v->plate }}</option>
-                                @endforeach
-                            </select>
-                        </div>
+                        
                         <div class="settings-field">
                             <label>Preferred Contact Time</label>
                             <select id="stg-contact-time">
