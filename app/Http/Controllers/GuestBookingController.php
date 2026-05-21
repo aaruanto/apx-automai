@@ -37,14 +37,15 @@ class GuestBookingController extends Controller
             ], 422);
         }
 
-        // ── Find or create a guest/customer user account ──────────────────
+        // ── Find or create a guest user account ───────────────────────────
         $user = User::firstOrCreate(
             ['email' => $request->guest_email],
             [
                 'name'      => $request->guest_name,
                 'phone'     => $request->guest_phone ?? null,
                 'role'      => 'customer',
-                'password'  => bcrypt(Str::random(16)),
+                'password'  => null,
+                'is_guest'  => true,
                 'is_active' => true,
             ]
         );
