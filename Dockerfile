@@ -13,10 +13,11 @@ COPY resources ./resources
 RUN npm run build          # outputs to public/build
 
 # ─── Stage 2: PHP runtime ─────────────────────────────────────────────────────
+# 8.4 because composer.lock pins Symfony 8.x, which requires php >= 8.4.
 FROM php:8.4-apache
 
-# Render does not provide a PHP runtime, so the whole environment is built here.
-# libpq-dev is what pdo_pgsql compiles against; the rest are Laravel's requirements.
+# Render provides no PHP runtime, so the environment is built here.
+# libpq-dev is what pdo_pgsql compiles against; the rest are Laravel's needs.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq-dev libzip-dev libonig-dev zip unzip git \
     && docker-php-ext-install pdo pdo_pgsql mbstring bcmath zip opcache \
@@ -27,6 +28,17 @@ ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
     && sed -ri 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf \
     && a2enmod rewrite
+
+# Laravel routes through public/.htaccess, which Apache ignores unless overrides
+# are allowed. Without this every route 404s while static files still serve fine.
+RUN { \
+      echo '<Directory /var/www/html/public>'; \
+      echo '    Options -Indexes +FollowSymLinks'; \
+      echo '    AllowOverride All'; \
+      echo '    Require all granted'; \
+      echo '</Directory>'; \
+    } > /etc/apache2/conf-available/laravel.conf \
+    && a2enconf laravel
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
@@ -39,7 +51,10 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 COPY . .
 COPY --from=assets /app/public/build ./public/build
 
-RUN composer dump-autoload --optimize --no-scripts \
+# Laravel needs these to exist and be writable; .dockerignore strips their
+# contents, so recreate them rather than relying on the build context.
+RUN mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache \
+    && composer dump-autoload --optimize --no-scripts \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R ug+rw storage bootstrap/cache
 
