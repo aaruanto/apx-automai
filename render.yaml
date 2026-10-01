@@ -1,22 +1,21 @@
 # Render blueprint for APX AutoMai.
-# Creates the PHP web service and a managed Postgres database, and wires the
-# connection details into the app automatically.
+# Render has no native PHP runtime, so the app ships as a Docker image
+# (see Dockerfile). The managed Postgres connection details are injected below.
 services:
   - type: web
     name: apx-automai
-    runtime: php
+    runtime: docker
+    dockerfilePath: ./Dockerfile
     plan: free
-    buildCommand: ./render-build.sh
-    startCommand: php -S 0.0.0.0:$PORT -t public
     envVars:
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
         value: false
       - key: APP_KEY
-        generateValue: true          # Render generates it once; keep it stable after
+        generateValue: true
       - key: LOG_CHANNEL
-        value: stderr                # Render captures stdout/stderr as logs
+        value: stderr
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_HOST

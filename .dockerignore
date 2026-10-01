@@ -1,0 +1,21 @@
+# Secrets and local data must never end up in the image.
+.env
+.env.*
+database/*.sqlite
+database/*.sqlite-journal
+
+# Rebuilt inside the image.
+node_modules
+vendor
+public/build
+public/hot
+
+# Not needed at runtime.
+.git
+.github
+tests
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+*.md
