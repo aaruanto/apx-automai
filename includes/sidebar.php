@@ -52,7 +52,6 @@ $activePage    = $activePage    ?? '';
         <div class="sub-nav <?= $activeSection==='customers' ? 'open' : '' ?>" id="sub-customers">
             <a href="<?= BASE_URL ?>/customers/index.php">All Customers</a>
             <a href="<?= BASE_URL ?>/customers/new.php">Add Customer</a>
-            <a href="<?= BASE_URL ?>/customers/loyalty.php">Loyalty Members</a>
         </div>
 
         <hr class="sidebar-divider" />

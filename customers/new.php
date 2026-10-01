@@ -17,7 +17,6 @@ $customer = $isEdit ? [
     'plate'   => 'ABC 1234',
     'model'   => 'Toyota Vios 2021',
     'color'   => 'White',
-    'loyalty' => 'gold',
 ] : [];
 ?>
 <!DOCTYPE html>
@@ -54,9 +53,9 @@ $customer = $isEdit ? [
     // ── TODO: Handle POST ────────────────────────────────────────────────────
     // if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     //     if ($isEdit) {
-    //         $stmt = $conn->prepare("UPDATE customers SET name=?,phone=?,email=?,address=?,plate=?,model=?,color=?,loyalty=? WHERE id=?");
+    //         $stmt = $conn->prepare("UPDATE customers SET name=?,phone=?,email=?,address=?,plate=?,model=?,color=? WHERE id=?");
     //     } else {
-    //         $stmt = $conn->prepare("INSERT INTO customers (name,phone,email,address,plate,model,color,loyalty) VALUES (?,?,?,?,?,?,?,?)");
+    //         $stmt = $conn->prepare("INSERT INTO customers (name,phone,email,address,plate,model,color) VALUES (?,?,?,?,?,?,?)");
     //     }
     //     $stmt->execute([...]);
     //     header('Location: index.php'); exit;
@@ -151,38 +150,6 @@ $customer = $isEdit ? [
             <!-- RIGHT -->
             <div style="display:flex;flex-direction:column;gap:20px;">
 
-                <!-- LOYALTY -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-header-title"><i class="fas fa-star"></i> Loyalty Tier</div>
-                    </div>
-                    <div class="card-body" style="padding:16px;">
-                        <?php
-                        $tiers = [
-                            ['value'=>'bronze','label'=>'Bronze','desc'=>'1–4 bookings', 'color'=>'#CD7C4F','bg'=>'rgba(205,124,79,0.12)','icon'=>'fa-circle'],
-                            ['value'=>'silver','label'=>'Silver','desc'=>'5–9 bookings', 'color'=>'#94A3B8','bg'=>'rgba(148,163,184,0.12)','icon'=>'fa-star-half-stroke'],
-                            ['value'=>'gold',  'label'=>'Gold',  'desc'=>'10+ bookings', 'color'=>'#F59E0B','bg'=>'rgba(245,158,11,0.12)','icon'=>'fa-star'],
-                        ];
-                        foreach($tiers as $tier):
-                            $checked = ($customer['loyalty'] ?? 'bronze') === $tier['value'];
-                        ?>
-                        <label style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:7px;border:1px solid <?= $checked ? $tier['color'] : 'var(--border)' ?>;background:<?= $checked ? $tier['bg'] : 'transparent' ?>;cursor:pointer;margin-bottom:8px;transition:all .2s;" class="tier-label">
-                            <input type="radio" name="loyalty" value="<?= $tier['value'] ?>" <?= $checked?'checked':'' ?> style="display:none;" onchange="updateTier(this)" />
-                            <div style="width:32px;height:32px;border-radius:50%;background:<?= $tier['bg'] ?>;display:flex;align-items:center;justify-content:center;color:<?= $tier['color'] ?>;font-size:.8rem;flex-shrink:0;">
-                                <i class="fas <?= $tier['icon'] ?>"></i>
-                            </div>
-                            <div style="flex:1;">
-                                <div style="font-weight:600;font-size:.88rem;color:<?= $checked ? $tier['color'] : 'var(--text)' ?>;"><?= $tier['label'] ?></div>
-                                <div style="font-size:.74rem;color:var(--text-muted);"><?= $tier['desc'] ?></div>
-                            </div>
-                            <?php if($checked): ?>
-                            <i class="fas fa-circle-check" style="color:<?= $tier['color'] ?>;font-size:.9rem;"></i>
-                            <?php endif; ?>
-                        </label>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-
                 <!-- SUBMIT -->
                 <div class="card" style="background:var(--surface-2);">
                     <div class="card-body">
@@ -254,18 +221,5 @@ $customer = $isEdit ? [
 
 <?php include '../includes/footer.php'; ?>
 
-<script>
-function updateTier(radio) {
-    document.querySelectorAll('.tier-label').forEach(label => {
-        label.style.borderColor = 'var(--border)';
-        label.style.background  = 'transparent';
-    });
-    const colors = { bronze:'#CD7C4F', silver:'#94A3B8', gold:'#F59E0B' };
-    const bgs    = { bronze:'rgba(205,124,79,0.12)', silver:'rgba(148,163,184,0.12)', gold:'rgba(245,158,11,0.12)' };
-    const parent = radio.closest('.tier-label');
-    parent.style.borderColor = colors[radio.value];
-    parent.style.background  = bgs[radio.value];
-}
-</script>
 </body>
 </html>

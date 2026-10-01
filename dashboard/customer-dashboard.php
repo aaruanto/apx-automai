@@ -611,68 +611,6 @@
         }
         .booking-meta i { color: var(--red); margin-right: 3px; }
 
-        /* ── LOYALTY CARD ── */
-        .loyalty-card {
-            background: linear-gradient(135deg, #1a0a0b 0%, #2a0e10 50%, #1a0a0b 100%);
-            border: 1px solid rgba(232,25,44,0.3);
-            border-radius: 10px;
-            padding: 20px;
-            position: relative;
-            overflow: hidden;
-            margin-bottom: 20px;
-        }
-        .loyalty-card::before {
-            content: 'APX';
-            position: absolute;
-            right: -10px; top: -10px;
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 5rem;
-            font-weight: 800;
-            color: rgba(232,25,44,0.06);
-            line-height: 1;
-            pointer-events: none;
-        }
-        .loyalty-label {
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: var(--red);
-            margin-bottom: 4px;
-        }
-        .loyalty-points {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 2.4rem;
-            font-weight: 800;
-            color: var(--text);
-            line-height: 1;
-            margin-bottom: 2px;
-        }
-        .loyalty-sub {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            margin-bottom: 16px;
-        }
-        .loyalty-bar-wrap {
-            background: rgba(255,255,255,0.06);
-            border-radius: 4px;
-            height: 6px;
-            margin-bottom: 6px;
-            overflow: hidden;
-        }
-        .loyalty-bar-fill {
-            height: 100%;
-            background: var(--red);
-            border-radius: 4px;
-            width: 62%;
-            transition: width 0.6s ease;
-        }
-        .loyalty-bar-label {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.72rem;
-            color: var(--text-muted);
-        }
 
         /* ── QUICK ACTIONS ── */
         .quick-actions {
@@ -1429,12 +1367,7 @@
             </a>
 
             <hr class="sidebar-divider" />
-            <div class="section-label">Rewards</div>
-
-            <a class="nav-link" href="#">
-                <span class="nav-icon"><i class="fas fa-star"></i></span>
-                <span class="nav-label">Loyalty Points</span>
-            </a>
+            <div class="section-label">Offers</div>
 
             <a class="nav-link" href="#">
                 <span class="nav-icon"><i class="fas fa-tag"></i></span>
@@ -1502,9 +1435,20 @@
             <div class="tab-panel active" id="panel-dashboard">
 
                 <!-- WELCOME BANNER -->
+                <?php
+                    // Legacy static page (pre-Laravel rewrite, own config.php) — no
+                    // access to the Laravel app's greeting component, so the same
+                    // "Happy {Weekday}, {name}" rule is applied inline here.
+                    $legacyGreetName = 'Juan';
+                    $legacyWeekday   = date('l');
+                ?>
                 <div class="welcome-banner">
                     <div class="welcome-text">
-                        <h2>Welcome back, <span>Juan</span>!</h2>
+                        <?php if (trim($legacyGreetName) !== ''): ?>
+                        <h2>Happy <?= htmlspecialchars($legacyWeekday) ?>, <span><?= htmlspecialchars($legacyGreetName) ?></span>!</h2>
+                        <?php else: ?>
+                        <h2>Greetings!</h2>
+                        <?php endif; ?>
                         <p>You have 2 upcoming bookings. Your car is in good hands.</p>
                     </div>
                     <a href="#" class="btn-book" onclick="switchSection(event,'bookings'); filterBookings('all')">
@@ -1537,12 +1481,12 @@
                     </div>
                     <div class="stat-card warning">
                         <div class="stat-card-header">
-                            <div class="stat-label">Loyalty Points</div>
-                            <div class="stat-icon"><i class="fas fa-star"></i></div>
+                            <div class="stat-label">Total Bookings</div>
+                            <div class="stat-icon"><i class="fas fa-list-check"></i></div>
                         </div>
-                        <div class="stat-value">620</div>
+                        <div class="stat-value">14</div>
                         <div class="stat-footer">
-                            <a href="#">Redeem Points <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
+                            <a href="#" onclick="switchSection(event,'bookings'); filterBookings('all')">View All <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
                         </div>
                     </div>
                     <div class="stat-card info">
@@ -1601,18 +1545,6 @@
 
                     <!-- SIDEBAR COLUMN -->
                     <div>
-                        <div class="loyalty-card">
-                            <div class="loyalty-label">Loyalty Rewards</div>
-                            <div class="loyalty-points">620 pts</div>
-                            <div class="loyalty-sub">380 pts away from Silver tier</div>
-                            <div class="loyalty-bar-wrap">
-                                <div class="loyalty-bar-fill"></div>
-                            </div>
-                            <div class="loyalty-bar-label">
-                                <span>Bronze</span>
-                                <span>Silver (1,000 pts)</span>
-                            </div>
-                        </div>
                         <div class="card">
                             <div class="card-header">
                                 <div class="card-header-title"><i class="fas fa-bolt"></i> Quick Actions</div>
