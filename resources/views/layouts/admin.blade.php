@@ -5,6 +5,7 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
     <title>@yield('title', 'Dashboard') — APX AutoMai</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
@@ -1137,6 +1138,7 @@
     <script src="{{ asset('assets/js/form-validate.js') }}"></script>
     <script src="{{ asset('assets/js/plate-mask.js') }}"></script>
     <script src="{{ asset('assets/js/alert-modal.js') }}"></script>
+    <script src="{{ asset('assets/js/booking-actions.js') }}"></script>
     <script src="{{ asset('assets/js/password-toggle.js') }}"></script>
     <script>
         // ── Sidebar toggle ──

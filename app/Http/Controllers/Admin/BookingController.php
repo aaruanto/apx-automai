@@ -11,6 +11,7 @@ use App\Services\BookingAvailability;
 use App\Exceptions\SlotUnavailableException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Carbon\Carbon;
 
 class BookingController extends Controller
 {
@@ -228,17 +229,69 @@ class BookingController extends Controller
         return response()->json(['success' => true]);
     }
 
-    // ── Mark a booking "Arrived" — in_progress protects it from the
-    //    no-show auto-cancel job. ──────────────────────────────────────────
+    private const STATUS_LABELS = [
+        'pending'     => 'Pending',
+        'confirmed'   => 'Confirmed',
+        'in_progress' => 'already in progress',
+        'completed'   => 'already completed',
+        'cancelled'   => 'cancelled',
+    ];
+
+    /**
+     * Mark a booking "Arrived" and start the service — in_progress protects it
+     * from the no-show auto-cancel job.
+     *
+     * This previously gated status with whereIn(...)->findOrFail(), which did
+     * block invalid transitions but surfaced them as a 404 with an HTML body.
+     * The caller's r.json() then threw on that HTML and the rejection was only
+     * console.error'd, so staff saw nothing at all and the button looked dead.
+     * Refused transitions now return 422 with a message the UI can display.
+     */
     public function arrive($id)
     {
-        $booking = Booking::whereIn('status', ['pending', 'confirmed'])->findOrFail($id);
+        $booking = Booking::findOrFail($id);
 
-        $booking->update([
-            'status'     => 'in_progress',
-            'arrived_at' => now(),
+        if (! in_array($booking->status, Booking::STARTABLE_STATUSES, true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This booking is '.(self::STATUS_LABELS[$booking->status] ?? $booking->status)
+                             .'. Only pending or confirmed bookings can be started.',
+            ], 422);
+        }
+
+        // booking_date has no date cast on the model, so it arrives as a string.
+        $date = Carbon::parse($booking->booking_date)->startOfDay();
+
+        if ($date->isAfter(Carbon::today())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This booking is scheduled for '.$date->format('M j, Y')
+                             .'. It can only be started on the day of the appointment.',
+            ], 422);
+        }
+
+        // Re-check the status inside the write so two quick clicks (or two staff
+        // on the same booking) can't both pass the guard above and double-stamp
+        // arrived_at. 0 rows means someone else got there first.
+        $started = Booking::where('id', $booking->id)
+            ->whereIn('status', Booking::STARTABLE_STATUSES)
+            ->update([
+                'status'     => 'in_progress',
+                'arrived_at' => now(),
+            ]);
+
+        if ($started === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This booking was just updated by someone else. Refresh to see its current status.',
+            ], 409);
+        }
+
+        return response()->json([
+            'success'      => true,
+            'status'       => 'in_progress',
+            'status_label' => 'In Progress',
+            'message'      => 'Service started for '.$booking->reference_number.'.',
         ]);
-
-        return response()->json(['success' => true]);
     }
 }

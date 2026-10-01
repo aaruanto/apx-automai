@@ -15,15 +15,25 @@
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
             <select class="filter-select" id="reportPeriod" onchange="updatePeriod(this.value)">
-                <option value="7">Last 7 Days</option>
-                <option value="30" selected>Last 30 Days</option>
-                <option value="90">Last 3 Months</option>
-                <option value="365">This Year</option>
+                @foreach ([7 => 'Last 7 Days', 30 => 'Last 30 Days', 90 => 'Last 3 Months', 365 => 'This Year'] as $value => $label)
+                <option value="{{ $value }}" @selected(($period ?? 30) == $value)>{{ $label }}</option>
+                @endforeach
             </select>
             <button class="btn btn-ghost"><i class="fas fa-file-export"></i> Export PDF</button>
         </div>
     </div>
 
+    @isset($reportError)
+    <div style="display:flex;gap:12px;align-items:flex-start;padding:14px 16px;margin-bottom:20px;
+                border:1px solid var(--red);border-left-width:4px;border-radius:8px;
+                background:var(--red-glow);">
+        <i class="fas fa-circle-exclamation" style="color:var(--red);margin-top:2px;"></i>
+        <div>
+            <strong style="color:var(--red);display:block;margin-bottom:2px;">Report unavailable</strong>
+            <span style="color:var(--text-muted);font-size:.85rem;">{{ $reportError }}</span>
+        </div>
+    </div>
+    @endisset
     <!-- KPI SUMMARY ROW -->
     <div class="stat-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px;">
         @php
@@ -255,8 +265,9 @@ new Chart(document.getElementById('revenueByServiceChart'), {
 });
 
 function updatePeriod(days) {
-    // In production, reload page with query param: window.location.href = '?period=' + days;
-    console.log('Period changed to', days, 'days');
+    // The controller already read ?period= but nothing ever sent it, so the
+    // selector silently did nothing. Values are validated server-side.
+    window.location.href = '?period=' + encodeURIComponent(days);
 }
 </script>
 @endpush

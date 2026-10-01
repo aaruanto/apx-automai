@@ -93,7 +93,7 @@
                                 data-notes="{{ $booking->notes ?? '—' }}"
                             ><i class="fas fa-eye"></i></button>
                             <a href="{{ route('admin.bookings.edit', ['id' => $booking->id]) }}" class="btn btn-ghost btn-sm btn-icon" title="Edit"><i class="fas fa-pen"></i></a>
-                            @if(in_array($booking->status, ['pending', 'confirmed']))
+                            @if($booking->canStart())
                             <button class="btn btn-ghost btn-sm btn-icon" title="Arrived / Start Service" onclick="markArrived({{ $booking->id }}, this)"><i class="fas fa-person-walking-arrow-right"></i></button>
                             @endif
                         </div>
@@ -246,19 +246,19 @@ function openViewModal(btn) {
 }
 
 function markArrived(id, btn) {
-    if (!confirm('Mark this customer as arrived and start the service?')) return;
-    fetch(`/admin/bookings/${id}/arrive`, {
-        method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    // Was location.reload() on success, which threw away scroll position and
+    // hid the confirmation. Updates the card in place instead.
+    ApxBookingActions.markArrived(id, btn, data => {
+        const actions = btn.parentElement;
+        const badge   = actions.parentElement.querySelector('.badge');
+        if (badge) {
+            badge.className   = 'badge badge-inprogress';
+            badge.textContent = data.status_label;
         }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) location.reload();
-    })
-    .catch(err => console.error('Mark arrived failed:', err));
+        const view = actions.parentElement.querySelector('[data-status]');
+        if (view) view.dataset.status = data.status;
+        btn.remove();
+    });
 }
 </script>
 @endpush

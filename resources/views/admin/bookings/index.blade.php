@@ -126,7 +126,7 @@
                                 data-notes="{{ $b->notes ?? '—' }}"
                             ><i class="fas fa-eye"></i></button>
                             <a href="{{ route('admin.bookings.edit', ['id' => $b->id]) }}" class="btn btn-ghost btn-sm btn-icon" title="Edit"><i class="fas fa-pen"></i></a>
-                            @if(in_array($b->status, ['pending', 'confirmed']))
+                            @if($b->canStart())
                             <button class="btn btn-ghost btn-sm btn-icon" title="Arrived / Start Service" onclick="markArrived({{ $b->id }}, this)"><i class="fas fa-person-walking-arrow-right"></i></button>
                             @endif
                             <button class="btn btn-danger btn-sm btn-icon" title="Cancel" onclick="cancelBooking({{ $b->id }}, this)"><i class="fas fa-ban"></i></button>
@@ -271,26 +271,17 @@ function cancelBooking(id, btn) {
     .catch(err => console.error('Cancel failed:', err));
 }
 function markArrived(id, btn) {
-    if (!confirm('Mark this customer as arrived and start the service?')) return;
-    fetch(`/admin/bookings/${id}/arrive`, {
-        method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            const row = btn.closest('tr');
-            row.dataset.status = 'in_progress';
-            row.querySelector('.badge').className = 'badge badge-inprogress';
-            row.querySelector('.badge').textContent = 'In Progress';
-            btn.remove();
-            applyFilters();
-        }
-    })
-    .catch(err => console.error('Mark arrived failed:', err));
+    // Confirmation, error reporting and the double-click guard live in
+    // assets/js/booking-actions.js; this only re-renders the row on success.
+    ApxBookingActions.markArrived(id, btn, data => {
+        const row   = btn.closest('tr');
+        const badge = row.querySelector('.badge');
+        row.dataset.status = data.status;
+        badge.className    = 'badge badge-inprogress';
+        badge.textContent  = data.status_label;
+        btn.remove();
+        applyFilters();
+    });
 }
 ['searchInput','filterStatus','filterService','filterDateFrom','filterDateTo']
     .forEach(id => document.getElementById(id).addEventListener('input', applyFilters));
