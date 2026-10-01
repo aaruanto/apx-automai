@@ -6,6 +6,9 @@ set -o errexit
 sed -ri "s/^Listen 80$/Listen ${PORT}/" /etc/apache2/ports.conf
 sed -ri "s/<VirtualHost \*:80>/<VirtualHost *:${PORT}>/" /etc/apache2/sites-available/*.conf
 
+# Skipped during the build (no APP_KEY yet), so build the package manifest here.
+php artisan package:discover --ansi
+
 # Migrations run at start rather than build time: the database isn't reachable
 # during the image build. migrate --force is idempotent, so repeated starts are safe.
 php artisan migrate --force

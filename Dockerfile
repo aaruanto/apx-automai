@@ -2,10 +2,14 @@
 FROM node:20-alpine AS assets
 
 WORKDIR /app
-COPY package.json package-lock.json vite.config.js ./
+COPY package.json package-lock.json ./
 RUN npm ci
 
+# tailwind/postcss configs are required: resources/css/app.css is built from
+# @tailwind directives, and Tailwind's content globs point at resources/views.
+COPY vite.config.js tailwind.config.js postcss.config.js ./
 COPY resources ./resources
+
 RUN npm run build          # outputs to public/build
 
 # ─── Stage 2: PHP runtime ─────────────────────────────────────────────────────
@@ -35,7 +39,7 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 COPY . .
 COPY --from=assets /app/public/build ./public/build
 
-RUN composer dump-autoload --optimize \
+RUN composer dump-autoload --optimize --no-scripts \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R ug+rw storage bootstrap/cache
 
