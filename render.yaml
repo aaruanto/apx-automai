@@ -1,0 +1,41 @@
+# Render blueprint for APX AutoMai.
+# Creates the PHP web service and a managed Postgres database, and wires the
+# connection details into the app automatically.
+services:
+  - type: web
+    name: apx-automai
+    runtime: php
+    plan: free
+    buildCommand: ./render-build.sh
+    startCommand: php -S 0.0.0.0:$PORT -t public
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_KEY
+        generateValue: true          # Render generates it once; keep it stable after
+      - key: LOG_CHANNEL
+        value: stderr                # Render captures stdout/stderr as logs
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase: { name: apx-automai-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: apx-automai-db, property: port }
+      - key: DB_DATABASE
+        fromDatabase: { name: apx-automai-db, property: database }
+      - key: DB_USERNAME
+        fromDatabase: { name: apx-automai-db, property: user }
+      - key: DB_PASSWORD
+        fromDatabase: { name: apx-automai-db, property: password }
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+
+databases:
+  - name: apx-automai-db
+    plan: free

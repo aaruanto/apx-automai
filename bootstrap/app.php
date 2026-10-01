@@ -11,6 +11,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Behind Render's load balancer the app sees plain HTTP, so without this
+        // Laravel builds http:// asset and route URLs on an https:// site.
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
        'role' => \App\Http\Middleware\RoleMiddleware::class,
        'maintenance' => \App\Http\Middleware\MaintenanceMode::class,
