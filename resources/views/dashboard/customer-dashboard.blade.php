@@ -7,7 +7,9 @@
     <title>My Dashboard — APX AutoMai</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+    <link href="{{ asset('assets/css/design-tokens.css') }}" rel="stylesheet" />
     <link href="{{ asset('assets/css/customer-dashboard.css') }}" rel="stylesheet" />
+    <link href="{{ asset('assets/css/availability-picker.css') }}" rel="stylesheet" />
     <style>
         .theme-toggle { background: none; border: none; cursor: pointer; padding: 0; line-height: 1; }
         *, *::before, *::after { transition: background-color 0.25s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease; }
@@ -129,27 +131,6 @@
         .vehicles-empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
         .vehicles-empty-state i { font-size: 3rem; opacity: 0.15; display: block; margin-bottom: 16px; }
         .vehicles-empty-state p { font-size: 0.88rem; margin-bottom: 20px; }
-        .rewards-top-row { display: grid; grid-template-columns: 280px 1fr; gap: 20px; margin-bottom: 32px; align-items: start; }
-        @media (max-width: 820px) { .rewards-top-row { grid-template-columns: 1fr; } }
-        .rw-points-card { background: linear-gradient(135deg, #1a0a0b 0%, #2a0e10 60%, #1a0a0b 100%); border: 1px solid rgba(232,25,44,0.3); border-radius: 12px; padding: 24px; position: relative; overflow: hidden; }
-        .rw-points-card::before { content: 'APX'; position: absolute; right: -8px; top: -8px; font-family: 'Barlow Condensed', sans-serif; font-size: 5.5rem; font-weight: 800; color: rgba(232,25,44,0.06); line-height: 1; pointer-events: none; }
-        .rw-points-eyebrow { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--red); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
-        .rw-points-value { font-family: 'Barlow Condensed', sans-serif; font-size: 3rem; font-weight: 800; color: var(--text); line-height: 1; margin-bottom: 4px; }
-        .rw-points-value span { font-size: 1.2rem; color: var(--text-muted); font-weight: 600; }
-        .rw-points-sub { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 18px; }
-        .rw-tier-bar-wrap { background: rgba(255,255,255,0.07); border-radius: 4px; height: 7px; margin-bottom: 8px; overflow: hidden; }
-        .rw-tier-bar-fill { height: 100%; background: linear-gradient(90deg, var(--red-dark), var(--red)); border-radius: 4px; transition: width 0.6s ease; }
-        .rw-tier-bar-labels { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); gap: 4px; }
-        .rw-tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-        @media (max-width: 600px) { .rw-tiers { grid-template-columns: 1fr; } }
-        .rw-tier-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 16px 14px; display: flex; flex-direction: column; gap: 4px; position: relative; transition: border-color 0.2s, transform 0.15s; }
-        .rw-tier-card:hover { transform: translateY(-2px); border-color: rgba(232,25,44,0.3); }
-        .rw-tier-card.rw-tier-active { border-color: rgba(232,25,44,0.45); background: var(--surface-2); }
-        .rw-tier-icon { font-size: 1.4rem; margin-bottom: 4px; }
-        .rw-tier-name { font-family: 'Barlow Condensed', sans-serif; font-size: 1rem; font-weight: 800; letter-spacing: 0.04em; color: var(--text); }
-        .rw-tier-range { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 2px; }
-        .rw-tier-perk { font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; flex: 1; }
-        .rw-tier-badge { display: inline-block; margin-top: 10px; background: var(--red); color: #fff; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 9px; border-radius: 20px; align-self: flex-start; }
         .rw-section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
         .rw-section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 0.95rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text); display: flex; align-items: center; gap: 8px; }
         .rw-section-title i { color: var(--red); }
@@ -191,10 +172,6 @@
         <span class="brand-auto">AutoMai</span>
         <span class="brand-badge">CUSTOMER</span>
     </a>
-    <div class="topnav-search">
-        <i class="fas fa-search search-icon"></i>
-        <input type="text" placeholder="Search your bookings..." />
-    </div>
     <div class="topnav-actions">
         <button id="themeToggle" class="icon-btn theme-toggle" title="Switch to light mode" aria-label="Toggle theme">
             <i class="fas fa-moon" id="themeIcon"></i>
@@ -245,10 +222,10 @@
                 <span class="nav-label">My Vehicles</span>
             </a>
             <hr class="sidebar-divider" />
-            <div class="section-label">Rewards</div>
-            <a class="nav-link" id="nav-rewards" href="#" onclick="switchSection(event,'rewards')">
+            <div class="section-label">Offers</div>
+            <a class="nav-link" id="nav-promos" href="#" onclick="switchSection(event,'promos')">
                 <span class="nav-icon"><i class="fas fa-gift"></i></span>
-                <span class="nav-label">Rewards</span>
+                <span class="nav-label">Promos &amp; Offers</span>
             </a>
             <hr class="sidebar-divider" />
             <div class="section-label">Account</div>
@@ -298,8 +275,8 @@
                     <i class="fas fa-car"></i> My Vehicles
                     <span class="tab-count" id="tabCountVehicles">{{ $vehicles->count() }}</span>
                 </button>
-                <button class="section-tab" id="tab-rewards" onclick="switchSection(event,'rewards')">
-                    <i class="fas fa-gift"></i> Rewards
+                <button class="section-tab" id="tab-promos" onclick="switchSection(event,'promos')">
+                    <i class="fas fa-gift"></i> Promos &amp; Offers
                 </button>
             </div>
 
@@ -309,7 +286,7 @@
                 <!-- WELCOME BANNER -->
                 <div class="welcome-banner">
                     <div class="welcome-text">
-                        <h2>Welcome back, <span>{{ Auth::user()->name }}</span>!</h2>
+                        <x-greeting :name="Auth::user()->name" />
                         <p>You have {{ $upcoming }} upcoming booking{{ $upcoming !== 1 ? 's' : '' }}. Your car is in good hands.</p>
                     </div>
                     <a href="#" class="btn-book" onclick="switchSection(event,'bookings'); filterBookings('all')">
@@ -341,12 +318,12 @@
                     </div>
                     <div class="stat-card warning">
                         <div class="stat-card-header">
-                            <div class="stat-label">Loyalty Points</div>
-                            <div class="stat-icon"><i class="fas fa-star"></i></div>
+                            <div class="stat-label">Total Bookings</div>
+                            <div class="stat-icon"><i class="fas fa-list-check"></i></div>
                         </div>
-                        <div class="stat-value">0</div>
+                        <div class="stat-value">{{ $totalBookings }}</div>
                         <div class="stat-footer">
-                            <a href="#">Redeem Points <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
+                            <a href="#" onclick="switchSection(event,'bookings'); filterBookings('all')">View All <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
                         </div>
                     </div>
                     <div class="stat-card info">
@@ -380,7 +357,7 @@
                                     <div class="booking-meta">
                                         <span><i class="fas fa-clock"></i>{{ date('g:i A', strtotime($b->booking_time)) }}</span>
                                         <span><i class="fas fa-user"></i>{{ $b->employee->name ?? 'TBA' }}</span>
-                                        <span><i class="fas fa-car"></i>{{ ($b->vehicle->make ?? '') . ' (' . ($b->vehicle->plate_number ?? 'N/A') . ')' }}</span>
+                                        <span><i class="fas fa-car"></i>{{ ($b->vehicle->make ?? '') . ' (' . ($b->vehicle?->display_plate ?? 'Not provided') . ')' }}</span>
                                     </div>
                                 </div>
                                 <span class="badge badge-{{ $b->status === 'confirmed' ? 'confirmed' : 'pending' }}">{{ ucfirst($b->status) }}</span>
@@ -392,18 +369,6 @@
                     </div>
 
                     <div>
-                        <div class="loyalty-card">
-                            <div class="loyalty-label">Loyalty Rewards</div>
-                            <div class="loyalty-points">0 pts</div>
-                            <div class="loyalty-sub">1,000 pts away from Silver tier</div>
-                            <div class="loyalty-bar-wrap">
-                                <div class="loyalty-bar-fill" style="width:0%;"></div>
-                            </div>
-                            <div class="loyalty-bar-label">
-                                <span>Bronze</span>
-                                <span>Silver (1,000 pts)</span>
-                            </div>
-                        </div>
                         <div class="card">
                             <div class="card-header">
                                 <div class="card-header-title"><i class="fas fa-bolt"></i> Quick Actions</div>
@@ -465,6 +430,10 @@
                         <input type="text" id="serviceSearch" placeholder="Search services..." oninput="filterServices()" />
                     </div>
                     <div class="shop-result-count">Showing <span id="serviceCount">28</span> services</div>
+                    <div class="view-toggle-group">
+                        <button type="button" class="view-toggle-btn" id="viewToggleTiles" title="Tile view" onclick="setServicesView('tiles')"><i class="fas fa-grip"></i></button>
+                        <button type="button" class="view-toggle-btn" id="viewToggleList" title="List view" onclick="setServicesView('list')"><i class="fas fa-list"></i></button>
+                    </div>
                 </div>
                 <div class="category-filters">
                     <button class="cat-filter active" data-cat="all" onclick="setCat(this)">All Services</button>
@@ -491,6 +460,15 @@
                 <div class="add-vehicle-form" id="addVehicleForm">
                     <div class="add-vehicle-form-title"><i class="fas fa-circle-plus"></i> Register a New Vehicle</div>
                     <div class="avf-grid">
+                        <div class="m-form-group">
+                            <label class="m-label">Vehicle Type</label>
+                            <div class="m-input-wrap"><i class="fas fa-car"></i>
+                                <select class="m-control" id="avfType">
+                                    <option value="car">Car</option>
+                                    <option value="motorcycle">Motorcycle</option>
+                                </select>
+                            </div>
+                        </div>
                         <div class="m-form-group">
                             <label class="m-label">Make & Model</label>
                             <div class="m-input-wrap"><i class="fas fa-motorcycle"></i><input class="m-control" id="avfMake" type="text" placeholder="e.g. Honda Click 125i" /></div>
@@ -521,48 +499,14 @@
                 </div>
             </div><!-- /panel-vehicles -->
 
-            <!-- REWARDS PANEL -->
-            <div class="tab-panel" id="panel-rewards">
-                <div class="rewards-top-row">
-                    <div class="rw-points-card">
-                        <div class="rw-points-eyebrow"><i class="fas fa-star"></i> Loyalty Rewards</div>
-                        <div class="rw-points-value">0 <span>pts</span></div>
-                        <div class="rw-points-sub">1,000 pts away from Silver tier</div>
-                        <div class="rw-tier-bar-wrap"><div class="rw-tier-bar-fill" style="width:0%;"></div></div>
-                        <div class="rw-tier-bar-labels">
-                            <span><i class="fas fa-circle" style="color:#cd7f32;font-size:0.55rem;"></i> Bronze</span>
-                            <span style="color:var(--text-muted);">1,000 pts</span>
-                            <span><i class="fas fa-circle" style="color:#9ca3af;font-size:0.55rem;"></i> Silver</span>
-                        </div>
-                    </div>
-                    <div class="rw-tiers">
-                        <div class="rw-tier-card rw-tier-active">
-                            <div class="rw-tier-icon" style="color:#cd7f32;"><i class="fas fa-medal"></i></div>
-                            <div class="rw-tier-name">Bronze</div>
-                            <div class="rw-tier-range">0 – 999 pts</div>
-                            <div class="rw-tier-perk">5% off every booking</div>
-                            <span class="rw-tier-badge">Current</span>
-                        </div>
-                        <div class="rw-tier-card">
-                            <div class="rw-tier-icon" style="color:#9ca3af;"><i class="fas fa-medal"></i></div>
-                            <div class="rw-tier-name">Silver</div>
-                            <div class="rw-tier-range">1,000 – 2,499 pts</div>
-                            <div class="rw-tier-perk">10% off + priority booking</div>
-                        </div>
-                        <div class="rw-tier-card">
-                            <div class="rw-tier-icon" style="color:#f59e0b;"><i class="fas fa-crown"></i></div>
-                            <div class="rw-tier-name">Gold</div>
-                            <div class="rw-tier-range">2,500+ pts</div>
-                            <div class="rw-tier-perk">15% off + free inspection</div>
-                        </div>
-                    </div>
-                </div>
+            <!-- PROMOS PANEL -->
+            <div class="tab-panel" id="panel-promos">
                 <div class="rw-section-header">
                     <div class="rw-section-title"><i class="fas fa-tag"></i> Promos & Offers</div>
                     <span class="card-badge" id="promoCount">4 active</span>
                 </div>
                 <div class="promos-grid" id="promosGrid"></div>
-            </div><!-- /panel-rewards -->
+            </div><!-- /panel-promos -->
 
 
             <!-- MY PROFILE PANEL -->
@@ -576,8 +520,7 @@
                     .profile-avatar-badge { position: absolute; bottom: 0; right: 0; width: 24px; height: 24px; background: var(--surface); border: 2px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: var(--red); cursor: pointer; }
                     .profile-name { font-family: 'Barlow Condensed', sans-serif; font-size: 1.35rem; font-weight: 800; letter-spacing: 0.03em; color: var(--text); margin-bottom: 4px; }
                     .profile-email { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 16px; word-break: break-all; }
-                    .profile-tier-chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(205,127,50,0.12); border: 1px solid rgba(205,127,50,0.35); color: #cd7f32; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 12px; border-radius: 20px; margin-bottom: 20px; }
-                    .profile-stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-top: 1px solid var(--border); padding-top: 18px; }
+                    .profile-stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-top: 1px solid var(--border); margin-top: 20px; padding-top: 18px; }
                     .profile-stat-item { display: flex; flex-direction: column; gap: 2px; }
                     .profile-stat-val { font-family: 'Barlow Condensed', sans-serif; font-size: 1.4rem; font-weight: 800; color: var(--text); }
                     .profile-stat-lbl { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
@@ -600,6 +543,9 @@
                     .btn-profile-save:hover { background: var(--red-dark); transform: translateY(-1px); }
                     .profile-read-val { font-size: 0.9rem; color: var(--text); padding: 9px 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
                     .profile-read-val i { color: var(--red); font-size: 0.8rem; width: 14px; }
+                    .pv-plate { font-family: monospace; font-size: 0.8rem; background: var(--surface-3); padding: 1px 7px; border-radius: 4px; }
+                    .primary-badge { margin-left: 6px; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--red); white-space: nowrap; }
+                    .primary-badge i { font-size: 0.55rem; color: var(--red); width: auto; }
                 </style>
 
                 <div class="profile-layout">
@@ -612,15 +558,14 @@
                             </div>
                             <div class="profile-name">{{ Auth::user()->name }}</div>
                             <div class="profile-email">{{ Auth::user()->email }}</div>
-                            <div class="profile-tier-chip"><i class="fas fa-medal"></i> Bronze Member</div>
                             <div class="profile-stats-row">
                                 <div class="profile-stat-item">
                                     <span class="profile-stat-val">{{ $completed }}</span>
                                     <span class="profile-stat-lbl">Services Done</span>
                                 </div>
                                 <div class="profile-stat-item">
-                                    <span class="profile-stat-val">0</span>
-                                    <span class="profile-stat-lbl">Loyalty Pts</span>
+                                    <span class="profile-stat-val">{{ $totalBookings }}</span>
+                                    <span class="profile-stat-lbl">Total Bookings</span>
                                 </div>
                                 <div class="profile-stat-item">
                                     <span class="profile-stat-val">{{ $vehicles->count() }}</span>
@@ -727,7 +672,14 @@
                             </div>
                             <div id="profileVehicleSummary" style="font-size:0.85rem;color:var(--text-muted);">
                                 @forelse($vehicles as $v)
-                                    <div class="profile-read-val"><i class="fas fa-motorcycle"></i> {{ $v->make }} {{ $v->model }}{{ $v->year ? ' (' . $v->year . ')' : '' }} &mdash; <span style="font-family:monospace;font-size:0.8rem;background:var(--surface-3);padding:1px 7px;border-radius:4px;">{{ $v->plate_number ?? 'No plate' }}</span>{{ $v->is_primary ? ' <span style="margin-left:6px;font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--red);"><i class=\"fas fa-star\" style=\"font-size:0.55rem;\"></i> Primary</span>' : '' }}</div>
+                                    <div class="profile-read-val">
+                                        <i class="fas fa-motorcycle"></i>
+                                        {{ $v->make }} {{ $v->model }}{{ $v->year ? ' (' . $v->year . ')' : '' }} &mdash;
+                                        <span class="pv-plate">{{ $v->display_plate }}</span>
+                                        @if($v->is_primary)
+                                            <span class="primary-badge"><i class="fas fa-star"></i> Primary</span>
+                                        @endif
+                                    </div>
                                 @empty
                                     <div style="color:var(--text-muted);font-style:italic;font-size:0.85rem;padding:8px 0;">No vehicles registered yet.</div>
                                 @endforelse
@@ -755,15 +707,8 @@
                     .settings-toggle-slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: var(--text-muted); border-radius: 50%; transition: transform 0.2s, background 0.2s; }
                     .settings-toggle input:checked + .settings-toggle-slider { background: rgba(232,25,44,0.18); border-color: rgba(232,25,44,0.4); }
                     .settings-toggle input:checked + .settings-toggle-slider::before { transform: translateX(18px); background: var(--red); }
-                    .settings-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
-                    .settings-field:last-child { margin-bottom: 0; }
-                    .settings-field label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
-                    .settings-field select, .settings-field input { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 9px 12px; border-radius: 7px; font-size: 0.875rem; font-family: 'Barlow', sans-serif; outline: none; transition: border-color 0.2s; appearance: none; cursor: pointer; }
-                    .settings-field select:focus, .settings-field input:focus { border-color: var(--red); }
                     .settings-danger-btn { background: none; border: 1px solid rgba(232,25,44,0.35); color: var(--red); padding: 9px 20px; border-radius: 7px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: background 0.2s, border-color 0.2s; }
                     .settings-danger-btn:hover { background: var(--red-glow); border-color: var(--red); }
-                    .settings-save-btn { background: var(--red); color: #fff; border: none; padding: 10px 28px; border-radius: 7px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: background 0.2s, transform 0.15s; margin-top: 18px; }
-                    .settings-save-btn:hover { background: var(--red-dark); transform: translateY(-1px); }
                 </style>
 
                 <div class="settings-layout">
@@ -788,39 +733,10 @@
                         <div class="settings-row">
                             <div class="settings-row-info">
                                 <div class="settings-row-label">Promos & Offers</div>
-                                <div class="settings-row-desc">Stay updated on discounts, loyalty rewards, and seasonal promos.</div>
+                                <div class="settings-row-desc">Stay updated on discounts and seasonal promos.</div>
                             </div>
                             <label class="settings-toggle"><input type="checkbox" id="stg-notif-promos" /><span class="settings-toggle-slider"></span></label>
                         </div>
-                        <div class="settings-row">
-                            <div class="settings-row-info">
-                                <div class="settings-row-label">Points & Tier Updates</div>
-                                <div class="settings-row-desc">Be notified when you earn points or move to a new loyalty tier.</div>
-                            </div>
-                            <label class="settings-toggle"><input type="checkbox" id="stg-notif-points" checked /><span class="settings-toggle-slider"></span></label>
-                        </div>
-                    </div>
-
-                    <!-- Preferences -->
-                    <div class="settings-section">
-                        <div class="settings-section-title"><i class="fas fa-sliders"></i> Preferences</div>
-                        
-                        <div class="settings-field">
-                            <label>Preferred Contact Time</label>
-                            <select id="stg-contact-time">
-                                <option value="morning">Morning (8:00 AM – 12:00 PM)</option>
-                                <option value="afternoon">Afternoon (12:00 PM – 5:00 PM)</option>
-                                <option value="anytime" selected>Anytime</option>
-                            </select>
-                        </div>
-                        <div class="settings-field">
-                            <label>Display Theme</label>
-                            <select id="stg-theme" onchange="applyThemeFromSettings(this.value)">
-                                <option value="dark" id="stgThemeDark">Dark Mode</option>
-                                <option value="light" id="stgThemeLight">Light Mode</option>
-                            </select>
-                        </div>
-                        <button class="settings-save-btn" onclick="saveSettings()"><i class="fas fa-floppy-disk"></i> Save Preferences</button>
                     </div>
 
                     <!-- Security -->
@@ -877,15 +793,11 @@
                                     <div class="chip-cat" id="modalServiceCat">—</div>
                                 </div>
                             </div>
-                            <div class="form-row-2">
-                                <div class="m-form-group">
-                                    <label class="m-label">Preferred Date</label>
-                                    <div class="m-input-wrap"><i class="fas fa-calendar"></i><input class="m-control" id="mDate" type="date" required /></div>
-                                </div>
-                                <div class="m-form-group">
-                                    <label class="m-label">Preferred Time</label>
-                                    <div class="m-input-wrap"><i class="fas fa-clock"></i><input class="m-control" id="mTime" type="time" required /></div>
-                                </div>
+                            <div class="m-form-group">
+                                <label class="m-label">Preferred Date &amp; Time</label>
+                                <input type="hidden" id="mDate" required />
+                                <input type="hidden" id="mTime" required />
+                                <x-availability-picker id="cdAvp" />
                             </div>
                             <div class="m-form-group">
                                 <label class="m-label">Contact Number</label>
@@ -942,12 +854,41 @@
             <!-- FOOTER -->
             <footer>
                 <div class="footer-brand"><span>APX</span> AutoMai &mdash; Customer Portal &copy; {{ date('Y') }}</div>
-                <div><a href="#">Privacy Policy</a> &nbsp;·&nbsp; <a href="#">Terms &amp; Conditions</a></div>
+                <div><a href="#">Privacy Policy</a> &nbsp;·&nbsp; <a href="{{ route('terms') }}" target="_blank">Terms &amp; Conditions</a></div>
             </footer>
         </main>
     </div>
 </div>
 
+<!-- DELETE ACCOUNT CONFIRMATION -->
+<div class="modal-overlay" id="deleteAccountModal" onclick="if(event.target===this) closeDeleteAccountModal()">
+    <div class="modal" style="max-width:420px;">
+        <div class="modal-header">
+            <div class="modal-title" style="color:var(--red);">
+                <i class="fas fa-triangle-exclamation" style="margin-right:8px;"></i>Confirm Deletion
+            </div>
+            <button class="modal-close" type="button" onclick="closeDeleteAccountModal()"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+            <p style="color:var(--text-muted);font-size:0.86rem;line-height:1.55;margin:0 0 14px;">
+                Enter your password to confirm. Your account will be deactivated and you'll be signed out &mdash; you can restore it by logging in again within 30 days.
+            </p>
+            <div class="m-form-group">
+                <label class="m-label">Password</label>
+                <div class="m-input-wrap">
+                    <i class="fas fa-lock"></i>
+                    <input class="m-control" id="deleteAccountPassword" type="password" placeholder="Your password" />
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer" style="display:flex;gap:10px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--border);">
+            <button type="button" class="btn-modal-cancel" onclick="closeDeleteAccountModal()">Cancel</button>
+            <button type="button" class="settings-danger-btn" id="deleteAccountConfirmBtn" onclick="submitDeleteAccount()">
+                <i class="fas fa-trash"></i> Delete My Account
+            </button>
+        </div>
+    </div>
+</div>
 <!-- APX CUSTOM DIALOG MODAL -->
 <div id="apxDialog" style="display:none;position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);">
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px 28px 24px;max-width:420px;width:90%;box-shadow:0 24px 64px rgba(0,0,0,0.4);animation:modalIn 0.2s ease both;position:relative;">
@@ -964,7 +905,17 @@
 
 <!-- SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<script src="{{ asset('assets/js/availability-picker.js') }}"></script>
+<script src="{{ asset('assets/js/form-validate.js') }}"></script>
+<script src="{{ asset('assets/js/plate-mask.js') }}"></script>
 <script>
+    // Vehicle and booking fields are user-supplied and get interpolated into
+    // innerHTML below, so escape them first.
+    function esc(v) {
+        return String(v ?? '').replace(/[&<>"']/g, c => (
+            { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+        ));
+    }
     // ── APX CUSTOM DIALOG ──────────────────────────────────────────────────
     function apxDialog({ title, msg, type = 'info', confirmLabel = 'OK', cancelLabel = null, onConfirm = null, onCancel = null }) {
         const el      = document.getElementById('apxDialog');
@@ -1083,12 +1034,24 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
     let currentCat       = 'all';
     let currentSvcSearch = '';
 
+    // ── Services view toggle (tiles / list), persisted per-browser ──────────
+    function setServicesView(mode) {
+        const grid = document.getElementById('servicesGrid');
+        grid.classList.toggle('view-list', mode === 'list');
+        document.getElementById('viewToggleTiles').classList.toggle('active', mode !== 'list');
+        document.getElementById('viewToggleList').classList.toggle('active', mode === 'list');
+        try { localStorage.setItem('apx-services-view', mode); } catch (e) {}
+    }
+    let storedServicesView = 'tiles';
+    try { storedServicesView = localStorage.getItem('apx-services-view') || 'tiles'; } catch (e) {}
+    setServicesView(storedServicesView);
+
     const PAGE_TITLES = {
         dashboard: ['MY <span>DASHBOARD</span>',  'Dashboard'],
         bookings:  ['MY <span>BOOKINGS</span>',    'My Bookings'],
         services:  ['BOOK A <span>SERVICE</span>', 'Book a Service'],
         vehicles:  ['MY <span>VEHICLES</span>',    'My Vehicles'],
-        rewards:   ['MY <span>REWARDS</span>',     'Rewards'],
+        promos:    ['PROMOS &amp; <span>OFFERS</span>', 'Promos & Offers'],
         profile:   ['MY <span>PROFILE</span>',     'My Profile'],
         settings:  ['ACCOUNT <span>SETTINGS</span>', 'Settings'],
     };
@@ -1150,13 +1113,13 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                     </div>
                     <div class="bk-body">
                         <div class="bk-title-row">
-                            <span class="bk-service">${b.service}</span>
+                            <span class="bk-service">${esc(b.service)}</span>
                             <span class="bk-id">${b.id}</span>
                         </div>
                         <div class="bk-meta">
                             <span><i class="fas fa-clock"></i>${b.time}</span>
-                            <span><i class="fas fa-user"></i>${b.staff}</span>
-                            <span><i class="fas fa-car"></i>${b.vehicle}</span>
+                            <span><i class="fas fa-user"></i>${esc(b.staff)}</span>
+                            <span><i class="fas fa-car"></i>${esc(b.vehicle)}</span>
                         </div>
                         ${cancelBtn}
                     </div>
@@ -1245,6 +1208,13 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
 
     let selectedService = null;
 
+    const bookingPicker = new AvailabilityPicker({
+        root: '#cdAvp',
+        dateInput: document.getElementById('mDate'),
+        timeInput: document.getElementById('mTime'),
+        getServiceIds: () => selectedService ? [selectedService.dbId] : [],
+    });
+
     function openModal(svcId) {
         selectedService = SERVICES.find(s => s.id === svcId);
         if (!selectedService) return;
@@ -1254,9 +1224,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         document.getElementById('modalServiceNameChip').textContent = selectedService.name;
         document.getElementById('modalServiceCat').textContent      = selectedService.catLabel + ' · ' + selectedService.duration;
         document.getElementById('modalServiceIcon').className       = 'fas ' + selectedService.icon;
-        const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-        document.getElementById('mDate').value  = tomorrow.toISOString().split('T')[0];
-        document.getElementById('mTime').value  = '09:00';
+        bookingPicker.reset();
         document.getElementById('mPhone').value = '';
         document.getElementById('mNotes').value = '';
         // Auto-fill phone from profile; show hint if not set
@@ -1300,8 +1268,9 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         const notes      = document.getElementById('mNotes').value;
 
         if (!date || !time) {
-            document.getElementById('mDate').style.borderColor = 'var(--red)';
-            setTimeout(() => document.getElementById('mDate').style.borderColor = '', 1500);
+            const avp = document.getElementById('cdAvp');
+            avp.style.outline = '2px solid var(--red)';
+            setTimeout(() => avp.style.outline = '', 1500);
             return;
         }
 
@@ -1432,9 +1401,9 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         container.innerHTML = MY_VEHICLES.map(v =>
             `<div class="profile-read-val">
                 <i class="fas fa-motorcycle"></i>
-                ${v.make}${v.year ? ' (' + v.year + ')' : ''} &mdash;
-                <span style="font-family:monospace;font-size:0.8rem;background:var(--surface-3);padding:1px 7px;border-radius:4px;">${v.plate || 'No plate'}</span>
-                ${v.primary ? '<span style="margin-left:6px;font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--red);"><i class="fas fa-star" style="font-size:0.55rem;"></i> Primary</span>' : ''}
+                ${esc(v.make)}${v.year ? ' (' + v.year + ')' : ''} &mdash;
+                <span class="pv-plate">${esc(v.plate || 'No plate')}</span>
+                ${v.primary ? '<span class="primary-badge"><i class="fas fa-star"></i> Primary</span>' : ''}
             </div>`
         ).join('');
     }
@@ -1449,14 +1418,15 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             <div class="vehicle-card ${v.primary ? 'primary-vehicle' : ''}" id="vcard-${v.id}">
                 <div class="vehicle-card-banner">
                     ${v.primary ? '<span class="vehicle-primary-badge"><i class="fas fa-star" style="margin-right:3px;font-size:0.55rem;"></i>Primary</span>' : ''}
-                    <i class="fas fa-motorcycle"></i>
+                    <i class="fas ${v.type === 'motorcycle' ? 'fa-motorcycle' : 'fa-car'}"></i>
                 </div>
                 <div class="vehicle-card-body">
-                    <div class="vehicle-name">${v.make}</div>
-                    <div class="vehicle-plate">${v.plate || 'No plate'}</div>
+                    <div class="vehicle-name">${esc(v.make)}</div>
+                    <div class="vehicle-plate">${esc(v.plate || 'No plate')}</div>
                     <div class="vehicle-meta-row">
-                        ${v.year  ? `<span><i class="fas fa-calendar"></i>${v.year}</span>` : ''}
-                        ${v.color ? `<span><i class="fas fa-palette"></i>${v.color}</span>` : ''}
+                        <span><i class="fas ${v.type === 'motorcycle' ? 'fa-motorcycle' : 'fa-car'}"></i>${v.type === 'motorcycle' ? 'Motorcycle' : 'Car'}</span>
+                        ${v.year  ? `<span><i class="fas fa-calendar"></i>${esc(v.year)}</span>` : ''}
+                        ${v.color ? `<span><i class="fas fa-palette"></i>${esc(v.color)}</span>` : ''}
                     </div>
                     <div class="vehicle-card-actions">
                         ${!v.primary ? `<button class="btn-veh-action" onclick="setPrimaryVehicle('${v.id}')"><i class="fas fa-star"></i> Set Primary</button>` : '<button class="btn-veh-action" disabled style="opacity:0.4;cursor:default;"><i class="fas fa-star" style="color:var(--warning);"></i> Primary</button>'}
@@ -1472,18 +1442,25 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         form.classList.toggle('open');
         if (form.classList.contains('open')) {
             ['avfMake','avfYear','avfPlate','avfColor'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('avfType').value = 'car';
             setTimeout(() => document.getElementById('avfMake').focus(), 100);
         }
     }
 
+    // ── Add-vehicle field validation ────────────────────────────────────────
+    PlateMask.attach(document.getElementById('avfPlate'));
+    FormValidate.register(document.getElementById('avfMake'), { rules: [FormValidate.rules.required('Make / model is required.')] });
+    FormValidate.register(document.getElementById('avfYear'), { rules: [FormValidate.rules.required('Year is required.')] });
+    FormValidate.register(document.getElementById('avfPlate'), { rules: [FormValidate.rules.required('Plate number is required.'), FormValidate.rules.plate()] });
+
     function saveNewVehicle() {
+    const vtype = document.getElementById('avfType').value;
     const make  = document.getElementById('avfMake').value.trim();
     const year  = document.getElementById('avfYear').value.trim();
     const plate = document.getElementById('avfPlate').value.trim();
     const color = document.getElementById('avfColor').value.trim();
 
-    if (!make || !year || !plate) {
-        apxDialog({ type: 'warning', title: 'Missing Fields', msg: 'Please fill in <strong>Make / Model</strong>, <strong>Year</strong>, and <strong>Plate Number</strong> before saving.', confirmLabel: 'OK' });
+    if (!FormValidate.validateForm([document.getElementById('avfMake'), document.getElementById('avfYear'), document.getElementById('avfPlate')])) {
         return;
     }
 
@@ -1500,7 +1477,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             fetch('/customer/vehicles', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                body: JSON.stringify({ brand: make, model: '', plate, year: parseInt(year), color })
+                body: JSON.stringify({ brand: make, model: '', plate, year: parseInt(year), color, vehicle_type: vtype })
             })
             .then(r => r.json())
             .then(data => {
@@ -1600,11 +1577,17 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         document.getElementById('profileEditBtn').innerHTML = '<i class="fas fa-pen"></i> Edit';
     }
 
+    FormValidate.register(document.getElementById('pef-phone'), {
+        rules: [{ test: v => v.trim() === '' || /^09\d{9}$|^\+639\d{9}$/.test(v.trim()), message: 'Enter a valid PH mobile number (e.g. 09171234567), or leave blank.' }]
+    });
+
     // Fix 6: Save profile info to backend, then update read view on success
     function saveProfileInfo() {
         const phone   = document.getElementById('pef-phone').value.trim();
         const dob     = document.getElementById('pef-dob').value;
         const address = document.getElementById('pef-address').value.trim();
+
+        if (!FormValidate.validateField(document.getElementById('pef-phone'))) return;
 
         const saveBtn = document.querySelector('#profileEditView .btn-profile-save');
         if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
@@ -1633,44 +1616,161 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         });
     }
 
-    // ── SETTINGS ───────────────────────────────────────────────
-    function applyThemeFromSettings(val) {
-        localStorage.setItem('apx-theme', val);
-        applyTheme(val);
-    }
-
-    function saveSettings() {
-        const theme = document.getElementById('stg-theme') ? document.getElementById('stg-theme').value : 'dark';
-        applyThemeFromSettings(theme);
-        const btn = event.currentTarget;
-        const orig = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
-        btn.style.background = 'var(--success, #22c55e)';
-        setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; }, 1800);
-    }
-
+    // ── Account deletion ───────────────────────────────────────────────────
+    // Self-service: no admin approval, no queue. Checks what's standing in the
+    // way first so the consequences are spelled out before we ask for a password.
     function confirmDeleteAccount() {
-        apxDialog({
-            type: 'danger', title: 'Delete Account',
-            msg: 'Are you sure? This will <strong>permanently delete</strong> your account and all associated data. This cannot be undone.',
-            confirmLabel: '<i class="fas fa-trash" style="margin-right:5px;"></i> Delete My Account',
-            cancelLabel: 'Cancel',
-            onConfirm: () => {
-                apxDialog({ type: 'info', title: 'Request Submitted', msg: 'Your account deletion request has been submitted. An admin will process this shortly.', confirmLabel: 'OK' });
+        fetch('/customer/account/deletion-status', { headers: { 'Accept': 'application/json' } })
+            .then(r => r.json())
+            .then(status => {
+                if (status.blocked) {
+                    apxDialog({
+                        type: 'warning',
+                        title: 'Service in progress',
+                        msg: 'Your vehicle is currently being serviced and we may need to contact you about it. You can delete your account once the service is completed.',
+                        confirmLabel: 'OK'
+                    });
+                    return;
+                }
+
+                let warning = 'Your account will be deactivated and you\'ll be signed out. You have <strong>30 days</strong> to change your mind \u2014 just log back in with the same email and password to restore it. After that your personal details are permanently erased.';
+
+                if (status.upcoming.length) {
+                    const list = status.upcoming.map(b =>
+                        `<li><strong>${esc(b.service)}</strong> — ${b.date} at ${b.time}</li>`
+                    ).join('');
+                    warning = `You have ${status.upcoming.length} upcoming booking${status.upcoming.length > 1 ? 's' : ''}:`
+                        + `<ul style="margin:8px 0 10px 18px;">${list}</ul>`
+                        + `Deleting your account will <strong>cancel ${status.upcoming.length > 1 ? 'them' : 'it'}</strong>. ${warning}`;
+                }
+
+                apxDialog({
+                    type: 'danger',
+                    title: 'Delete Account',
+                    msg: warning,
+                    confirmLabel: status.upcoming.length
+                        ? '<i class="fas fa-trash" style="margin-right:5px;"></i> Cancel booking & continue'
+                        : '<i class="fas fa-trash" style="margin-right:5px;"></i> Continue',
+                    cancelLabel: 'Keep my account',
+                    onConfirm: () => openDeleteAccountModal()
+                });
+            })
+            .catch(() => apxDialog({ type: 'danger', title: 'Error', msg: 'Could not check your account status. Please try again.', confirmLabel: 'OK' }));
+    }
+
+    function openDeleteAccountModal() {
+        document.getElementById('deleteAccountPassword').value = '';
+        FormValidate.validateField(document.getElementById('deleteAccountPassword'));
+        document.getElementById('deleteAccountModal').classList.add('open');
+        setTimeout(() => document.getElementById('deleteAccountPassword').focus(), 80);
+    }
+
+    function closeDeleteAccountModal() {
+        document.getElementById('deleteAccountModal').classList.remove('open');
+    }
+
+    function submitDeleteAccount() {
+        const input = document.getElementById('deleteAccountPassword');
+        if (!FormValidate.validateForm([input])) return;
+
+        const btn = document.getElementById('deleteAccountConfirmBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting…';
+
+        fetch('/customer/account', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ password: input.value })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                closeDeleteAccountModal();
+                apxDialog({
+                    type: 'success', title: 'Account Deactivated',
+                    msg: `Your account has been deactivated and you've been signed out.<br><br>`
+                       + `Changed your mind? Log back in with the same email and password before `
+                       + `<strong>${data.purge_at}</strong> to restore it. After that date your personal `
+                       + `details are permanently erased.`,
+                    confirmLabel: 'OK',
+                    onConfirm: () => window.location.href = data.redirect || '/'
+                });
+                setTimeout(() => window.location.href = data.redirect || '/', 4000);
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-trash"></i> Delete My Account';
+                apxDialog({ type: 'danger', title: 'Could not delete account', msg: data.message || 'Please try again.', confirmLabel: 'OK' });
             }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-trash"></i> Delete My Account';
+            apxDialog({ type: 'danger', title: 'Error', msg: 'Could not connect to the server. Please try again.', confirmLabel: 'OK' });
         });
     }
 
+    FormValidate.register(document.getElementById('deleteAccountPassword'), {
+        rules: [FormValidate.rules.required('Enter your password to confirm.')]
+    });
+
+    @if (session('account_restored'))
+    // Logging in during the grace period cancels a pending deletion.
+    apxDialog({
+        type: 'success',
+        title: 'Welcome back',
+        msg: 'Your account deletion has been cancelled and your account is active again. Any bookings you had cancelled will need to be rebooked.',
+        confirmLabel: 'OK'
+    });
+    @endif
     // INIT
     document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
 
-    // Sidebar toggle
-    document.getElementById('sidebarToggle').addEventListener('click', function() {
-        document.getElementById('sidebar').classList.toggle('collapsed');
-        document.getElementById('mainContent').classList.toggle('expanded');
-    });
+    // Sidebar toggle — below 992px the sidebar is off-canvas, so the hamburger
+    // slides it over the content with a backdrop instead of shrinking it.
+    (function () {
+        const MOBILE = '(max-width: 992px)';
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+
+        const backdrop = document.createElement('div');
+        backdrop.className = 'sidebar-backdrop';
+        document.body.appendChild(backdrop);
+
+        function closeMobileSidebar() {
+            sidebar.classList.remove('mobile-open');
+            backdrop.classList.remove('show');
+        }
+
+        document.getElementById('sidebarToggle').addEventListener('click', function () {
+            if (window.matchMedia(MOBILE).matches) {
+                const open = sidebar.classList.toggle('mobile-open');
+                backdrop.classList.toggle('show', open);
+            } else {
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('expanded');
+            }
+        });
+
+        backdrop.addEventListener('click', closeMobileSidebar);
+
+        // Tapping a nav item should close the drawer, not leave it covering the page.
+        sidebar.addEventListener('click', function (e) {
+            if (e.target.closest('.nav-link') && window.matchMedia(MOBILE).matches) {
+                closeMobileSidebar();
+            }
+        });
+
+        // Leaving mobile width resets the drawer state.
+        window.matchMedia(MOBILE).addEventListener('change', function (e) {
+            if (!e.matches) closeMobileSidebar();
+        });
+    })();
 
     // Dropdown toggle
     let dropdownTimeout;
@@ -1712,8 +1812,6 @@ document.addEventListener('click', function(e) {
             themeIcon.className = 'fas fa-moon';
             themeToggle.title = 'Switch to light mode';
         }
-        const stgThemeSel = document.getElementById('stg-theme');
-        if (stgThemeSel) stgThemeSel.value = mode;
     }
 
     const savedTheme = localStorage.getItem('apx-theme') || 'dark';

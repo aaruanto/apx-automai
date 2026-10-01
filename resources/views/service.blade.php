@@ -58,13 +58,9 @@
             <div class="col-lg-5 px-5 text-end">
                 <div class="h-100 d-inline-flex align-items-center py-3 me-4">
                     <small class="fa fa-phone-alt text-primary me-2"></small>
-                    <small>+012 345 6789</small>
+                    <small>+63 9544 8888 50</small>
                 </div>
                 <div class="h-100 d-inline-flex align-items-center">
-                    <a class="btn btn-sm-square bg-white text-primary me-1" href=""><i class="fab fa-facebook-f"></i></a>
-                    <a class="btn btn-sm-square bg-white text-primary me-1" href=""><i class="fab fa-twitter"></i></a>
-                    <a class="btn btn-sm-square bg-white text-primary me-1" href=""><i class="fab fa-linkedin-in"></i></a>
-                    <a class="btn btn-sm-square bg-white text-primary me-0" href=""><i class="fab fa-instagram"></i></a>
                 </div>
             </div>
         </div>
@@ -75,7 +71,7 @@
     <!-- Navbar Start -->
     <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
         <a href="/" class="navbar-brand d-flex align-items-center px-4 px-lg-5">
-            <h2 class="m-0 text-primary"><img src="/assets/img\apx-black-logo.png" alt="apx logo" width="100" height="120">AUTOMAI</h2>
+            <h2 class="m-0 text-primary"><img src="/assets/img/apx-black-logo.png" alt="apx logo" width="100" height="120">AUTOMAI</h2>
         <button type="button" class="navbar-toggler me-4" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -88,14 +84,12 @@
                     <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">Pages</a>
                     <div class="dropdown-menu fade-up m-0">
                         <a href="/booking" class="dropdown-item">Booking</a>
-                        <a href="/team" class="dropdown-item">Technicians</a>
-                        <a href="/testimonial" class="dropdown-item">Testimonial</a>
-                        <a href="/automai/public/404.php" class="dropdown-item">404 Page</a>
+                        <a href="/#testimonials" class="dropdown-item">Testimonial</a>
                     </div>
                 </div>
                 <a href="/contact" class="nav-item nav-link">Contact</a>
             </div>
-            <a href="/automai/auth/login.php" class="btn btn-primary py-4 px-lg-5 d-none d-lg-block">Login</a>
+            <a href="{{ route('login') }}" class="btn btn-primary py-4 px-lg-5 d-none d-lg-block">Login</a>
         </div>
     </nav>
     <!-- Navbar End -->
@@ -392,37 +386,13 @@
                 <div class="col-lg-6">
                     <div class="bg-primary h-100 d-flex flex-column justify-content-center text-center p-5 wow zoomIn" data-wow-delay="0.6s">
                         <h1 class="text-white mb-4">Book For A Service</h1>
-                        <form>
-                            <div class="row g-3">
-                                <div class="col-12 col-sm-6">
-                                    <input type="text" class="form-control border-0" placeholder="Your Name" style="height: 55px;">
-                                </div>
-                                <div class="col-12 col-sm-6">
-                                    <input type="email" class="form-control border-0" placeholder="Your Email" style="height: 55px;">
-                                </div>
-                                <div class="col-12 col-sm-6">
-                                    <select class="form-select border-0" style="height: 55px;">
-                                        <option selected>Select A Service</option>
-                                        <option value="1">Service 1</option>
-                                        <option value="2">Service 2</option>
-                                        <option value="3">Service 3</option>
-                                    </select>
-                                </div>
-                                <div class="col-12 col-sm-6">
-                                    <div class="date" id="date1" data-target-input="nearest">
-                                        <input type="text"
-                                            class="form-control border-0 datetimepicker-input"
-                                            placeholder="Service Date" data-target="#date1" data-toggle="datetimepicker" style="height: 55px;">
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <textarea class="form-control border-0" placeholder="Special Request"></textarea>
-                                </div>
-                                <div class="col-12">
-                                    <button class="btn btn-secondary w-100 py-3" type="submit">Book Now</button>
-                                </div>
-                            </div>
-                        </form>
+                        <p class="text-white-50 mb-4">
+                            Pick the services you need, choose an available slot, and we'll confirm
+                            by email. No account required.
+                        </p>
+                        <a href="/#services" class="btn btn-secondary py-3 px-5">
+                            <i class="fa fa-calendar-check me-2"></i>Book A Service
+                        </a>
                     </div>
                 </div>
             </div>
@@ -437,13 +407,9 @@
                 <div class="col-lg-3 col-md-6">
                     <h4 class="text-light mb-4">Address</h4>
                     <p class="mb-2"><i class="fa fa-map-marker-alt me-3"></i>5 Glenn, Quezon City</p>
-                    <p class="mb-2"><i class="fa fa-phone-alt me-3"></i>+012 345 67890</p>
+                    <p class="mb-2"><i class="fa fa-phone-alt me-3"></i>+63 9544 8888 50</p>
                     <p class="mb-2"><i class="fa fa-envelope me-3"></i><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="ed84838b82ad88958c809d8188c38e8280">[email&#160;protected]</a></p>
                     <div class="d-flex pt-2">
-                        <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-twitter"></i></a>
-                        <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-facebook-f"></i></a>
-                        <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-youtube"></i></a>
-                        <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-linkedin-in"></i></a>
                     </div>
                 </div>
                 <div class="col-lg-3 col-md-6">
@@ -455,11 +421,11 @@
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <h4 class="text-light mb-4">Services</h4>
-                    <a class="btn btn-link" href="/automai/auth/login.php">Change Oil &amp; Filter</a>
-                    <a class="btn btn-link" href="/automai/auth/login.php">Fuel Injection Cleaning</a>
-                    <a class="btn btn-link" href="/automai/auth/login.php">Throttle Body Cleaning</a>
-                    <a class="btn btn-link" href="/automai/auth/login.php">CVT Cleaning &amp; Inspection</a>
-                    <a class="btn btn-link" href="/automai/auth/login.php">Valve Clearance / Tune-up</a>
+                    <a class="btn btn-link" href="/#services">Change Oil &amp; Filter</a>
+                    <a class="btn btn-link" href="/#services">Fuel Injection Cleaning</a>
+                    <a class="btn btn-link" href="/#services">Throttle Body Cleaning</a>
+                    <a class="btn btn-link" href="/#services">CVT Cleaning &amp; Inspection</a>
+                    <a class="btn btn-link" href="/#services">Valve Clearance / Tune-up</a>
                 </div>
 
             </div>
@@ -468,17 +434,11 @@
             <div class="copyright">
                 <div class="row">
                     <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                        &copy; <a class="border-bottom" href="#">Your Site Name</a>, All Right Reserved.
-
-                        <!--/*** This template is free as long as you keep the footer author’s credit link/attribution link/backlink. If you'd like to use the template without the footer author’s credit link/attribution link/backlink, you can purchase the Credit Removal License from "https://htmlcodex.com/credit-removal". Thank you for your support. ***/-->
-                        Designed By <a class="border-bottom" href="https://htmlcodex.com">HTML Codex</a>
+                        &copy; 2025 <a class="border-bottom" href="/">APX Automai</a>. All Rights Reserved.
                     </div>
                     <div class="col-md-6 text-center text-md-end">
                         <div class="footer-menu">
-                            <a href="">Home</a>
-                            <a href="">Cookies</a>
-                            <a href="">Help</a>
-                            <a href="">FQAs</a>
+                            <a href="/">Home</a>
                         </div>
                     </div>
                 </div>
@@ -494,7 +454,7 @@
 
     <!-- JavaScript Libraries -->
     <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/assets/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/assets/lib/wow/wow.min.js"></script>
     <script src="/assets/lib/easing/easing.min.js"></script>
     <script src="/assets/lib/waypoints/waypoints.min.js"></script>

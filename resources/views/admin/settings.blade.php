@@ -4,6 +4,7 @@
 
 @section('content')
 
+
     <!-- PAGE HEADER -->
     <div class="page-header">
         <div>
@@ -84,24 +85,29 @@
                         @csrf @method('PUT')
                         <div class="form-group">
                             <label class="form-label">Business Name</label>
-                            <input class="form-control" type="text" name="business_name" value="{{ $settings['business_name'] ?? 'APX Motors Service Center' }}" />
+                            <input class="form-control @error('business_name') fv-invalid @enderror" type="text" name="business_name" value="{{ old('business_name', $settings['business_name'] ?? 'APX Motors Service Center') }}" />
+                            @error('business_name')<div class="fv-error show">{{ $message }}</div>@enderror
                         </div>
                         <div class="form-group">
                             <label class="form-label">Branch Name</label>
-                            <input class="form-control" type="text" name="branch_name" value="{{ $settings['branch_name'] ?? 'Tandang Sora Branch' }}" />
+                            <input class="form-control @error('branch_name') fv-invalid @enderror" type="text" name="branch_name" value="{{ old('branch_name', $settings['branch_name'] ?? 'Tandang Sora Branch') }}" />
+                            @error('branch_name')<div class="fv-error show">{{ $message }}</div>@enderror
                         </div>
                         <div class="form-group">
                             <label class="form-label">Address</label>
-                            <textarea class="form-control" name="address" rows="2">{{ $settings['address'] ?? 'Tandang Sora Ave., Quezon City' }}</textarea>
+                            <textarea class="form-control @error('address') fv-invalid @enderror" name="address" rows="2">{{ old('address', $settings['address'] ?? 'Tandang Sora Ave., Quezon City') }}</textarea>
+                            @error('address')<div class="fv-error show">{{ $message }}</div>@enderror
                         </div>
                         <div class="form-row cols-2">
                             <div class="form-group">
                                 <label class="form-label">Contact Number</label>
-                                <input class="form-control" type="tel" name="contact_number" value="{{ $settings['contact_number'] ?? '' }}" placeholder="(02) XXXX-XXXX" />
+                                <input class="form-control @error('contact_number') fv-invalid @enderror" type="tel" name="contact_number" value="{{ old('contact_number', $settings['contact_number'] ?? '') }}" placeholder="(02) XXXX-XXXX" />
+                            @error('contact_number')<div class="fv-error show">{{ $message }}</div>@enderror
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Email</label>
-                                <input class="form-control" type="email" name="contact_email" value="{{ $settings['contact_email'] ?? '' }}" placeholder="apxmotors@email.com" />
+                                <input class="form-control @error('contact_email') fv-invalid @enderror" type="email" name="contact_email" value="{{ old('contact_email', $settings['contact_email'] ?? '') }}" placeholder="apxmotors@email.com" />
+                            @error('contact_email')<div class="fv-error show">{{ $message }}</div>@enderror
                             </div>
                         </div>
                         <button type="submit" class="btn btn-primary"><i class="fas fa-floppy-disk"></i> Save Changes</button>
@@ -120,25 +126,41 @@
                         <div class="form-row cols-2">
                             <div class="form-group">
                                 <label class="form-label">Opening Time</label>
-                                <input class="form-control" type="time" name="open_time" value="{{ $settings['open_time'] ?? '08:00' }}" />
+                                <input class="form-control @error('open_time') fv-invalid @enderror" type="time" name="open_time" value="{{ old('open_time', $settings['open_time'] ?? '08:00') }}" />
+                            @error('open_time')<div class="fv-error show">{{ $message }}</div>@enderror
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Closing Time</label>
-                                <input class="form-control" type="time" name="close_time" value="{{ $settings['close_time'] ?? '17:00' }}" />
+                                <input class="form-control @error('close_time') fv-invalid @enderror" type="time" name="close_time" value="{{ old('close_time', $settings['close_time'] ?? '17:00') }}" />
+                            @error('close_time')<div class="fv-error show">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+                        <div class="form-row cols-2">
+                            <div class="form-group">
+                                <label class="form-label">Weekend Opening Time</label>
+                                <input class="form-control @error('weekend_open_time') fv-invalid @enderror" type="time" name="weekend_open_time" value="{{ old('weekend_open_time', $settings['weekend_open_time'] ?? '09:00') }}" />
+                            @error('weekend_open_time')<div class="fv-error show">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Weekend Closing Time</label>
+                                <input class="form-control @error('weekend_close_time') fv-invalid @enderror" type="time" name="weekend_close_time" value="{{ old('weekend_close_time', $settings['weekend_close_time'] ?? '12:00') }}" />
+                            @error('weekend_close_time')<div class="fv-error show">{{ $message }}</div>@enderror
                             </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Max Bookings Per Day</label>
-                            <input class="form-control" type="number" name="max_bookings" value="{{ $settings['max_bookings'] ?? 20 }}" min="1" max="100" />
-                            <div class="form-hint">How many bookings can be accepted in a single day.</div>
+                            <input class="form-control @error('max_bookings') fv-invalid @enderror" type="number" name="max_bookings" value="{{ old('max_bookings', $settings['max_bookings'] ?? 20) }}" min="1" max="100" />
+                            @error('max_bookings')<div class="fv-error show">{{ $message }}</div>@enderror
+                            <div class="form-hint">How many bookings can be accepted in a single day. Applies to the customer booking calendar.</div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Booking Slot Duration (minutes)</label>
-                            <select class="form-control" name="slot_duration">
+                            <select class="form-control @error('slot_duration') fv-invalid @enderror" name="slot_duration">
                                 @foreach([30,45,60,90,120] as $min)
-                                <option value="{{ $min }}" {{ ($settings['slot_duration'] ?? 60) == $min ? 'selected' : '' }}>{{ $min }} min</option>
+                                <option value="{{ $min }}" {{ old('slot_duration', $settings['slot_duration'] ?? 60) == $min ? 'selected' : '' }}>{{ $min }} min</option>
                                 @endforeach
                             </select>
+                            @error('slot_duration')<div class="fv-error show">{{ $message }}</div>@enderror
                         </div>
                         <div class="setting-row" style="padding:8px 0 0;border:none;">
                             <div class="setting-info">
@@ -146,7 +168,7 @@
                                 <div class="hint">Admins can create bookings without customer login</div>
                             </div>
                             <label class="toggle-switch">
-                                <input type="checkbox" name="allow_walkin" {{ ($settings['allow_walkin'] ?? true) ? 'checked' : '' }}>
+                                <input type="checkbox" name="allow_walkin" {{ (old('open_time') !== null ? old('allow_walkin') : ($settings['allow_walkin'] ?? true)) ? 'checked' : '' }}>
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
@@ -156,42 +178,11 @@
                                 <div class="hint">Send automated reminders before appointments</div>
                             </div>
                             <label class="toggle-switch">
-                                <input type="checkbox" name="email_reminders" {{ ($settings['email_reminders'] ?? false) ? 'checked' : '' }}>
+                                <input type="checkbox" name="email_reminders" {{ (old('open_time') !== null ? old('email_reminders') : ($settings['email_reminders'] ?? false)) ? 'checked' : '' }}>
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
                         <button type="submit" class="btn btn-primary" style="margin-top:8px;"><i class="fas fa-floppy-disk"></i> Save Changes</button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Loyalty Settings -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-header-title"><i class="fas fa-trophy"></i> Loyalty Tier Thresholds</div>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ route('admin.settings.loyalty') }}">
-                        @csrf @method('PUT')
-                        @php
-                            $tiers = [
-                                ['key'=>'bronze','label'=>'Bronze','color'=>'#CD7C4F','default'=>1],
-                                ['key'=>'silver','label'=>'Silver','color'=>'#94A3B8','default'=>5],
-                                ['key'=>'gold',  'label'=>'Gold',  'color'=>'#F59E0B','default'=>10],
-                            ];
-                        @endphp
-                        @foreach($tiers as $tier)
-                        <div class="form-group">
-                            <label class="form-label" style="color:{{ $tier['color'] }};">
-                                <i class="fas fa-{{ $tier['key'] === 'gold' ? 'star' : ($tier['key'] === 'silver' ? 'star-half-stroke' : 'circle') }}"></i>
-                                {{ $tier['label'] }} Tier — Minimum Bookings
-                            </label>
-                            <input class="form-control" type="number" name="loyalty_{{ $tier['key'] }}"
-                                   value="{{ $settings['loyalty_'.$tier['key']] ?? $tier['default'] }}" min="0" />
-                        </div>
-                        @endforeach
-                        <div class="form-hint" style="margin-bottom:12px;">Customers automatically move up when they reach these thresholds.</div>
-                        <button type="submit" class="btn btn-primary"><i class="fas fa-floppy-disk"></i> Save Changes</button>
                     </form>
                 </div>
             </div>
@@ -202,39 +193,91 @@
                     <div class="card-header-title"><i class="fas fa-display"></i> System Preferences</div>
                 </div>
                 <div class="card-body">
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <div class="label">Default Theme</div>
-                            <div class="hint">Light mode is the default for all admin sessions</div>
+                    <form method="POST" action="{{ route('admin.settings.system') }}">
+                        @csrf @method('PUT')
+                        <div class="setting-row">
+                            <div class="setting-info">
+                                <div class="label">Default Theme</div>
+                                <div class="hint">Light mode is the default for all admin sessions</div>
+                            </div>
+                            <select class="filter-select @error('default_theme') fv-invalid @enderror" style="width:auto;" name="default_theme" id="defaultThemeSetting">
+                                <option value="light" {{ old('default_theme', $settings['default_theme'] ?? 'light') === 'light' ? 'selected' : '' }}>Light</option>
+                                <option value="dark"  {{ old('default_theme', $settings['default_theme'] ?? 'light') === 'dark' ? 'selected' : '' }}>Dark</option>
+                            </select>
+                            @error('default_theme')<div class="fv-error show">{{ $message }}</div>@enderror
                         </div>
-                        <select class="filter-select" style="width:auto;" id="defaultThemeSetting">
-                            <option value="light">Light</option>
-                            <option value="dark">Dark</option>
-                        </select>
-                    </div>
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <div class="label">Show Booking ID Prefix</div>
-                            <div class="hint">Display #BK- prefix on booking IDs (e.g. #BK-0001)</div>
+                        <div class="setting-row">
+                            <div class="setting-info">
+                                <div class="label">Show Booking ID Prefix</div>
+                                <div class="hint">Display #BK- prefix on booking IDs (e.g. #BK-0001)</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="show_id_prefix" {{ (old('default_theme') !== null ? old('show_id_prefix') : ($settings['show_id_prefix'] ?? true)) ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
                         </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="setting-row">
-                        <div class="setting-info">
-                            <div class="label">Maintenance Mode</div>
-                            <div class="hint">Hides the customer portal while you work</div>
+                        <div class="setting-row">
+                            <div class="setting-info">
+                                <div class="label">Maintenance Mode</div>
+                                <div class="hint">Hides the customer portal while you work</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="maintenance" {{ (old('default_theme') !== null ? old('maintenance') : ($settings['maintenance'] ?? false)) ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
                         </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" {{ ($settings['maintenance'] ?? false) ? 'checked' : '' }}>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
+                        <button type="submit" class="btn btn-primary" style="margin-top:8px;"><i class="fas fa-floppy-disk"></i> Save Changes</button>
+                    </form>
                 </div>
             </div>
 
+            <!-- Account Deletions (read-only log) -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-header-title"><i class="fas fa-user-slash"></i> Account Deletions</div>
+                </div>
+                <div class="card-body">
+                    <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+                        <i class="fas fa-circle-info" style="color:var(--info);flex-shrink:0;"></i>
+                        <span style="font-size:.8rem;color:var(--text-muted);">
+                            Customers delete their own accounts &mdash; nothing here needs your approval.
+                            Accounts stay recoverable for 30 days, then personal details are erased automatically. Bookings are always kept so reports and revenue stay accurate.
+                        </span>
+                    </div>
+                    @forelse($accountDeletions ?? [] as $d)
+                        <div class="settings-row" style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
+                            <div>
+                                <div style="font-size:.85rem;color:var(--text);">
+                                    Customer #{{ $d->user_id }}
+                                    @if($d->restored_at)
+                                        <span class="badge badge-confirmed" style="margin-left:6px;">Restored</span>
+                                    @elseif($d->anonymized_at)
+                                        <span class="badge badge-cancelled" style="margin-left:6px;">Erased</span>
+                                    @else
+                                        <span class="badge badge-pending" style="margin-left:6px;">Recoverable</span>
+                                    @endif
+                                </div>
+                                <div style="font-size:.75rem;color:var(--text-muted);">
+                                    {{ $d->bookings_retained }} booking{{ $d->bookings_retained === 1 ? '' : 's' }} kept
+                                    @if($d->bookings_cancelled)
+                                        &middot; {{ $d->bookings_cancelled }} upcoming cancelled
+                                    @endif
+                                    @if(! $d->anonymized_at && ! $d->restored_at && $d->purge_at)
+                                        &middot; data erased {{ $d->purge_at->diffForHumans() }}
+                                    @endif
+                                </div>
+                            </div>
+                            <div style="font-size:.75rem;color:var(--text-muted);white-space:nowrap;">
+                                {{ $d->created_at->format('M d, Y') }}
+                            </div>
+                        </div>
+                    @empty
+                        <div style="font-size:.82rem;color:var(--text-muted);font-style:italic;padding:6px 0;">
+                            No account deletions yet.
+                        </div>
+                    @endforelse
+                </div>
+            </div>
         </div>
     </div>
 
@@ -286,8 +329,16 @@
                         <td style="font-size:.78rem;">{{ $staff->created_at->format('M d, Y') }}</td>
                         <td style="text-align:center;">
                             <div style="display:flex;gap:6px;justify-content:center;">
-                                <button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick="openModal('editStaffModal')"><i class="fas fa-pen"></i></button>
-                                <button class="btn btn-danger btn-sm btn-icon" title="Delete" onclick="openModal('deleteStaffModal')"><i class="fas fa-trash"></i></button>
+                                <button class="btn btn-ghost btn-sm btn-icon" title="Edit"
+                                    onclick="openEditStaff(this)"
+                                    data-action="{{ route('admin.settings.staff.update', $staff->id) }}"
+                                    data-name="{{ $staff->name }}"
+                                    data-email="{{ $staff->email }}"
+                                    data-role="{{ $staff->role }}"><i class="fas fa-pen"></i></button>
+                                <button class="btn btn-danger btn-sm btn-icon" title="Delete"
+                                    onclick="openDeleteStaff(this)"
+                                    data-action="{{ route('admin.settings.staff.destroy', $staff->id) }}"
+                                    data-name="{{ $staff->name }}"><i class="fas fa-trash"></i></button>
                             </div>
                         </td>
                     </tr>
@@ -331,7 +382,7 @@
                         <td style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--text);">
                             ₱{{ number_format($service->price ?? 0, 2) }}
                         </td>
-                        <td>{{ $service->duration_minutes ?? '—' }} min</td>
+                        <td>{{ $service->duration ?? '—' }} min</td>
                         <td>
                             <span class="badge {{ $service->is_active ? 'badge-active' : 'badge-inactive' }}">
                                 {{ $service->is_active ? 'Active' : 'Inactive' }}
@@ -339,8 +390,18 @@
                         </td>
                         <td style="text-align:center;">
                             <div style="display:flex;gap:6px;justify-content:center;">
-                                <button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick="openModal('editServiceModal')"><i class="fas fa-pen"></i></button>
-                                <button class="btn btn-danger btn-sm btn-icon" title="Delete" onclick="openModal('deleteServiceModal')"><i class="fas fa-trash"></i></button>
+                                <button class="btn btn-ghost btn-sm btn-icon" title="Edit"
+                                    onclick="openEditService(this)"
+                                    data-action="{{ route('admin.settings.services.update', $service->id) }}"
+                                    data-name="{{ $service->name }}"
+                                    data-category="{{ $service->category }}"
+                                    data-duration="{{ $service->duration }}"
+                                    data-price="{{ $service->price }}"
+                                    data-description="{{ $service->description }}"><i class="fas fa-pen"></i></button>
+                                <button class="btn btn-danger btn-sm btn-icon" title="Delete"
+                                    onclick="openDeleteService(this)"
+                                    data-action="{{ route('admin.settings.services.destroy', $service->id) }}"
+                                    data-name="{{ $service->name }}"><i class="fas fa-trash"></i></button>
                             </div>
                         </td>
                     </tr>
@@ -423,16 +484,14 @@
                     <div class="form-group">
                         <label class="form-label">Category</label>
                         <select class="form-control" name="category">
-                            <option value="Wash">Wash</option>
-                            <option value="Detailing">Detailing</option>
-                            <option value="Mechanical">Mechanical</option>
-                            <option value="Coating">Coating</option>
-                            <option value="Other">Other</option>
+                            @foreach($categories ?? [] as $cat)
+                            <option value="{{ $cat }}">{{ $cat }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Duration (minutes)</label>
-                        <input class="form-control" type="number" name="duration_minutes" placeholder="60" min="15" step="15" />
+                        <label class="form-label">Duration (minutes) <span style="color:var(--red)">*</span></label>
+                        <input class="form-control" type="number" name="duration" placeholder="60" min="15" step="15" required />
                     </div>
                 </div>
                 <div class="form-group">
@@ -452,6 +511,89 @@
     </div>
 </div>
 
+<!-- EDIT STAFF MODAL -->
+<div class="modal-overlay" id="editStaffModal">
+    <div class="modal" style="max-width:480px;">
+        <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-user-pen" style="color:var(--red);margin-right:8px;"></i> Edit Staff Account</div>
+            <button class="modal-close" onclick="closeModal('editStaffModal')"><i class="fas fa-xmark"></i></button>
+        </div>
+        <form id="editStaffForm" method="POST" action="">
+            @csrf
+            @method('PUT')
+            <div class="modal-body">
+                <div class="form-row cols-2">
+                    <div class="form-group">
+                        <label class="form-label">Full Name <span style="color:var(--red)">*</span></label>
+                        <input class="form-control" type="text" name="name" id="editStaffName" required />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Role <span style="color:var(--red)">*</span></label>
+                        <select class="form-control" name="role" id="editStaffRole" required>
+                            <option value="staff">Staff</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Email Address <span style="color:var(--red)">*</span></label>
+                    <input class="form-control" type="email" name="email" id="editStaffEmail" required />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('editStaffModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-floppy-disk"></i> Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- EDIT SERVICE MODAL -->
+<div class="modal-overlay" id="editServiceModal">
+    <div class="modal" style="max-width:480px;">
+        <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-pen" style="color:var(--red);margin-right:8px;"></i> Edit Service</div>
+            <button class="modal-close" onclick="closeModal('editServiceModal')"><i class="fas fa-xmark"></i></button>
+        </div>
+        <form id="editServiceForm" method="POST" action="">
+            @csrf
+            @method('PUT')
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Service Name <span style="color:var(--red)">*</span></label>
+                    <input class="form-control" type="text" name="name" id="editServiceName" required />
+                </div>
+                <div class="form-row cols-2">
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select class="form-control" name="category" id="editServiceCategory">
+                            @foreach($categories ?? [] as $cat)
+                            <option value="{{ $cat }}">{{ $cat }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Duration (minutes) <span style="color:var(--red)">*</span></label>
+                        <input class="form-control" type="number" name="duration" id="editServiceDuration" min="15" step="15" required />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Price (₱) <span style="color:var(--red)">*</span></label>
+                    <input class="form-control" type="number" name="price" id="editServicePrice" min="0" step="0.01" required />
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" name="description" id="editServiceDescription" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('editServiceModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-floppy-disk"></i> Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- DELETE CONFIRM MODALS -->
 <div class="modal-overlay" id="deleteStaffModal">
     <div class="modal" style="max-width:380px;">
@@ -460,11 +602,15 @@
             <button class="modal-close" onclick="closeModal('deleteStaffModal')"><i class="fas fa-xmark"></i></button>
         </div>
         <div class="modal-body">
-            <p style="color:var(--text-muted);font-size:.9rem;line-height:1.6;">This will permanently remove this staff account. The account will lose all portal access immediately.</p>
+            <p style="color:var(--text-muted);font-size:.9rem;line-height:1.6;">This will permanently remove <strong id="deleteStaffName">this staff account</strong>. The account will lose all portal access immediately.</p>
         </div>
         <div class="modal-footer">
             <button class="btn btn-ghost" onclick="closeModal('deleteStaffModal')">Cancel</button>
-            <button class="btn btn-danger"><i class="fas fa-trash"></i> Remove Account</button>
+            <form id="deleteStaffForm" method="POST" action="">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Remove Account</button>
+            </form>
         </div>
     </div>
 </div>
@@ -475,11 +621,15 @@
             <button class="modal-close" onclick="closeModal('deleteServiceModal')"><i class="fas fa-xmark"></i></button>
         </div>
         <div class="modal-body">
-            <p style="color:var(--text-muted);font-size:.9rem;line-height:1.6;">Deleting this service will remove it from the booking form. Existing bookings using this service will not be affected.</p>
+            <p style="color:var(--text-muted);font-size:.9rem;line-height:1.6;">Deleting <strong id="deleteServiceName">this service</strong> will remove it from the booking form. Existing bookings using this service will not be affected.</p>
         </div>
         <div class="modal-footer">
             <button class="btn btn-ghost" onclick="closeModal('deleteServiceModal')">Cancel</button>
-            <button class="btn btn-danger"><i class="fas fa-trash"></i> Delete Service</button>
+            <form id="deleteServiceForm" method="POST" action="">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Delete Service</button>
+            </form>
         </div>
     </div>
 </div>
@@ -499,5 +649,56 @@ const hash = window.location.hash.replace('#','');
 if (['general','staff','services'].includes(hash)) {
     switchTab(hash, document.querySelector('[data-tab="'+hash+'"]'));
 }
+
+// ── Edit / Delete staff ──────────────────────────────────────────────────
+function openEditStaff(btn) {
+    document.getElementById('editStaffForm').action = btn.dataset.action;
+    document.getElementById('editStaffName').value  = btn.dataset.name;
+    document.getElementById('editStaffEmail').value = btn.dataset.email;
+    document.getElementById('editStaffRole').value  = btn.dataset.role;
+    openModal('editStaffModal');
+}
+
+function openDeleteStaff(btn) {
+    document.getElementById('deleteStaffForm').action  = btn.dataset.action;
+    document.getElementById('deleteStaffName').textContent = btn.dataset.name;
+    openModal('deleteStaffModal');
+}
+
+// ── Edit / Delete service ────────────────────────────────────────────────
+function openEditService(btn) {
+    document.getElementById('editServiceForm').action        = btn.dataset.action;
+    document.getElementById('editServiceName').value         = btn.dataset.name;
+    document.getElementById('editServiceCategory').value     = btn.dataset.category;
+    document.getElementById('editServiceDuration').value     = btn.dataset.duration;
+    document.getElementById('editServicePrice').value        = btn.dataset.price;
+    document.getElementById('editServiceDescription').value  = btn.dataset.description;
+    openModal('editServiceModal');
+}
+
+function openDeleteService(btn) {
+    document.getElementById('deleteServiceForm').action  = btn.dataset.action;
+    document.getElementById('deleteServiceName').textContent = btn.dataset.name;
+    openModal('deleteServiceModal');
+}
+</script>
+@endpush
+@push('scripts')
+<script>
+// Settings save feedback — reuses the shared alert modal from the admin layout.
+@if (session('success'))
+    ApxAlertModal.show({
+        variant: 'success',
+        title: 'Settings saved',
+        message: @json(session('success')),
+    });
+@endif
+@if ($errors->any())
+    ApxAlertModal.show({
+        variant: 'error',
+        title: 'Couldn\'t save settings',
+        message: @json($errors->first() . ($errors->count() > 1 ? ' (and ' . ($errors->count() - 1) . ' more)' : '')),
+    });
+@endif
 </script>
 @endpush

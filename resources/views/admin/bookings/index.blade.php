@@ -19,7 +19,7 @@
     </div>
  
     <!-- SUMMARY MINI-CARDS -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
+    <div class="stat-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
         @php
             $mini = [
                 ['label'=>'Confirmed',   'key'=>'confirmed',   'icon'=>'fa-circle-check',  'color'=>'var(--success)'],
@@ -81,7 +81,8 @@
                 <thead>
                     <tr>
                         <th>Customer</th>
-                        <th>Vehicle / Plate</th>
+                        <th>Vehicle</th>
+                        <th>Plate</th>
                         <th>Service Type</th>
                         <th>Date &amp; Time</th>
                         <th>Status</th>
@@ -95,7 +96,8 @@
                         <div class="primary-col">{{ $b->customer->name ?? 'N/A' }}</div>
                         <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;">{{ $b->reference_number }}</div>
                     </td>
-                    <td>{{ $b->vehicle->plate_number ?? 'N/A' }}</td>
+                    <td style="white-space:nowrap;">{{ $b->vehicle?->display_name ?? '—' }}</td>
+                    <td style="white-space:nowrap;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.04em;">{{ $b->vehicle?->display_plate ?? 'Not provided' }}</td>
                     <td>{{ $b->service->name ?? 'N/A' }}</td>
                     <td style="white-space:nowrap;">{{ $b->booking_date }} {{ $b->booking_time }}</td>
                     <td>
@@ -117,20 +119,23 @@
                                 data-id="{{ $b->reference_number }}"
                                 data-status="{{ $b->status }}"
                                 data-customer="{{ $b->customer->name ?? 'N/A' }}"
-                                data-vehicle="{{ $b->vehicle->plate_number ?? 'N/A' }}"
-                                data-model="{{ $b->vehicle->model ?? '' }}"
+                                data-vehicle="{{ $b->vehicle?->display_plate ?? 'Not provided' }}"
+                                data-model="{{ $b->vehicle?->display_name ?? '' }}"
                                 data-service="{{ $b->service->name ?? 'N/A' }}"
                                 data-datetime="{{ $b->booking_date }} {{ $b->booking_time }}"
                                 data-notes="{{ $b->notes ?? '—' }}"
                             ><i class="fas fa-eye"></i></button>
                             <a href="{{ route('admin.bookings.edit', ['id' => $b->id]) }}" class="btn btn-ghost btn-sm btn-icon" title="Edit"><i class="fas fa-pen"></i></a>
+                            @if(in_array($b->status, ['pending', 'confirmed']))
+                            <button class="btn btn-ghost btn-sm btn-icon" title="Arrived / Start Service" onclick="markArrived({{ $b->id }}, this)"><i class="fas fa-person-walking-arrow-right"></i></button>
+                            @endif
                             <button class="btn btn-danger btn-sm btn-icon" title="Cancel" onclick="cancelBooking({{ $b->id }}, this)"><i class="fas fa-ban"></i></button>
                         </div>
                     </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">No bookings found.</td>
+                    <td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted);">No bookings found.</td>
                 </tr>
                 @endforelse
                 </tbody>
@@ -205,9 +210,9 @@ function openViewModal(btn) {
     document.getElementById('modal-datetime').textContent   = btn.dataset.datetime;
     document.getElementById('modal-notes').textContent      = btn.dataset.notes;
 
-    const plate = btn.dataset.vehicle;
-    const model = btn.dataset.model;
-    document.getElementById('modal-vehicle').textContent = plate + (model ? ' — ' + model : '');
+    const plate   = btn.dataset.vehicle;
+    const vehicle = btn.dataset.model;
+    document.getElementById('modal-vehicle').textContent = vehicle ? vehicle + ' (' + plate + ')' : plate;
 
     const statusEl = document.getElementById('modal-status');
     const statusMap = {
@@ -264,6 +269,28 @@ function cancelBooking(id, btn) {
         }
     })
     .catch(err => console.error('Cancel failed:', err));
+}
+function markArrived(id, btn) {
+    if (!confirm('Mark this customer as arrived and start the service?')) return;
+    fetch(`/admin/bookings/${id}/arrive`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const row = btn.closest('tr');
+            row.dataset.status = 'in_progress';
+            row.querySelector('.badge').className = 'badge badge-inprogress';
+            row.querySelector('.badge').textContent = 'In Progress';
+            btn.remove();
+            applyFilters();
+        }
+    })
+    .catch(err => console.error('Mark arrived failed:', err));
 }
 ['searchInput','filterStatus','filterService','filterDateFrom','filterDateTo']
     .forEach(id => document.getElementById(id).addEventListener('input', applyFilters));

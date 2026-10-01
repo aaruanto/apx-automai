@@ -73,7 +73,7 @@
                         <div class="event-meta">
                             {{ $booking->customer->name ?? 'N/A' }} &middot;
                             <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;">
-                                {{ $booking->vehicle->plate_number ?? 'N/A' }}
+                                {{ $booking->vehicle?->display_plate ?? 'Not provided' }}
                             </span>
                         </div>
                     </div>
@@ -86,13 +86,16 @@
                                 data-id="{{ $booking->reference_number }}"
                                 data-status="{{ $booking->status }}"
                                 data-customer="{{ $booking->customer->name ?? 'N/A' }}"
-                                data-vehicle="{{ $booking->vehicle->plate_number ?? 'N/A' }}"
-                                data-model="{{ $booking->vehicle->model ?? '' }}"
+                                data-vehicle="{{ $booking->vehicle?->display_plate ?? 'Not provided' }}"
+                                data-model="{{ $booking->vehicle?->display_name ?? '' }}"
                                 data-service="{{ $booking->service->name ?? 'N/A' }}"
                                 data-datetime="{{ $booking->booking_date }} {{ $booking->booking_time }}"
                                 data-notes="{{ $booking->notes ?? '—' }}"
                             ><i class="fas fa-eye"></i></button>
                             <a href="{{ route('admin.bookings.edit', ['id' => $booking->id]) }}" class="btn btn-ghost btn-sm btn-icon" title="Edit"><i class="fas fa-pen"></i></a>
+                            @if(in_array($booking->status, ['pending', 'confirmed']))
+                            <button class="btn btn-ghost btn-sm btn-icon" title="Arrived / Start Service" onclick="markArrived({{ $booking->id }}, this)"><i class="fas fa-person-walking-arrow-right"></i></button>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -224,9 +227,9 @@ function openViewModal(btn) {
     document.getElementById('modal-datetime').textContent   = btn.dataset.datetime;
     document.getElementById('modal-notes').textContent      = btn.dataset.notes;
 
-    const plate = btn.dataset.vehicle;
-    const model = btn.dataset.model;
-    document.getElementById('modal-vehicle').textContent = plate + (model ? ' — ' + model : '');
+    const plate   = btn.dataset.vehicle;
+    const vehicle = btn.dataset.model;
+    document.getElementById('modal-vehicle').textContent = vehicle ? vehicle + ' (' + plate + ')' : plate;
 
     const statusEl = document.getElementById('modal-status');
     const statusMap = {
@@ -240,6 +243,22 @@ function openViewModal(btn) {
     statusEl.className   = 'badge ' + s[1];
 
     openModal('viewModal');
+}
+
+function markArrived(id, btn) {
+    if (!confirm('Mark this customer as arrived and start the service?')) return;
+    fetch(`/admin/bookings/${id}/arrive`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) location.reload();
+    })
+    .catch(err => console.error('Mark arrived failed:', err));
 }
 </script>
 @endpush

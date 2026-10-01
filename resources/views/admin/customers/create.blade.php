@@ -23,7 +23,7 @@
         </a>
     </div>
 
-    <form method="POST" action="{{ $isEdit ? route('admin.customers.update', $customer->id) : route('admin.customers.store') }}">
+    <form method="POST" id="customerForm" action="{{ $isEdit ? route('admin.customers.update', $customer->id) : route('admin.customers.store') }}">
         @csrf
         @if($isEdit) @method('PUT') @endif
 
@@ -41,13 +41,13 @@
                         <div class="form-row cols-2">
                             <div class="form-group">
                                 <label class="form-label">Full Name <span style="color:var(--red)">*</span></label>
-                                <input class="form-control" type="text" name="name"
+                                <input class="form-control" type="text" name="name" id="custCreateName"
                                        value="{{ $customer->name ?? '' }}"
                                        placeholder="e.g. Juan dela Cruz" required />
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Phone Number <span style="color:var(--red)">*</span></label>
-                                <input class="form-control" type="tel" name="phone"
+                                <input class="form-control" type="tel" name="phone" id="custCreatePhone"
                                        value="{{ $customer->phone ?? '' }}"
                                        placeholder="09XXXXXXXXX" required />
                             </div>
@@ -74,10 +74,10 @@
                         <div class="form-row cols-2">
                             <div class="form-group">
                                 <label class="form-label">Plate Number <span style="color:var(--red)">*</span></label>
-                                <input class="form-control" type="text" name="plate"
+                                <input class="form-control" type="text" name="plate" id="custCreatePlate"
                                        value="{{ $customer->vehicle->plate_number ?? '' }}"
                                        placeholder="e.g. ABC 1234" required
-                                       style="text-transform:uppercase;letter-spacing:.08em;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;" />
+                                       style="letter-spacing:.08em;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;" />
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Car Color</label>
@@ -99,26 +99,6 @@
             <!-- RIGHT COLUMN -->
             <div style="display:flex;flex-direction:column;gap:20px;">
 
-                <!-- Loyalty Tier -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-header-title"><i class="fas fa-trophy"></i> Loyalty Tier</div>
-                    </div>
-                    <div class="card-body">
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label class="form-label">Tier Assignment</label>
-                            <select class="form-control" name="loyalty">
-                                @foreach(['bronze'=>'Bronze (1–4 bookings)','silver'=>'Silver (5–9 bookings)','gold'=>'Gold (10+ bookings)'] as $key => $label)
-                                <option value="{{ $key }}" {{ ($customer->loyalty ?? 'bronze') === $key ? 'selected' : '' }}>
-                                    {{ $label }}
-                                </option>
-                                @endforeach
-                            </select>
-                            <div class="form-hint">Tier is normally auto-assigned based on booking count.</div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Notes -->
                 <div class="card">
                     <div class="card-header">
@@ -135,7 +115,7 @@
                 <!-- Submit -->
                 <div class="card" style="background:var(--surface-2);">
                     <div class="card-body">
-                        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;">
+                        <button type="submit" class="btn btn-primary" id="customerSubmitBtn" style="width:100%;justify-content:center;padding:12px;">
                             <i class="fas fa-{{ $isEdit ? 'floppy-disk' : 'plus' }}"></i>
                             {{ $isEdit ? 'Save Changes' : 'Add Customer' }}
                         </button>
@@ -182,6 +162,16 @@
     </form>
 
 @endsection
+
+@push('scripts')
+<script>
+PlateMask.attach(document.getElementById('custCreatePlate'));
+FormValidate.register(document.getElementById('custCreateName'), { rules: [FormValidate.rules.required('Full name is required.')] });
+FormValidate.register(document.getElementById('custCreatePhone'), { rules: [FormValidate.rules.required('Phone number is required.'), FormValidate.rules.phonePH()] });
+FormValidate.register(document.getElementById('custCreatePlate'), { rules: [FormValidate.rules.required('Plate number is required.'), FormValidate.rules.plate()] });
+FormValidate.bindSubmit(document.getElementById('customerForm'), document.getElementById('customerSubmitBtn'));
+</script>
+@endpush
 
 @if($isEdit ?? false)
 @section('modals')

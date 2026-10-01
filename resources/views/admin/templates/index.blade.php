@@ -243,7 +243,7 @@
                                 ['{time}','Booking time'],['{plate}','Vehicle plate number'],
                                 ['{vehicle}','Vehicle make & model'],['{reference}','Booking reference #'],
                                 ['{branch}','Branch name'],['{contact}','Branch contact number'],
-                                ['{days_until}','Days until appointment'],['{loyalty_tier}','Customer loyalty tier'],
+                                ['{days_until}','Days until appointment'],
                             ];
                         @endphp
                         @foreach($placeholders as [$tag, $desc])
@@ -508,7 +508,7 @@ function updateEmailPreview() {
         '{time}': '9:00 AM', '{plate}': 'ABC 1234',
         '{vehicle}': 'Toyota Vios 2021', '{reference}': '#BK-0042',
         '{branch}': 'Tandang Sora Branch', '{contact}': '(02) 8123-4567',
-        '{days_until}': '3', '{loyalty_tier}': 'Gold',
+        '{days_until}': '3',
     };
     let previewHtml = body;
     Object.entries(sampleData).forEach(([k, v]) => {

@@ -9,6 +9,10 @@
 
 @section('title', $pageTitle)
 
+@push('styles')
+<link href="{{ asset('assets/css/availability-picker.css') }}" rel="stylesheet" />
+@endpush
+
 @section('content')
 
     <!-- PAGE HEADER -->
@@ -39,7 +43,7 @@
     </div>
     @endif
 
-    <form method="POST" action="{{ $isEdit ? route('admin.bookings.update', $booking->id) : route('admin.bookings.store') }}">
+    <form method="POST" id="bookingForm" action="{{ $isEdit ? route('admin.bookings.update', $booking->id) : route('admin.bookings.store') }}">
         @csrf
         @if($isEdit) @method('PUT') @endif
 
@@ -57,13 +61,13 @@
                         <div class="form-row cols-2">
                             <div class="form-group">
                                 <label class="form-label">Full Name <span style="color:var(--red)">*</span></label>
-                                <input class="form-control" type="text" name="customer_name"
+                                <input class="form-control" type="text" name="customer_name" id="adminCustomerName"
                                        value="{{ $src->user->name ?? '' }}"
                                        placeholder="e.g. Juan dela Cruz" required />
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Phone Number <span style="color:var(--red)">*</span></label>
-                                <input class="form-control" type="tel" name="customer_phone"
+                                <input class="form-control" type="tel" name="customer_phone" id="adminCustomerPhone"
                                        value="{{ $src->user->phone ?? '' }}"
                                        placeholder="09XXXXXXXXX" required />
                             </div>
@@ -86,10 +90,10 @@
                         <div class="form-row cols-2">
                             <div class="form-group">
                                 <label class="form-label">Plate Number <span style="color:var(--red)">*</span></label>
-                                <input class="form-control" type="text" name="plate"
+                                <input class="form-control" type="text" name="plate" id="adminPlateInput"
                                        value="{{ $src->vehicle->plate_number ?? '' }}"
                                        placeholder="e.g. ABC 1234" required
-                                       style="text-transform:uppercase;letter-spacing:.08em;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;" />
+                                       style="letter-spacing:.08em;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;" />
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Car Model</label>
@@ -150,28 +154,16 @@
                         <div class="card-header-title"><i class="fas fa-calendar"></i> Schedule</div>
                     </div>
                     <div class="card-body">
-                        <div class="form-group">
-                            <label class="form-label">Preferred Date <span style="color:var(--red)">*</span></label>
-                            <input class="form-control" type="date" name="booking_date"
-                                   value="{{ $isEdit ? ($booking->booking_date ?? '') : ($isRebook ? now()->addDay()->toDateString() : '') }}"
-                                   required />
-                        </div>
                         <div class="form-group" style="margin-bottom:0;">
-                            <label class="form-label">Preferred Time <span style="color:var(--red)">*</span></label>
-                            <select class="form-control" name="booking_time" required>
-                                <option value="">— Select time slot —</option>
-                                @php
-                                    $times = ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30',
-                                              '13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30'];
-                                @endphp
-                                @foreach($times as $t)
-                                <option value="{{ $t }}"
-                                    {{ isset($src) && substr($src->booking_time, 0, 5) === $t ? 'selected' : '' }}>
-                                    {{ \Carbon\Carbon::createFromFormat('H:i', $t)->format('g:i A') }}
-                                </option>
-                                @endforeach
-                            </select>
-                            <div class="form-hint">Operating hours: 8:00 AM – 5:00 PM</div>
+                            <label class="form-label">Preferred Date &amp; Time <span style="color:var(--red)">*</span></label>
+                            @php
+                                $prefillDate = $isEdit ? ($booking->booking_date ?? '') : ($isRebook ? now()->addDay()->toDateString() : '');
+                                $prefillTime = isset($src) ? substr($src->booking_time, 0, 5) : '';
+                            @endphp
+                            <input type="hidden" name="booking_date" id="adminBookingDate" value="{{ $prefillDate }}" required />
+                            <input type="hidden" name="booking_time" id="adminBookingTime" value="{{ $prefillTime }}" required />
+                            <x-availability-picker id="adminAvp" />
+                            <div class="form-hint">Mon–Fri 9:00 AM – 9:00 PM &middot; Sat–Sun 9:00 AM – 12:00 PM</div>
                         </div>
                     </div>
                 </div>
@@ -217,7 +209,7 @@
                 <!-- SUBMIT -->
                 <div class="card">
                     <div class="card-body">
-                        <button type="submit" class="btn btn-primary"
+                        <button type="submit" class="btn btn-primary" id="bookingSubmitBtn"
                                 style="width:100%;justify-content:center;padding:12px;">
                             <i class="fas fa-{{ $isEdit ? 'floppy-disk' : 'plus' }}"></i>
                             {{ $isEdit ? 'Save Changes' : ($isRebook ? 'Confirm Rebook' : 'Create Booking') }}
@@ -260,9 +252,8 @@
         </div>
         <div class="modal-footer">
             <button class="btn btn-ghost" onclick="closeModal('cancelModal')">Go Back</button>
-            <form method="POST" action="{{ route('admin.bookings.update', $booking->id) }}">
-                @csrf @method('PUT')
-                <input type="hidden" name="status" value="cancelled" />
+            <form method="POST" action="{{ route('admin.bookings.cancel', $booking->id) }}">
+                @csrf @method('PATCH')
                 <button type="submit" class="btn btn-danger"><i class="fas fa-ban"></i> Yes, Cancel</button>
             </form>
         </div>
@@ -272,6 +263,7 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('assets/js/availability-picker.js') }}"></script>
 <script>
 const serviceSelect   = document.querySelector('[name="service_id"]');
 const summaryPrice    = document.getElementById('summaryPrice');
@@ -283,6 +275,33 @@ const serviceData = {
     @endforeach
 };
 
+// ── Plate mask + validation ─────────────────────────────────────────────
+PlateMask.attach(document.getElementById('adminPlateInput'));
+FormValidate.register(document.getElementById('adminCustomerName'), { rules: [FormValidate.rules.required('Full name is required.')] });
+FormValidate.register(document.getElementById('adminCustomerPhone'), { rules: [FormValidate.rules.required('Phone number is required.'), FormValidate.rules.phonePH()] });
+FormValidate.register(document.getElementById('adminPlateInput'), { rules: [FormValidate.rules.required('Plate number is required.'), FormValidate.rules.plate()] });
+FormValidate.bindSubmit(document.getElementById('bookingForm'), document.getElementById('bookingSubmitBtn'));
+
+// ── Availability picker ──────────────────────────────────────────────────
+const adminPicker = new AvailabilityPicker({
+    root: '#adminAvp',
+    dateInput: document.getElementById('adminBookingDate'),
+    timeInput: document.getElementById('adminBookingTime'),
+    getServiceIds: () => serviceSelect.value ? [parseInt(serviceSelect.value, 10)] : [],
+});
+
+// Editing/rebooking an existing booking — adopt its current date/time so the
+// calendar opens already showing (and highlighting) what's on file.
+const prefillDate = document.getElementById('adminBookingDate').value;
+const prefillTime = document.getElementById('adminBookingTime').value;
+if (prefillDate && prefillTime) {
+    const [py, pm] = prefillDate.split('-').map(Number);
+    adminPicker.year = py;
+    adminPicker.month = pm;
+    adminPicker.selectedDate = prefillDate;
+    adminPicker.selectedTime = prefillTime;
+}
+
 serviceSelect.addEventListener('change', function() {
     const data = serviceData[this.value];
     if (data) {
@@ -292,8 +311,10 @@ serviceSelect.addEventListener('change', function() {
         summaryPrice.textContent    = '—';
         summaryDuration.textContent = '—';
     }
+    adminPicker.refresh();
 });
 
 if (serviceSelect.value) serviceSelect.dispatchEvent(new Event('change'));
+else adminPicker.refresh();
 </script>
 @endpush

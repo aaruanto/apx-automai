@@ -8,6 +8,7 @@
     <title>@yield('title', 'Dashboard') — APX AutoMai</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+    <link href="{{ asset('assets/css/design-tokens.css') }}" rel="stylesheet" />
     <link href="{{ asset('assets/css/dashboard.css') }}" rel="stylesheet" />
     @stack('styles')
     <style>
@@ -22,11 +23,7 @@
             --border: rgba(0, 0, 0, 0.09);
             --text: #1a1d23;
             --text-muted: #6b7280;
-            --red: #E8192C;
             --red-glow: rgba(232, 25, 44, 0.10);
-            --success: #22c55e;
-            --warning: #f59e0b;
-            --info: #3b82f6;
         }
 
         /* ── Dark mode overrides ── */
@@ -123,43 +120,6 @@
             padding: 2px 6px;
             border-radius: 3px;
             border: 1px solid rgba(232, 25, 44, .18);
-        }
-
-        .topnav-search {
-            flex: 1;
-            max-width: 380px;
-            position: relative;
-            margin-left: 8px;
-        }
-
-        .topnav-search .search-icon {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-            font-size: .75rem;
-            pointer-events: none;
-        }
-
-        .topnav-search input {
-            width: 100%;
-            background: var(--surface-2);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 7px 12px 7px 30px;
-            font-size: .82rem;
-            color: var(--text);
-            font-family: 'Barlow', sans-serif;
-            outline: none;
-        }
-
-        .topnav-search input:focus {
-            border-color: rgba(232, 25, 44, .3);
-        }
-
-        .topnav-search input::placeholder {
-            color: var(--text-muted);
         }
 
         .topnav-actions {
@@ -732,20 +692,6 @@
             color: var(--red);
         }
 
-        .badge-gold {
-            background: rgba(245, 158, 11, .12);
-            color: #f59e0b;
-        }
-
-        .badge-silver {
-            background: rgba(148, 163, 184, .12);
-            color: #94a3b8;
-        }
-
-        .badge-bronze {
-            background: rgba(205, 124, 79, .12);
-            color: #cd7c4f;
-        }
 
         .badge-admin {
             background: rgba(232, 25, 44, .10);
@@ -1005,7 +951,50 @@
                 grid-template-columns: 1fr;
             }
 
-            .topnav-search {
+            /* Flex items default to min-width:auto, so without this the
+               content keeps its intrinsic width and pushes the page wider
+               than the viewport instead of letting .table-wrap scroll. */
+            .main-content,
+            main,
+            .card,
+            .table-wrap {
+                min-width: 0;
+                max-width: 100%;
+            }
+
+            .page-header,
+            .filters-bar {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .filters-bar .filter-select,
+            .filters-bar .filter-input {
+                flex: 1 1 140px;
+                min-width: 0;
+            }
+
+            main { padding: 18px 16px; }
+
+            /* These stat rows carry an inline grid-template-columns, so the
+               override has to be !important to take effect. */
+            .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+            .profile-shell { grid-template-columns: 1fr !important; }
+        }
+
+        @media (max-width: 600px) {
+            .stat-grid { grid-template-columns: 1fr !important; }
+            .pair-grid { grid-template-columns: 1fr !important; }
+        }
+
+        /* Below ~600px the brand badge + user name push the actions past the
+           viewport edge. Drop the labels only — hamburger, theme toggle,
+           notifications and avatar all stay reachable. */
+        @media (max-width: 600px) {
+            .topnav { padding: 0 12px; }
+
+            .topnav .brand-badge,
+            .topnav .user-name {
                 display: none;
             }
         }
@@ -1022,10 +1011,6 @@
             <span class="brand-auto">AUTOMAI</span>
             <span class="brand-badge">ADMIN</span>
         </a>
-        <div class="topnav-search">
-            <i class="fas fa-search search-icon"></i>
-            <input type="text" placeholder="Search bookings, customers..." />
-        </div>
         <div class="topnav-actions">
             <a href="#!" class="icon-btn" title="Notifications">
                 <i class="fas fa-bell"></i>
@@ -1094,7 +1079,6 @@
                 <div class="sub-nav {{ request()->routeIs('admin.customers.*') ? 'open' : '' }}" id="sub-customers">
                     <a href="{{ route('admin.customers.index') }}" class="{{ request()->routeIs('admin.customers.index') ? 'active-sub' : '' }}">All Customers</a>
                     <a href="{{ route('admin.customers.create') }}" class="{{ request()->routeIs('admin.customers.create') ? 'active-sub' : '' }}">Add Customer</a>
-                    <a href="{{ route('admin.customers.loyalty') }}" class="{{ request()->routeIs('admin.customers.loyalty') ? 'active-sub' : '' }}">Loyalty Members</a>
                 </div>
 
                 <!-- MESSAGE TEMPLATES -->
@@ -1138,7 +1122,7 @@
                 <div class="footer-brand"><span>APX</span> AutoMai &mdash; Admin Portal &copy; {{ date('Y') }}</div>
                 <div>
                     <a href="#">Privacy Policy</a> &nbsp;&middot;&nbsp;
-                    <a href="#">Terms &amp; Conditions</a>
+                    <a href="{{ route('terms') }}" target="_blank">Terms &amp; Conditions</a>
                 </div>
             </footer>
         </div>
@@ -1146,8 +1130,14 @@
 
     @yield('modals')
 
+    <x-alert-modal id="apx-alert-modal" />
+
     <!-- SCRIPTS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js" crossorigin="anonymous"></script>
+    <script src="{{ asset('assets/js/form-validate.js') }}"></script>
+    <script src="{{ asset('assets/js/plate-mask.js') }}"></script>
+    <script src="{{ asset('assets/js/alert-modal.js') }}"></script>
+    <script src="{{ asset('assets/js/password-toggle.js') }}"></script>
     <script>
         // ── Sidebar toggle ──
         const sidebar = document.getElementById('sidebar');

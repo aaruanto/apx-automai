@@ -16,9 +16,9 @@
         <a href="{{ route('admin.bookings.index') }}" class="btn btn-ghost"><i class="fas fa-arrow-left"></i> All Bookings</a>
     </div>
 
-    <!-- ALERT BANNER -->
-    <div style="background:rgba(232,25,44,.08);border:1px solid rgba(232,25,44,.2);border-radius:8px;padding:12px 18px;margin-bottom:24px;display:flex;align-items:center;gap:12px;">
-        <i class="fas fa-circle-info" style="color:var(--red);font-size:1rem;flex-shrink:0;"></i>
+    <!-- ALERT BANNER (informational — uses --info, not --red, per the app's error/info color convention) -->
+    <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:12px 18px;margin-bottom:24px;display:flex;align-items:center;gap:12px;">
+        <i class="fas fa-circle-info" style="color:var(--info);font-size:1rem;flex-shrink:0;"></i>
         <span style="font-size:.85rem;color:var(--text-muted);">
             Cancelled bookings are kept for record-keeping. You can <strong style="color:var(--text);">rebook</strong> a cancelled booking or permanently delete it.
         </span>
@@ -70,7 +70,7 @@
                         <div class="primary-col">{{ $b->customer->name ?? 'N/A' }}</div>
                         <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;">{{ $b->reference_number }}</div>
                     </td>
-                    <td>{{ $b->vehicle->plate_number ?? 'N/A' }}</td>
+                    <td>{{ $b->vehicle?->display_plate ?? 'Not provided' }}</td>
                     <td>{{ $b->service->name ?? 'N/A' }}</td>
                     <td style="white-space:nowrap;">{{ $b->booking_date }} {{ $b->booking_time }}</td>
                     <td style="text-align:center;">

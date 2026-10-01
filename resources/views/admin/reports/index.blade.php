@@ -25,7 +25,7 @@
     </div>
 
     <!-- KPI SUMMARY ROW -->
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px;">
+    <div class="stat-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px;">
         @php
             $kpis = [
                 ['label'=>'Total Bookings', 'value'=>$totalBookings ?? 0, 'icon'=>'fa-calendar-check', 'color'=>'var(--red)', 'bg'=>'var(--red-glow)', 'sub'=>'+'.($bookingsGrowth ?? 0).'% vs last period'],
@@ -175,39 +175,6 @@
                 @endforelse
                 </tbody>
             </table>
-        </div>
-    </div>
-
-    <!-- LOYALTY DISTRIBUTION -->
-    <div class="card">
-        <div class="card-header">
-            <div class="card-header-title"><i class="fas fa-trophy"></i> Customer Loyalty Distribution</div>
-            <a href="{{ route('admin.customers.loyalty') }}" style="font-size:.8rem;color:var(--red);text-decoration:none;font-weight:600;">
-                View All <i class="fas fa-arrow-right" style="font-size:.65rem;"></i>
-            </a>
-        </div>
-        <div class="card-body">
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
-                @php
-                    $loyaltyDist = [
-                        ['label'=>'Gold',   'count'=>$loyaltyCounts['gold']   ?? 0, 'color'=>'#F59E0B', 'bg'=>'rgba(245,158,11,.1)', 'icon'=>'fa-star',            'desc'=>'10+ bookings'],
-                        ['label'=>'Silver', 'count'=>$loyaltyCounts['silver'] ?? 0, 'color'=>'#94A3B8', 'bg'=>'rgba(148,163,184,.1)', 'icon'=>'fa-star-half-stroke', 'desc'=>'5–9 bookings'],
-                        ['label'=>'Bronze', 'count'=>$loyaltyCounts['bronze'] ?? 0, 'color'=>'#CD7C4F', 'bg'=>'rgba(205,124,79,.1)',  'icon'=>'fa-circle',          'desc'=>'1–4 bookings'],
-                    ];
-                @endphp
-                @foreach($loyaltyDist as $ld)
-                <div style="background:{{ $ld['bg'] }};border:1px solid rgba(0,0,0,.04);border-radius:10px;padding:18px;display:flex;align-items:center;gap:14px;">
-                    <div style="width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;color:{{ $ld['color'] }};font-size:1.1rem;">
-                        <i class="fas {{ $ld['icon'] }}"></i>
-                    </div>
-                    <div>
-                        <div style="font-family:'Barlow Condensed',sans-serif;font-size:2rem;font-weight:800;line-height:1;color:{{ $ld['color'] }};">{{ $ld['count'] }}</div>
-                        <div style="font-weight:700;font-size:.85rem;color:{{ $ld['color'] }};">{{ $ld['label'] }}</div>
-                        <div style="font-size:.72rem;color:var(--text-muted);">{{ $ld['desc'] }}</div>
-                    </div>
-                </div>
-                @endforeach
-            </div>
         </div>
     </div>
 

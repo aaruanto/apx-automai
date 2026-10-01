@@ -58,13 +58,9 @@
             <div class="col-lg-5 px-5 text-end">
                 <div class="h-100 d-inline-flex align-items-center py-3 me-4">
                     <small class="fa fa-phone-alt text-primary me-2"></small>
-                    <small>+012 345 6789</small>
+                    <small>+63 9544 8888 50</small>
                 </div>
                 <div class="h-100 d-inline-flex align-items-center">
-                    <a class="btn btn-sm-square bg-white text-primary me-1" href=""><i class="fab fa-facebook-f"></i></a>
-                    <a class="btn btn-sm-square bg-white text-primary me-1" href=""><i class="fab fa-twitter"></i></a>
-                    <a class="btn btn-sm-square bg-white text-primary me-1" href=""><i class="fab fa-linkedin-in"></i></a>
-                    <a class="btn btn-sm-square bg-white text-primary me-0" href=""><i class="fab fa-instagram"></i></a>
                 </div>
             </div>
         </div>
@@ -75,7 +71,7 @@
     <!-- Navbar Start -->
     <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
         <a href="/" class="navbar-brand d-flex align-items-center px-4 px-lg-5">
-            <h2 class="m-0 text-primary"><img src="/assets/img\apx-black-logo.png" alt="apx logo" width="100" height="120">AUTOMAI</h2>
+            <h2 class="m-0 text-primary"><img src="/assets/img/apx-black-logo.png" alt="apx logo" width="100" height="120">AUTOMAI</h2>
         </a>
         <button type="button" class="navbar-toggler me-4" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
             <span class="navbar-toggler-icon"></span>
@@ -89,21 +85,19 @@
                     <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">Pages</a>
                     <div class="dropdown-menu fade-up m-0">
                         <a href="/booking" class="dropdown-item">Booking</a>
-                        <a href="/team" class="dropdown-item">Technicians</a>
-                        <a href="/testimonial" class="dropdown-item">Testimonial</a>
-                        <a href="/automai/public/404.php" class="dropdown-item">404 Page</a>
+                        <a href="/#testimonials" class="dropdown-item">Testimonial</a>
                     </div>
                 </div>
                 <a href="/contact" class="nav-item nav-link active">Contact</a>
             </div>
-            <a href="/automai/auth/login.php" class="btn btn-primary py-4 px-lg-5 d-none d-lg-block">Login</a>
+            <a href="{{ route('login') }}" class="btn btn-primary py-4 px-lg-5 d-none d-lg-block">Login</a>
         </div>
     </nav>
     <!-- Navbar End -->
 
 
     <!-- Page Header Start -->
-    <div class="container-fluid page-header mb-5 p-0" style="background-image: url(img/carousel-bg-1.jpg);">
+    <div class="container-fluid page-header mb-5 p-0" style="background-image: url(/assets/img/carousel-bg-1.jpg);">
         <div class="container-fluid page-header-inner py-5">
             <div class="container text-center">
                 <h1 class="display-3 text-white mb-3 animated slideInDown">Contact</h1>
@@ -132,64 +126,36 @@
                     <div class="row gy-4">
                         <div class="col-md-4">
                             <div class="bg-light d-flex flex-column justify-content-center p-4">
-                                <h5 class="text-uppercase">// Booking //</h5>
-                                <p class="m-0"><i class="fa fa-envelope-open text-primary me-2"></i>book@example.com</p>
+                                <h5 class="text-uppercase">// Email Us //</h5>
+                                <p class="m-0"><i class="fa fa-envelope-open text-primary me-2"></i>hello@apxautomai.com</p>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="bg-light d-flex flex-column justify-content-center p-4">
-                                <h5 class="text-uppercase">// General //</h5>
-                                <p class="m-0"><i class="fa fa-envelope-open text-primary me-2"></i>info@example.com</p>
+                                <h5 class="text-uppercase">// Call Us //</h5>
+                                <p class="m-0"><i class="fa fa-phone-alt text-primary me-2"></i>+63 9544 8888 50</p>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="bg-light d-flex flex-column justify-content-center p-4">
-                                <h5 class="text-uppercase">// Technical //</h5>
-                                <p class="m-0"><i class="fa fa-envelope-open text-primary me-2"></i>tech@example.com</p>
+                                <h5 class="text-uppercase">// Visit Us //</h5>
+                                <p class="m-0"><i class="fa fa-map-marker-alt text-primary me-2"></i>5 Glenn St., Quezon City</p>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-6 wow fadeIn" data-wow-delay="0.1s">
                     <iframe class="position-relative rounded w-100 h-100"
-                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3001156.4288297426!2d-78.01371936852176!3d42.72876761954724!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x4ccc4bf0f123a5a9%3A0xddcfc6c1de189567!2sNew%20York%2C%20USA!5e0!3m2!1sen!2sbd!4v1603794290143!5m2!1sen!2sbd"
+                        src="https://maps.google.com/maps?q=5%20Glenn%20St.%2C%20Quezon%20City&amp;t=&amp;z=15&amp;ie=UTF8&amp;iwloc=&amp;output=embed"
                         frameborder="0" style="min-height: 350px; border:0;" allowfullscreen="" aria-hidden="false"
                         tabindex="0"></iframe>
                 </div>
                 <div class="col-md-6">
                     <div class="wow fadeInUp" data-wow-delay="0.2s">
-                        <p class="mb-4">The contact form is currently inactive. Get a functional and working contact form with Ajax & PHP in a few minutes. Just copy and paste the files, add a little code and you're done. <a href="https://htmlcodex.com/contact-form">Download Now</a>.</p>
-                        <form>
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <div class="form-floating">
-                                        <input type="text" class="form-control" id="name" placeholder="Your Name">
-                                        <label for="name">Your Name</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-floating">
-                                        <input type="email" class="form-control" id="email" placeholder="Your Email">
-                                        <label for="email">Your Email</label>
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="form-floating">
-                                        <input type="text" class="form-control" id="subject" placeholder="Subject">
-                                        <label for="subject">Subject</label>
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="form-floating">
-                                        <textarea class="form-control" placeholder="Leave a message here" id="message" style="height: 100px"></textarea>
-                                        <label for="message">Message</label>
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <button class="btn btn-primary w-100 py-3" type="submit">Send Message</button>
-                                </div>
-                            </div>
-                        </form>
+                        <p class="mb-4">Prefer to talk to us directly? Call or email using the details above &mdash; or book a service online and we'll confirm your slot.</p>
+                        <a href="/#services" class="btn btn-primary py-3 px-5">
+                            <i class="fa fa-calendar-check me-2"></i>Book A Service
+                        </a>
                     </div>
                 </div>
             </div>
@@ -205,13 +171,9 @@
                 <div class="col-lg-3 col-md-6">
                     <h4 class="text-light mb-4">Address</h4>
                     <p class="mb-2"><i class="fa fa-map-marker-alt me-3"></i>5 Glenn, Quezon City</p>
-                    <p class="mb-2"><i class="fa fa-phone-alt me-3"></i>+012 345 67890</p>
-                    <p class="mb-2"><i class="fa fa-envelope me-3"></i>info@example.com</p>
+                    <p class="mb-2"><i class="fa fa-phone-alt me-3"></i>+63 9544 8888 50</p>
+                    <p class="mb-2"><i class="fa fa-envelope me-3"></i>hello@apxautomai.com</p>
                     <div class="d-flex pt-2">
-                        <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-twitter"></i></a>
-                        <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-facebook-f"></i></a>
-                        <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-youtube"></i></a>
-                        <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-linkedin-in"></i></a>
                     </div>
                 </div>
                 <div class="col-lg-3 col-md-6">
@@ -223,11 +185,11 @@
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <h4 class="text-light mb-4">Services</h4>
-                    <a class="btn btn-link" href="">Diagnostic Test</a>
-                    <a class="btn btn-link" href="">Engine Servicing</a>
-                    <a class="btn btn-link" href="">Tires Replacement</a>
-                    <a class="btn btn-link" href="">Oil Changing</a>
-                    <a class="btn btn-link" href="">Vacuam Cleaning</a>
+                    <a class="btn btn-link" href="/#services">Diagnostic Test</a>
+                    <a class="btn btn-link" href="/#services">Engine Servicing</a>
+                    <a class="btn btn-link" href="/#services">Tires Replacement</a>
+                    <a class="btn btn-link" href="/#services">Oil Changing</a>
+                    <a class="btn btn-link" href="/#services">Vacuam Cleaning</a>
                 </div>
 
             </div>
@@ -236,17 +198,11 @@
             <div class="copyright">
                 <div class="row">
                     <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                        &copy; <a class="border-bottom" href="#">Your Site Name</a>, All Right Reserved.
-
-                        <!--/*** This template is free as long as you keep the footer author’s credit link/attribution link/backlink. If you'd like to use the template without the footer author’s credit link/attribution link/backlink, you can purchase the Credit Removal License from "https://htmlcodex.com/credit-removal". Thank you for your support. ***/-->
-                        Designed By <a class="border-bottom" href="https://htmlcodex.com">HTML Codex</a>
+                        &copy; 2025 <a class="border-bottom" href="/">APX Automai</a>. All Rights Reserved.
                     </div>
                     <div class="col-md-6 text-center text-md-end">
                         <div class="footer-menu">
-                            <a href="">Home</a>
-                            <a href="">Cookies</a>
-                            <a href="">Help</a>
-                            <a href="">FQAs</a>
+                            <a href="/">Home</a>
                         </div>
                     </div>
                 </div>
@@ -262,7 +218,7 @@
 
     <!-- JavaScript Libraries -->
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/assets/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/assets/lib/wow/wow.min.js"></script>
     <script src="/assets/lib/easing/easing.min.js"></script>
     <script src="/assets/lib/waypoints/waypoints.min.js"></script>

@@ -32,7 +32,9 @@
     <link href="/assets/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- Template Stylesheet -->
+    <link href="/assets/css/design-tokens.css" rel="stylesheet">
     <link href="/assets/css/style.css" rel="stylesheet">
+    <link href="/assets/css/availability-picker.css" rel="stylesheet">
 </head>
 
 <body>
@@ -221,7 +223,7 @@
             var vt    = document.getElementById('apx-sc-vtype').value;
             var make  = document.getElementById('apx-sc-make').value;
             var model = document.getElementById('apx-sc-model').value;
-            if (!make) { alert('Please select a manufacturer first.'); return; }
+            if (!make) { ApxAlertModal.show({ variant: 'error', title: 'Select a manufacturer', message: 'Please select a manufacturer first.' }); return; }
             // Open modal then pre-fill vehicle on step 2
             var modal = new bootstrap.Modal(document.getElementById('bookingModal'));
             modal.show();
@@ -240,7 +242,7 @@
     <!-- Navbar Start -->
     <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
         <a href="#home" class="navbar-brand d-flex align-items-center px-4 px-lg-5">
-            <h2 class="m-0 text-primary"><img src="/assets/img\apx-black-logo.png" alt="apx logo" width="100" height="120">AUTOMAI</h2>
+            <h2 class="m-0 text-primary"><img src="/assets/img/apx-black-logo.png" alt="apx logo" width="100" height="120">AUTOMAI</h2>
         </a>
         <button type="button" class="navbar-toggler me-4" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
             <span class="navbar-toggler-icon"></span>
@@ -270,7 +272,7 @@
                     <div class="container">
                         <div class="row align-items-center justify-content-center justify-content-lg-start">
                             <div class="col-10 col-lg-7 text-center text-lg-start">
-                                <h6 class="text-white text-uppercase mb-3 animated slideInDown">// APX Automai //</h6>
+                                <h6 class="text-white text-uppercase mb-3 animated slideInDown">APX Automai</h6>
                                 <h1 class="display-3 text-white mb-4 pb-3 animated slideInDown">Your Trusted Auto Service Center in Quezon City</h1>
                             </div>
                         </div>
@@ -346,6 +348,12 @@
         .apx-svc-desc { font-size:0.82rem; color:#666; line-height:1.6; flex-grow:1; }
         .apx-svc-meta { display:flex; align-items:center; gap:6px; margin-top:18px; font-size:0.78rem; color:#999; border-top:1px solid #f0f0f0; padding-top:14px; }
         .apx-svc-card.hidden { display:none; }
+        .apx-svc-search-wrap { position:relative; max-width:360px; margin-bottom:20px; }
+        .apx-svc-search-wrap i { position:absolute; left:16px; top:50%; transform:translateY(-50%); color:#999; font-size:0.85rem; }
+        .apx-svc-search { width:100%; padding:10px 16px 10px 40px; border:2px solid #ddd; border-radius:999px; font-size:0.88rem; outline:none; transition:border-color 0.2s; }
+        .apx-svc-search:focus { border-color:#e63946; }
+        .apx-svc-empty { display:none; text-align:center; padding:40px 20px; color:#888; grid-column:1/-1; }
+        .apx-svc-empty.show { display:block; }
     </style>
 
     <div id="services" class="apx-section">
@@ -355,151 +363,38 @@
                 <h1 class="mb-2">Our Services</h1>
                 <p class="text-muted">Click any service to book — no account needed</p>
             </div>
+            <div class="apx-svc-search-wrap wow fadeInUp" data-wow-delay="0.1s">
+                <i class="fa fa-search"></i>
+                <input type="text" class="apx-svc-search" id="apx-svc-search" placeholder="Search services...">
+            </div>
             <div class="apx-filter-bar wow fadeInUp" data-wow-delay="0.2s">
                 <button class="apx-filter-btn active" data-filter="all">All Services</button>
-                <button class="apx-filter-btn" data-filter="engine">Engine &amp; Oil</button>
-                <button class="apx-filter-btn" data-filter="cvt">CVT &amp; Transmission</button>
-                <button class="apx-filter-btn" data-filter="inspection">Inspection</button>
-                <button class="apx-filter-btn" data-filter="cleaning">Cleaning</button>
+                @foreach($services->pluck('category')->unique()->filter() as $cat)
+                <button class="apx-filter-btn" data-filter="{{ \Illuminate\Support\Str::slug($cat) }}">{{ $cat }}</button>
+                @endforeach
             </div>
             <div class="apx-cards-grid wow fadeInUp" data-wow-delay="0.3s">
-
-                <a href="#" class="apx-svc-card" data-cat="engine" onclick="apxOpenWithService(event, 'Change Oil &amp; Filter')">
-                    <div class="apx-svc-cat">Engine &amp; Oil</div>
-                    <div class="apx-svc-icon-wrap"><i class="fa fa-oil-can"></i></div>
-                    <div class="apx-svc-name">Change Oil &amp; Filter</div>
-                    <div class="apx-svc-desc">Complete engine oil drain and refill with high-quality oil and a fresh filter for optimal engine performance.</div>
-                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 30–45 min</div>
+                @php
+                    $categoryIcons = [
+                        'Engine & Oil'       => 'fa-oil-can',
+                        'CVT & Transmission' => 'fa-sync-alt',
+                        'Brakes & Pipes'     => 'fa-life-ring',
+                        'Inspection'         => 'fa-search',
+                        'Free Services'      => 'fa-gift',
+                    ];
+                @endphp
+                @forelse($services as $s)
+                <a href="#" class="apx-svc-card" data-cat="{{ \Illuminate\Support\Str::slug($s->category ?? 'general') }}" onclick="apxOpenWithService(event, {{ $s->id }})">
+                    <div class="apx-svc-cat">{{ $s->category ?? 'General' }}</div>
+                    <div class="apx-svc-icon-wrap"><i class="fa {{ $categoryIcons[$s->category] ?? 'fa-wrench' }}"></i></div>
+                    <div class="apx-svc-name">{{ $s->name }}</div>
+                    <div class="apx-svc-desc">{{ $s->description }}</div>
+                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> {{ $s->duration }} min &middot; {{ $s->price > 0 ? '₱'.number_format($s->price, 0) : 'Free' }}</div>
                 </a>
-
-                <a href="#" class="apx-svc-card" data-cat="engine" onclick="apxOpenWithService(event, 'Fuel Injection Cleaning')">
-                    <div class="apx-svc-cat">Engine &amp; Oil</div>
-                    <div class="apx-svc-icon-wrap"><i class="fa fa-gas-pump"></i></div>
-                    <div class="apx-svc-name">Fuel Injection Cleaning</div>
-                    <div class="apx-svc-desc">Deep cleaning of fuel injectors to restore proper fuel atomization, improving throttle response and fuel economy.</div>
-                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 45–60 min</div>
-                </a>
-
-                <a href="#" class="apx-svc-card" data-cat="engine cleaning" onclick="apxOpenWithService(event, 'Throttle Body Cleaning')">
-                    <div class="apx-svc-cat">Engine &amp; Oil</div>
-                    <div class="apx-svc-icon-wrap"><i class="fa fa-wind"></i></div>
-                    <div class="apx-svc-name">Throttle Body Cleaning</div>
-                    <div class="apx-svc-desc">Remove carbon buildup and deposits from the throttle body for smoother idling and improved acceleration.</div>
-                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 30–45 min</div>
-                </a>
-
-                <a href="#" class="apx-svc-card" data-cat="engine" onclick="apxOpenWithService(event, 'Throttle Idle Adjustment')">
-                    <div class="apx-svc-cat">Engine &amp; Oil</div>
-                    <div class="apx-svc-icon-wrap"><i class="fa fa-sliders-h"></i></div>
-                    <div class="apx-svc-name">Throttle Idle Adjustment</div>
-                    <div class="apx-svc-desc">Fine-tune idle speed to manufacturer specs, eliminating rough idle and stalling at traffic stops.</div>
-                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 20–30 min</div>
-                </a>
-
-                <a href="#" class="apx-svc-card" data-cat="engine" onclick="apxOpenWithService(event, 'Valve Clearance Adjustment / Tune-up')">
-                    <div class="apx-svc-cat">Engine &amp; Oil</div>
-                    <div class="apx-svc-icon-wrap"><i class="fa fa-cogs"></i></div>
-                    <div class="apx-svc-name">Valve Clearance Adjustment / Tune-up</div>
-                    <div class="apx-svc-desc">Inspect and adjust valve clearances to ensure proper engine breathing, reducing noise and wear.</div>
-                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 60–90 min</div>
-                </a>
-
-                <a href="#" class="apx-svc-card" data-cat="cvt inspection cleaning" onclick="apxOpenWithService(event, 'CVT Cleaning and Inspection')">
-                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
-                    <div class="apx-svc-icon-wrap"><i class="fa fa-sync-alt"></i></div>
-                    <div class="apx-svc-name">CVT Cleaning and Inspection</div>
-                    <div class="apx-svc-desc">Full CVT belt and pulley inspection with cleaning to maintain smooth, efficient power transfer.</div>
-                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 60–90 min</div>
-                </a>
-
-                <a href="#" class="apx-svc-card" data-cat="inspection" onclick="apxOpenWithService(event, 'Airfilter Inspection')">
-                    <div class="apx-svc-cat">Inspection</div>
-                    <div class="apx-svc-icon-wrap"><i class="fa fa-search"></i></div>
-                    <div class="apx-svc-name">Airfilter Inspection</div>
-                    <div class="apx-svc-desc">Check air filter condition and airflow restriction to ensure the engine receives clean, unrestricted air.</div>
-                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 10–15 min</div>
-                </a>
-
-                <a href="#" class="apx-svc-card" data-cat="inspection" onclick="apxOpenWithService(event, 'Airfilter Installation')">
-                    <div class="apx-svc-cat">Inspection</div>
-                    <div class="apx-svc-icon-wrap"><i class="fa fa-tools"></i></div>
-                    <div class="apx-svc-name">Airfilter Installation</div>
-                    <div class="apx-svc-desc">Replacement and installation of a new air filter to restore optimal engine airflow and protect internal components.</div>
-                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 10–20 min</div>
-                </a>
-
-                <a href="#" class="apx-svc-card" data-cat="cvt inspection" onclick="apxOpenWithService(event, 'Flyball Inspection')">
-                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
-                    <div class="apx-svc-icon-wrap"><i class="fa fa-circle-notch"></i></div>
-                    <div class="apx-svc-name">Flyball Inspection</div>
-                    <div class="apx-svc-desc">Inspect flyball weights for wear and deformation that can affect CVT engagement and acceleration response.</div>
-                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 20–30 min</div>
-                </a>
-
-                <a href="#" class="apx-svc-card" data-cat="cvt cleaning" onclick="apxOpenWithService(event, 'Flyball Cleaning')">
-                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
-                    <div class="apx-svc-icon-wrap"><i class="fa fa-broom"></i></div>
-                    <div class="apx-svc-name">Flyball Cleaning</div>
-                    <div class="apx-svc-desc">Remove dirt and grease buildup from flyball components to restore precise CVT engagement and smooth power delivery.</div>
-                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 20–30 min</div>
-                </a>
-
-                <a href="#" class="apx-svc-card" data-cat="cvt inspection" onclick="apxOpenWithService(event, 'V-belt Inspection')">
-                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
-                    <div class="apx-svc-icon-wrap"><i class="fa fa-ruler-combined"></i></div>
-                    <div class="apx-svc-name">V-belt Inspection</div>
-                    <div class="apx-svc-desc">Measure V-belt width and check for cracks or fraying to prevent slippage and unexpected CVT failure.</div>
-                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 15–25 min</div>
-                </a>
-
-                <a href="#" class="apx-svc-card" data-cat="cvt cleaning" onclick="apxOpenWithService(event, 'V-belt Cleaning')">
-                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
-                    <div class="apx-svc-icon-wrap"><i class="fa fa-magic"></i></div>
-                    <div class="apx-svc-name">V-belt Cleaning</div>
-                    <div class="apx-svc-desc">Deep clean the V-belt and surrounding components to remove residue that causes slipping and reduces belt lifespan.</div>
-                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 20–30 min</div>
-                </a>
-
-                <a href="#" class="apx-svc-card" data-cat="cvt inspection" onclick="apxOpenWithService(event, 'Pulley Set Inspection')">
-                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
-                    <div class="apx-svc-icon-wrap"><i class="fa fa-cog"></i></div>
-                    <div class="apx-svc-name">Pulley Set Inspection</div>
-                    <div class="apx-svc-desc">Check primary and secondary pulleys for wear and proper movement to ensure efficient power transmission.</div>
-                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 20–30 min</div>
-                </a>
-
-                <a href="#" class="apx-svc-card" data-cat="cvt cleaning" onclick="apxOpenWithService(event, 'Pulley Set Cleaning')">
-                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
-                    <div class="apx-svc-icon-wrap"><i class="fa fa-spray-can"></i></div>
-                    <div class="apx-svc-name">Pulley Set Cleaning</div>
-                    <div class="apx-svc-desc">Thorough cleaning of pulley surfaces and grooves to remove metal dust and contaminants affecting CVT performance.</div>
-                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 25–35 min</div>
-                </a>
-
-                <a href="#" class="apx-svc-card" data-cat="cvt inspection" onclick="apxOpenWithService(event, 'Torque Drive Assy Inspection')">
-                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
-                    <div class="apx-svc-icon-wrap"><i class="fa fa-car-side"></i></div>
-                    <div class="apx-svc-name">Torque Drive Assy Inspection</div>
-                    <div class="apx-svc-desc">Inspect the torque drive assembly for wear, proper engagement, and signs of damage that affect drivetrain efficiency.</div>
-                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 25–35 min</div>
-                </a>
-
-                <a href="#" class="apx-svc-card" data-cat="cvt cleaning" onclick="apxOpenWithService(event, 'Torque Drive Assy Cleaning')">
-                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
-                    <div class="apx-svc-icon-wrap"><i class="fa fa-shower"></i></div>
-                    <div class="apx-svc-name">Torque Drive Assy Cleaning</div>
-                    <div class="apx-svc-desc">Remove built-up grime and contaminants from the torque drive assembly to maintain reliable drivetrain operation.</div>
-                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 30–40 min</div>
-                </a>
-
-                <a href="#" class="apx-svc-card" data-cat="cvt" onclick="apxOpenWithService(event, 'Torque Drive Assy Greasing')">
-                    <div class="apx-svc-cat">CVT &amp; Transmission</div>
-                    <div class="apx-svc-icon-wrap"><i class="fa fa-tint"></i></div>
-                    <div class="apx-svc-name">Torque Drive Assy Greasing</div>
-                    <div class="apx-svc-desc">Apply fresh grease to torque drive assembly components to reduce friction, heat, and premature wear.</div>
-                    <div class="apx-svc-meta"><i class="fa fa-clock"></i> 20–30 min</div>
-                </a>
-
+                @empty
+                <p class="text-muted">No services available right now. Please check back soon.</p>
+                @endforelse
+                <div class="apx-svc-empty" id="apx-svc-empty"><i class="fa fa-search" style="font-size:1.6rem;margin-bottom:10px;display:block;"></i>No services found. Try a different search.</div>
             </div>
         </div>
     </div>
@@ -535,7 +430,7 @@
                             <h5 class="fw-bold mb-3" style="font-family:'Barlow',sans-serif;">APX Automai Service Center</h5>
                             <p class="mb-2"><i class="fa fa-map-marker-alt text-primary me-2"></i>5 Glenn St., Quezon City</p>
                             <p class="mb-2"><i class="fa fa-clock text-primary me-2"></i>Mon – Fri: 9:00 AM – 9:00 PM &nbsp;|&nbsp; Sat – Sun: 9:00 AM – 12:00 PM</p>
-                            <p class="mb-0"><i class="fa fa-phone-alt text-primary me-2"></i>+012 345 6789</p>
+                            <p class="mb-0"><i class="fa fa-phone-alt text-primary me-2"></i>+63 9544 8888 50</p>
                         </div>
                         <!-- Shop photo thumbnails -->
                         <div class="row g-2 flex-grow-1">
@@ -854,20 +749,41 @@
     <!-- Testimonials carousel init -->
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            /* filter buttons */
-            var btns  = document.querySelectorAll(".apx-filter-btn");
-            var cards = document.querySelectorAll(".apx-svc-card");
+            /* filter buttons + live search */
+            var btns       = document.querySelectorAll(".apx-filter-btn");
+            var cards      = document.querySelectorAll(".apx-svc-card");
+            var searchBox  = document.getElementById("apx-svc-search");
+            var emptyState = document.getElementById("apx-svc-empty");
+            var activeFilter = "all";
+
+            function applyFilters() {
+                var query = (searchBox.value || "").trim().toLowerCase();
+                var visibleCount = 0;
+                cards.forEach(function (card) {
+                    var cats = card.getAttribute("data-cat") || "";
+                    var matchesCategory = activeFilter === "all" || cats.indexOf(activeFilter) !== -1;
+                    var name = (card.querySelector(".apx-svc-name") || {}).textContent || "";
+                    var desc = (card.querySelector(".apx-svc-desc") || {}).textContent || "";
+                    var matchesSearch = query === "" || name.toLowerCase().indexOf(query) !== -1 || desc.toLowerCase().indexOf(query) !== -1;
+                    var visible = matchesCategory && matchesSearch;
+                    card.classList.toggle("hidden", !visible);
+                    if (visible) visibleCount++;
+                });
+                if (emptyState) emptyState.classList.toggle("show", visibleCount === 0);
+            }
+
             btns.forEach(function (btn) {
                 btn.addEventListener("click", function () {
                     btns.forEach(function (b) { b.classList.remove("active"); });
                     btn.classList.add("active");
-                    var filter = btn.getAttribute("data-filter");
-                    cards.forEach(function (card) {
-                        var cats = card.getAttribute("data-cat") || "";
-                        card.classList.toggle("hidden", filter !== "all" && cats.indexOf(filter) === -1);
-                    });
+                    activeFilter = btn.getAttribute("data-filter");
+                    applyFilters();
                 });
             });
+
+            if (searchBox) {
+                searchBox.addEventListener("input", applyFilters);
+            }
 
             /* testimonials owl carousel */
             if (typeof $.fn.owlCarousel !== 'undefined') {
@@ -900,12 +816,9 @@
                 <div class="col-lg-3 col-md-6">
                     <h4 class="text-light mb-4">APX Automai</h4>
                     <p class="mb-2"><i class="fa fa-map-marker-alt me-3"></i>5 Glenn St., Quezon City</p>
-                    <p class="mb-2"><i class="fa fa-phone-alt me-3"></i>+012 345 6789</p>
+                    <p class="mb-2"><i class="fa fa-phone-alt me-3"></i>+63 9544 8888 50</p>
                     <p class="mb-2"><i class="fa fa-envelope me-3"></i>hello@apxautomai.com</p>
                     <div class="d-flex pt-2">
-                        <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-facebook-f"></i></a>
-                        <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-instagram"></i></a>
-                        <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-youtube"></i></a>
                     </div>
                 </div>
                 <div class="col-lg-3 col-md-6">
@@ -929,6 +842,7 @@
                             <a href="#services">Services</a>
                             <a href="#about">About</a>
                             <a href="#location">Contact</a>
+                            <a href="{{ route('terms') }}">Terms &amp; Conditions</a>
                         </div>
                     </div>
                 </div>
@@ -944,7 +858,7 @@
 
     <!-- JavaScript Libraries -->
     <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/assets/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/assets/lib/wow/wow.min.js"></script>
     <script src="/assets/lib/easing/easing.min.js"></script>
     <script src="/assets/lib/waypoints/waypoints.min.js"></script>
@@ -953,6 +867,12 @@
     <script src="/assets/lib/tempusdominus/js/moment.min.js"></script>    <script src="/assets/lib/tempusdominus/js/moment-timezone.min.js"></script>
     <script src="/assets/lib/tempusdominus/js/tempusdominus-bootstrap-4.min.js"></script>
     <script src="/assets/js/main.js"></script>
+    <script src="/assets/js/availability-picker.js"></script>
+    <script src="/assets/js/form-validate.js"></script>
+    <script src="/assets/js/plate-mask.js"></script>
+    <script src="/assets/js/alert-modal.js"></script>
+
+    <x-alert-modal id="apx-alert-modal" />
 
     <!-- Spinner Fix: hide spinner once page is ready, with a 3s fallback -->
     <script>
@@ -1089,8 +1009,13 @@
                             <div class="col-6"><label class="form-label">Email</label><input type="email" class="form-control" id="apx-f-email" placeholder="juan@email.com"></div>
                         </div>
                         <div class="row g-2 mb-3">
-                            <div class="col-6"><label class="form-label">Phone</label><input type="text" class="form-control" id="apx-f-phone" placeholder="09xxxxxxxxx"></div>
-                            <div class="col-6"><label class="form-label">Preferred date</label><input type="date" class="form-control" id="apx-f-date"></div>
+                            <div class="col-12"><label class="form-label">Phone</label><input type="text" class="form-control" id="apx-f-phone" placeholder="09xxxxxxxxx"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Preferred date &amp; time</label>
+                            <input type="hidden" id="apx-f-date">
+                            <input type="hidden" id="apx-f-time">
+                            <x-availability-picker id="guestAvp" />
                         </div>
                         <p style="font-size:0.82rem; font-weight:700; color:#333; margin:0 0 10px; font-family:'Ubuntu',sans-serif;">Vehicle information</p>
                         <div class="apx-vtype-toggle">
@@ -1103,7 +1028,7 @@
                         </div>
                         <div class="row g-2 mb-2">
                             <div class="col-6"><label class="form-label">Year</label><select class="form-select" id="apx-v-year" disabled><option value="">Select year</option></select></div>
-                            <div class="col-6"><label class="form-label">Plate number</label><input type="text" class="form-control" id="apx-v-plate" placeholder="e.g. ABC-1234"></div>
+                            <div class="col-6"><label class="form-label">Plate number <span style="color:#e63946">*</span></label><input type="text" class="form-control" id="apx-v-plate" placeholder="e.g. ABC 1234"></div>
                         </div>
                         <div class="mt-2"><label class="form-label">Notes / special request</label><textarea class="form-control" id="apx-f-notes" rows="2" placeholder="Anything we should know?"></textarea></div>
                     </div>
@@ -1114,7 +1039,7 @@
                             <div class="apx-confirm-row"><span>Name</span><span id="apx-c-name">—</span></div>
                             <div class="apx-confirm-row"><span>Email</span><span id="apx-c-email">—</span></div>
                             <div class="apx-confirm-row"><span>Phone</span><span id="apx-c-phone">—</span></div>
-                            <div class="apx-confirm-row"><span>Date</span><span id="apx-c-date">—</span></div>
+                            <div class="apx-confirm-row"><span>Date &amp; Time</span><span id="apx-c-date">—</span></div>
                             <div class="apx-confirm-row"><span>Vehicle</span><span id="apx-c-vehicle">—</span></div>
                             <div class="apx-confirm-row"><span>Services</span><span id="apx-c-services">—</span></div>
                             <div class="apx-confirm-row"><span>Notes</span><span id="apx-c-notes">—</span></div>
@@ -1132,7 +1057,7 @@
                             </div>
                             <div class="apx-member-perks">
                                 <div class="apx-member-perk"><div class="apx-perk-dot"></div>Priority booking slots</div>
-                                <div class="apx-member-perk"><div class="apx-perk-dot"></div>Loyalty points per visit</div>
+                                <div class="apx-member-perk"><div class="apx-perk-dot"></div>Saved vehicles for faster booking</div>
                                 <div class="apx-member-perk"><div class="apx-perk-dot"></div>Exclusive discounts</div>
                                 <div class="apx-member-perk"><div class="apx-perk-dot"></div>Track &amp; manage bookings</div>
                             </div>
@@ -1164,38 +1089,20 @@
         </div>
     </div>
 
+    @php
+        $servicesJs = $services->map(function ($s) {
+            return [
+                'id'       => $s->id,
+                'name'     => $s->name,
+                'tag'      => \Illuminate\Support\Str::slug($s->category ?? 'general'),
+                'category' => $s->category ?? 'General',
+                'price'    => (float) $s->price,
+            ];
+        })->values();
+    @endphp
     <script>
     (function () {
-        var SERVICES = [
-            {name:'Change Oil & Filter',tag:'maintenance',lo:300,hi:600},
-            {name:'Fuel Injection Cleaning',tag:'cleaning',lo:400,hi:800},
-            {name:'Throttle Body Cleaning',tag:'cleaning',lo:300,hi:600},
-            {name:'Throttle Idle Adjustment',tag:'adjustment',lo:150,hi:300},
-            {name:'Valve Clearance / Tune-up',tag:'tune-up',lo:500,hi:1000},
-            {name:'CVT Cleaning & Inspection',tag:'cleaning',lo:400,hi:700},
-            {name:'Airfilter Inspection',tag:'inspection',lo:100,hi:200},
-            {name:'Airfilter Installation',tag:'installation',lo:150,hi:300},
-            {name:'Flyball Inspection',tag:'inspection',lo:100,hi:200},
-            {name:'Flyball Cleaning',tag:'cleaning',lo:150,hi:350},
-            {name:'V-belt Inspection',tag:'inspection',lo:100,hi:200},
-            {name:'V-belt Cleaning',tag:'cleaning',lo:150,hi:300},
-            {name:'Pulley Set Inspection',tag:'inspection',lo:100,hi:200},
-            {name:'Pulley Set Cleaning',tag:'cleaning',lo:200,hi:400},
-            {name:'Torque Drive Assy Inspection',tag:'inspection',lo:100,hi:200},
-            {name:'Torque Drive Assy Cleaning',tag:'cleaning',lo:200,hi:400},
-            {name:'Torque Drive Assy Greasing',tag:'maintenance',lo:150,hi:300},
-            {name:'Clutch Lining Inspection',tag:'inspection',lo:100,hi:200},
-            {name:'Clutch Lining Cleaning',tag:'cleaning',lo:150,hi:300},
-            {name:'Kick Starter Inspection',tag:'inspection',lo:100,hi:200},
-            {name:'Pulley Shaving & Re-angle',tag:'speciality',lo:800,hi:1500},
-            {name:'Pulley Drive Face Shaving & Re-angle',tag:'speciality',lo:800,hi:1500},
-            {name:'Sprocket/Chain Cleaning & Regreasing',tag:'maintenance',lo:200,hi:400},
-            {name:'Pipe Cleaning',tag:'cleaning',lo:150,hi:300},
-            {name:'Brake Cleaning',tag:'cleaning',lo:150,hi:300},
-            {name:'Brake Adjustment',tag:'adjustment',lo:100,hi:200},
-            {name:'FREE ECU Diagnose',tag:'free',lo:0,hi:0},
-            {name:'FREE Basic Inspection',tag:'free',lo:0,hi:0}
-        ];
+        var SERVICES = @json($servicesJs);
         var VEHICLES = {
             car: {
                 Toyota:['Vios','Innova','Fortuner','Hiace','Camry','Corolla Cross','Rush'],
@@ -1221,20 +1128,27 @@
         var vtype = 'car';
         var step = 1;
 
-        function fmt(lo, hi) { return (lo===0&&hi===0) ? 'FREE' : '₱'+lo.toLocaleString()+' – ₱'+hi.toLocaleString(); }
+        var guestPicker = new AvailabilityPicker({
+            root: '#guestAvp',
+            dateInput: document.getElementById('apx-f-date'),
+            timeInput: document.getElementById('apx-f-time'),
+            getServiceIds: function () { return Array.from(selected).map(function (i) { return SERVICES[i].id; }); },
+        });
+
+        function fmt(price) { return price === 0 ? 'FREE' : '₱'+price.toLocaleString(); }
 
         function buildGrid() {
             var grid = document.getElementById('apx-svc-grid');
             grid.innerHTML = '';
             SERVICES.forEach(function(s, i) {
-                var isFree = s.tag === 'free';
+                var isFree = s.price === 0;
                 var card = document.createElement('div');
                 card.className = 'apx-modal-svc-card';
                 card.dataset.idx = i;
                 card.innerHTML = '<div class="apx-svc-check"><svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5l2 2 4-4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></div>'
                     + s.name
-                    + '<br><span class="apx-modal-svc-tag' + (isFree?' free':'') + '">' + (isFree?'free':s.tag) + '</span>'
-                    + '<span class="apx-modal-svc-price">' + fmt(s.lo, s.hi) + '</span>';
+                    + '<br><span class="apx-modal-svc-tag' + (isFree?' free':'') + '">' + (isFree?'free':s.category) + '</span>'
+                    + '<span class="apx-modal-svc-price">' + fmt(s.price) + '</span>';
                 card.onclick = function() { apxToggle(i, card); };
                 grid.appendChild(card);
             });
@@ -1244,22 +1158,23 @@
             selected.has(i) ? selected.delete(i) : selected.add(i);
             card.classList.toggle('selected');
             apxUpdateEst();
+            guestPicker.refresh();
         }
 
         function apxUpdateEst() {
-            var lo=0, hi=0;
-            selected.forEach(function(i){ lo+=SERVICES[i].lo; hi+=SERVICES[i].hi; });
+            var total = 0;
+            selected.forEach(function(i){ total += SERVICES[i].price; });
             var n = selected.size;
             document.getElementById('apx-sel-count').textContent = n===0 ? 'No services selected' : n+' service'+(n>1?'s':'')+' selected';
-            document.getElementById('apx-est-total').textContent = n===0 ? '₱0' : (lo===0&&hi===0 ? 'FREE' : '₱'+lo.toLocaleString()+' – ₱'+hi.toLocaleString());
+            document.getElementById('apx-est-total').textContent = n===0 ? '₱0' : fmt(total);
         }
 
-        // FIX 1: Open modal and pre-select a service by name
-        window.apxOpenWithService = function(e, svcName) {
+        // Open modal and pre-select a service by id
+        window.apxOpenWithService = function(e, svcId) {
             e.preventDefault();
             // Find matching service index
             var idx = SERVICES.findIndex(function(s) {
-                return s.name.toLowerCase().replace(/[^a-z0-9]/g,'') === svcName.toLowerCase().replace(/[^a-z0-9]/g,'');
+                return s.id === svcId;
             });
             // Open modal
             var modal = new bootstrap.Modal(document.getElementById('bookingModal'));
@@ -1334,6 +1249,17 @@
             }, 100);
         };
 
+        // ── Field validation (form-validate.js + plate-mask.js) ────────────
+        if (window.PlateMask) PlateMask.attach(document.getElementById('apx-v-plate'));
+        if (window.FormValidate) {
+            FormValidate.register(document.getElementById('apx-f-name'), { rules: [FormValidate.rules.required('Please enter your full name.')] });
+            FormValidate.register(document.getElementById('apx-f-email'), { rules: [FormValidate.rules.required('Please enter your email.'), FormValidate.rules.email()] });
+            FormValidate.register(document.getElementById('apx-f-phone'), { rules: [FormValidate.rules.required('Please enter your phone number.'), FormValidate.rules.phonePH()] });
+            FormValidate.register(document.getElementById('apx-v-plate'), {
+                rules: [FormValidate.rules.required('Plate number is required.'), FormValidate.rules.plate()]
+            });
+        }
+
         function apxSetStep(n) {
             step = n;
             ['apx-s1','apx-s2','apx-s3'].forEach(function(id, i) {
@@ -1354,55 +1280,74 @@
 
         window.apxNext = function() {
             if (step===1) {
-                if (selected.size===0) { alert('Please select at least one service.'); return; }
+                if (selected.size===0) {
+                    ApxAlertModal.show({ variant: 'error', title: 'No services selected', message: 'Please select at least one service.' });
+                    return;
+                }
                 apxSetStep(2);
             } else if (step===2) {
                 var name  = document.getElementById('apx-f-name').value.trim();
                 var email = document.getElementById('apx-f-email').value.trim();
                 var date  = document.getElementById('apx-f-date').value;
+                var time  = document.getElementById('apx-f-time').value;
                 var make  = document.getElementById('apx-v-make').value;
                 var model = document.getElementById('apx-v-model').value;
                 var year  = document.getElementById('apx-v-year').value;
-                if (!name||!email||!date) { alert('Please fill in name, email, and date.'); return; }
-                if (!make||!model||!year) { alert('Please complete your vehicle information.'); return; }
+                var fieldsValid = FormValidate.validateForm([
+                    document.getElementById('apx-f-name'),
+                    document.getElementById('apx-f-email'),
+                    document.getElementById('apx-f-phone'),
+                    document.getElementById('apx-v-plate')
+                ]);
+                if (!fieldsValid) return;
+                if (!date||!time) { ApxAlertModal.show({ variant: 'error', title: 'Missing date & time', message: 'Please pick a preferred date and time.' }); return; }
+                if (!make||!model||!year) { ApxAlertModal.show({ variant: 'error', title: 'Incomplete vehicle info', message: 'Please complete your vehicle information.' }); return; }
                 var names = Array.from(selected).map(function(i){ return SERVICES[i].name; }).join(', ');
-                var lo=0, hi=0;
-                selected.forEach(function(i){ lo+=SERVICES[i].lo; hi+=SERVICES[i].hi; });
+                var total = 0;
+                selected.forEach(function(i){ total += SERVICES[i].price; });
                 var plate = document.getElementById('apx-v-plate').value;
                 var vStr  = vtype.charAt(0).toUpperCase()+vtype.slice(1)+' · '+make+' '+model+' '+year+(plate?' · '+plate:'');
                 document.getElementById('apx-c-name').textContent     = name;
                 document.getElementById('apx-c-email').textContent    = email;
                 document.getElementById('apx-c-phone').textContent    = document.getElementById('apx-f-phone').value||'—';
-                document.getElementById('apx-c-date').textContent     = date;
+                var timeLabel = (function () {
+                    var m = time.match(/^(\d{2}):(\d{2})/);
+                    if (!m) return time;
+                    var h = parseInt(m[1], 10);
+                    var ampm = h >= 12 ? 'PM' : 'AM';
+                    var h12 = h % 12 === 0 ? 12 : h % 12;
+                    return h12 + ':' + m[2] + ' ' + ampm;
+                })();
+                document.getElementById('apx-c-date').textContent     = date + ' at ' + timeLabel;
                 document.getElementById('apx-c-vehicle').textContent  = vStr;
                 document.getElementById('apx-c-services').textContent = names;
                 document.getElementById('apx-c-notes').textContent    = document.getElementById('apx-f-notes').value||'—';
-                document.getElementById('apx-c-total').textContent    = (lo===0&&hi===0?'FREE':'₱'+lo.toLocaleString()+' – ₱'+hi.toLocaleString())+' *';
+                document.getElementById('apx-c-total').textContent    = fmt(total) + ' *';
                 apxSetStep(3);
             } else if (step===3) {
                 apxSubmitBooking(false);
             }
         };
 
-        // FIX 2 + confirm: actual POST to backend
+        // confirm: actual POST to backend
         function apxSubmitBooking(createAccount) {
             var btn = document.getElementById('apx-btn-next');
             btn.disabled = true;
             btn.textContent = 'Submitting…';
 
-            var serviceNames = Array.from(selected).map(function(i){ return SERVICES[i].name; });
+            var serviceIds = Array.from(selected).map(function(i){ return SERVICES[i].id; });
             var payload = {
                 guest_name:    document.getElementById('apx-f-name').value.trim(),
                 guest_email:   document.getElementById('apx-f-email').value.trim(),
                 guest_phone:   document.getElementById('apx-f-phone').value.trim(),
                 booking_date:  document.getElementById('apx-f-date').value,
-                booking_time:  document.getElementById('apx-f-time') ? document.getElementById('apx-f-time').value : '09:00',
+                booking_time:  document.getElementById('apx-f-time').value,
                 vehicle_type:  vtype,
                 vehicle_make:  document.getElementById('apx-v-make').value,
                 vehicle_model: document.getElementById('apx-v-model').value,
                 vehicle_year:  document.getElementById('apx-v-year').value,
                 vehicle_plate: document.getElementById('apx-v-plate').value,
-                services:      serviceNames,
+                service_ids:   serviceIds,
                 notes:         document.getElementById('apx-f-notes').value,
                 create_account: createAccount
             };
@@ -1434,14 +1379,14 @@
                     document.getElementById('apx-step-label').textContent = 'Done';
                     ['apx-s1','apx-s2','apx-s3'].forEach(function(id){ document.getElementById(id).className='apx-step-item done'; });
                 } else {
-                    alert(data.message || 'Booking failed. Please try again.');
+                    ApxAlertModal.show({ variant: 'error', title: 'Booking failed', message: data.message || 'Booking failed. Please try again.' });
                 }
             })
             .catch(function(err) {
                 btn.disabled = false;
                 btn.textContent = 'Confirm booking ✓';
                 console.error('Booking error:', err);
-                alert(err.message || 'Could not submit booking. Please try again.');
+                ApxAlertModal.show({ variant: 'error', title: 'Something went wrong', message: err.message || 'Could not submit booking. Please try again.' });
             });
         }
 
@@ -1459,7 +1404,7 @@
             document.getElementById('apx-f-name').value='';
             document.getElementById('apx-f-email').value='';
             document.getElementById('apx-f-phone').value='';
-            document.getElementById('apx-f-date').value='';
+            guestPicker.reset();
             document.getElementById('apx-f-notes').value='';
             document.getElementById('apx-v-plate').value='';
             vtype='car';

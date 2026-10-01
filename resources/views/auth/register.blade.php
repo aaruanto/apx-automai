@@ -7,6 +7,7 @@
     <title>Create Account — APX AutoMai</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+    <link href="{{ asset('assets/css/design-tokens.css') }}" rel="stylesheet" />
     <link href="{{ asset('assets/css/auth.css') }}" rel="stylesheet" />
 </head>
 <body>
@@ -38,7 +39,7 @@
                 </div>
                 @endif
 
-                <form method="POST" action="{{ route('register') }}">
+                <form method="POST" id="registerForm" action="{{ route('register') }}">
                     @csrf
 
                     <div class="section-label">Personal Information</div>
@@ -48,7 +49,7 @@
                             <label class="form-label" for="inputFirstName">First Name</label>
                             <div class="input-wrap">
                                 <i class="fas fa-user input-icon"></i>
-                                <input class="form-control" id="inputFirstName" name="first_name" type="text" 
+                                <input class="form-control" id="inputFirstName" name="first_name" type="text"
                                     placeholder="Juan" value="{{ old('first_name') }}" required />
                             </div>
                         </div>
@@ -90,7 +91,7 @@
                                 <i class="fas fa-lock input-icon"></i>
                                 <input class="form-control" id="inputPassword" name="password" type="password" 
                                     placeholder="••••••••" required oninput="checkStrength(this.value)" />
-                                <button type="button" class="pw-toggle" onclick="togglePw('inputPassword', this)" tabindex="-1">
+                                <button type="button" class="pw-toggle">
                                     <i class="fas fa-eye"></i>
                                 </button>
                             </div>
@@ -102,7 +103,7 @@
                                 <i class="fas fa-lock input-icon"></i>
                                 <input class="form-control" id="inputPasswordConfirm" name="password_confirmation" 
                                     type="password" placeholder="••••••••" required />
-                                <button type="button" class="pw-toggle" onclick="togglePw('inputPasswordConfirm', this)" tabindex="-1">
+                                <button type="button" class="pw-toggle">
                                     <i class="fas fa-eye"></i>
                                 </button>
                             </div>
@@ -110,11 +111,11 @@
                     </div>
 
                     <label class="terms-check">
-                        <input type="checkbox" required />
-                        I agree to the <a href="#">Terms &amp; Conditions</a> and <a href="#">Privacy Policy</a>
+                        <input type="checkbox" id="inputAgreeTerms" required />
+                        I agree to the <a href="{{ route('terms') }}" target="_blank">Terms &amp; Conditions</a> and <a href="#">Privacy Policy</a>
                     </label>
 
-                    <button type="submit" class="btn-primary">
+                    <button type="submit" class="btn-primary" id="registerSubmitBtn">
                         <i class="fas fa-user-plus"></i>
                         Create Account
                     </button>
@@ -132,23 +133,13 @@
         <div>
             <a href="#">Privacy Policy</a>
             &nbsp;&middot;&nbsp;
-            <a href="#">Terms &amp; Conditions</a>
+            <a href="{{ route('terms') }}" target="_blank">Terms &amp; Conditions</a>
         </div>
     </footer>
 
+    <script src="{{ asset('assets/js/form-validate.js') }}"></script>
+    <script src="{{ asset('assets/js/password-toggle.js') }}"></script>
     <script>
-        function togglePw(inputId, btn) {
-            const input = document.getElementById(inputId);
-            const icon  = btn.querySelector('i');
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.classList.replace('fa-eye', 'fa-eye-slash');
-            } else {
-                input.type = 'password';
-                icon.classList.replace('fa-eye-slash', 'fa-eye');
-            }
-        }
-
         function checkStrength(val) {
             const fill = document.getElementById('strengthFill');
             let score = 0;
@@ -161,6 +152,19 @@
             fill.style.width  = widths[score];
             fill.style.background = colors[score];
         }
+
+        FormValidate.register(document.getElementById('inputFirstName'), { rules: [FormValidate.rules.required('First name is required.')] });
+        FormValidate.register(document.getElementById('inputLastName'), { rules: [FormValidate.rules.required('Last name is required.')] });
+        FormValidate.register(document.getElementById('inputEmail'), { rules: [FormValidate.rules.required('Email is required.'), FormValidate.rules.email()] });
+        FormValidate.register(document.getElementById('inputPhone'), {
+            rules: [{ test: v => v.trim() === '' || /^09\d{9}$|^\+639\d{9}$/.test(v.trim()), message: 'Enter a valid PH mobile number, or leave blank.' }]
+        });
+        FormValidate.register(document.getElementById('inputPassword'), { rules: [FormValidate.rules.required('Password is required.'), FormValidate.rules.minLen(8, 'Password must be at least 8 characters.')] });
+        FormValidate.register(document.getElementById('inputPasswordConfirm'), {
+            rules: [{ test: v => v === document.getElementById('inputPassword').value, message: 'Passwords do not match.' }]
+        });
+        FormValidate.register(document.getElementById('inputAgreeTerms'), { rules: [FormValidate.rules.checked('You must agree to the Terms & Conditions to continue.')] });
+        FormValidate.bindSubmit(document.getElementById('registerForm'), document.getElementById('registerSubmitBtn'));
     </script>
 </body>
 </html>

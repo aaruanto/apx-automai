@@ -7,6 +7,7 @@
     <title>Login — APX AUTOMAI</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+    <link href="{{ asset('assets/css/design-tokens.css') }}" rel="stylesheet" />
     <link href="{{ asset('assets/css/auth.css') }}" rel="stylesheet" />
 </head>
 <body>
@@ -38,14 +39,14 @@
                 </div>
                 @endif
 
-                <form method="POST" action="{{ route('login') }}">
+                <form method="POST" id="loginForm" action="{{ route('login') }}">
                     @csrf
 
                     <div class="form-group">
                         <label class="form-label" for="inputEmail">Email Address</label>
                         <div class="input-wrap">
                             <i class="fas fa-envelope input-icon"></i>
-                            <input class="form-control" id="inputEmail" name="email" type="email" 
+                            <input class="form-control" id="inputEmail" name="email" type="email"
                                 placeholder="you@apxautomai.com" value="{{ old('email') }}" required />
                         </div>
                     </div>
@@ -54,9 +55,9 @@
                         <label class="form-label" for="inputPassword">Password</label>
                         <div class="input-wrap">
                             <i class="fas fa-lock input-icon"></i>
-                            <input class="form-control" id="inputPassword" name="password" type="password" 
+                            <input class="form-control" id="inputPassword" name="password" type="password"
                                 placeholder="••••••••" required />
-                            <button type="button" class="pw-toggle" onclick="togglePw(this)" tabindex="-1">
+                            <button type="button" class="pw-toggle">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </div>
@@ -72,7 +73,7 @@
                         @endif
                     </div>
 
-                    <button type="submit" class="btn-primary">
+                    <button type="submit" class="btn-primary" id="loginSubmitBtn">
                         <i class="fas fa-right-to-bracket"></i>
                         Sign In
                     </button>
@@ -90,22 +91,16 @@
         <div>
             <a href="#">Privacy Policy</a>
             &nbsp;&middot;&nbsp;
-            <a href="#">Terms &amp; Conditions</a>
+            <a href="{{ route('terms') }}" target="_blank">Terms &amp; Conditions</a>
         </div>
     </footer>
 
+    <script src="{{ asset('assets/js/form-validate.js') }}"></script>
+    <script src="{{ asset('assets/js/password-toggle.js') }}"></script>
     <script>
-        function togglePw(btn) {
-            const input = btn.previousElementSibling;
-            const icon  = btn.querySelector('i');
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.classList.replace('fa-eye', 'fa-eye-slash');
-            } else {
-                input.type = 'password';
-                icon.classList.replace('fa-eye-slash', 'fa-eye');
-            }
-        }
+        FormValidate.register(document.getElementById('inputEmail'), { rules: [FormValidate.rules.required('Email is required.'), FormValidate.rules.email()] });
+        FormValidate.register(document.getElementById('inputPassword'), { rules: [FormValidate.rules.required('Password is required.')] });
+        FormValidate.bindSubmit(document.getElementById('loginForm'), document.getElementById('loginSubmitBtn'));
     </script>
 </body>
 </html>

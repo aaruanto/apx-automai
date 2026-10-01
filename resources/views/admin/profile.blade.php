@@ -18,7 +18,7 @@
         </button>
     </div>
 
-    <div style="display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start;">
+    <div class="profile-shell" style="display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start;">
 
         <!-- LEFT — Identity card -->
         <div style="display:flex;flex-direction:column;gap:16px;">
@@ -89,7 +89,7 @@
                     <span class="badge badge-active">Active</span>
                 </div>
                 <div class="card-body">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="pair-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
                         <div>
                             <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:5px;">Full Name</div>
                             <div style="font-weight:600;color:var(--text);">{{ Auth::user()->name }}</div>
@@ -125,7 +125,7 @@
                     <span style="font-size:.75rem;color:var(--text-muted);">All time</span>
                 </div>
                 <div class="card-body">
-                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+                    <div class="stat-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
                         @php
                             $stats = [
                                 ['label'=>'Bookings Created', 'value'=>$activityStats['bookings_created'] ?? 0, 'icon'=>'fa-calendar-plus', 'color'=>'var(--red)'],
