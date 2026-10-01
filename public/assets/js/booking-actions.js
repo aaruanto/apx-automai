@@ -57,9 +57,15 @@
     function markArrived(id, btn, onSuccess) {
         alertModal({
             variant: 'confirm',
+            // Starting a service is an affirmative step, not a destructive one,
+            // so it gets the green treatment rather than the red used for
+            // deletes and cancellations.
+            accent: 'success',
+            confirmStyle: 'success',
+            icon: 'fa-person-walking-arrow-right',
             title: 'Start service?',
-            message: 'Mark this customer as arrived and start the service. This sets the booking to In Progress.',
-            confirmText: 'Start service',
+            message: 'Confirm the customer has arrived. This moves the booking to In Progress.',
+            confirmText: 'Yes, start service',
             cancelText: 'Cancel',
             onConfirm: function () { send(id, btn, onSuccess); }
         });
@@ -107,7 +113,8 @@
                 alertModal({
                     variant: 'success',
                     title: 'Service started',
-                    message: result.data.message || 'The booking is now In Progress.'
+                    message: result.data.message || 'The booking is now In Progress.',
+                    confirmText: 'Done'
                 });
             })
             .catch(function (err) {

@@ -1181,6 +1181,12 @@
             document.getElementById(id).classList.remove('open');
         }
         document.querySelectorAll('.modal-overlay').forEach(o => {
+            // The shared alert modal binds its own outside-click handling and
+            // marks confirm dialogs data-dismissable="false". Without this
+            // skip, the blanket handler below closed those too, so a confirm
+            // could be dismissed by clicking beside it instead of answering.
+            if (o.querySelector('.apx-alert-title')) return;
+
             o.addEventListener('click', e => {
                 if (e.target === o) o.classList.remove('open');
             });

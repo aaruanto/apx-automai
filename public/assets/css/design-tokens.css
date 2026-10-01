@@ -45,6 +45,8 @@
 .apx-alert-btn--primary:hover { background: var(--red-dark); }
 .apx-alert-btn--danger { background: var(--red); color: #fff; }
 .apx-alert-btn--danger:hover { background: var(--red-dark); }
+.apx-alert-btn--success { background: var(--success); color: #fff; }
+.apx-alert-btn--success:hover { background: var(--success-dark); }
 .apx-alert-btn--ghost { background: transparent; color: var(--text, #222); border-color: var(--border, #e5e7eb); }
 .apx-alert-btn--ghost:hover { border-color: var(--red); color: var(--red); }
 

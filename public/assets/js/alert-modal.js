@@ -8,6 +8,11 @@
  * (defaults to that id). Usage:
  *   ApxAlertModal.show({ variant: 'error', title: 'Oops', message: '...' });
  *   ApxAlertModal.show({
+ *     variant: 'confirm', accent: 'success', confirmStyle: 'success',
+ *     icon: 'fa-circle-check', title: 'Start service?', message: '...',
+ *     confirmText: 'Start service', onConfirm: () => { ... }
+ *   });
+ *   ApxAlertModal.show({
  *     variant: 'confirm', title: 'Delete vehicle?', message: '...',
  *     confirmText: 'Delete', cancelText: 'Cancel',
  *     onConfirm: () => { ... }
@@ -60,12 +65,18 @@
         var variant = VARIANTS[opts.variant] ? opts.variant : 'info';
         var cfg = VARIANTS[variant];
 
+        // A confirm is not always a warning: "Start service?" is an ordinary
+        // affirmative step, so it should not borrow the destructive styling
+        // used for deletes. accent overrides the icon treatment, confirmStyle
+        // the confirm button. Both default to the previous behaviour.
+        var accent = VARIANTS[opts.accent] || cfg;
+
         overlay.querySelector('.apx-alert-title').textContent = opts.title || '';
         overlay.querySelector('.apx-alert-message').textContent = opts.message || '';
 
         var iconWrap = overlay.querySelector('.apx-alert-icon');
-        iconWrap.style.color = cfg.color;
-        iconWrap.style.background = cfg.bg;
+        iconWrap.style.color = accent.color;
+        iconWrap.style.background = accent.bg;
         iconWrap.style.width = '36px';
         iconWrap.style.height = '36px';
         iconWrap.style.borderRadius = '50%';
@@ -73,7 +84,16 @@
         iconWrap.style.alignItems = 'center';
         iconWrap.style.justifyContent = 'center';
         iconWrap.style.flexShrink = '0';
-        iconWrap.querySelector('i').className = 'fas ' + cfg.icon;
+        // Font Awesome rewrites <i class="fas"> into <svg> on load, so by the
+        // time this runs the original <i> is gone and querySelector('i') is
+        // null — which threw here and aborted show() before the overlay was
+        // ever opened, so no dialog appeared at all. An SVGElement.className
+        // is read-only too, so the slot is rebuilt instead of retagged. Works
+        // with or without Font Awesome: its observer converts the new <i>.
+        iconWrap.textContent = '';
+        var iconEl = document.createElement('i');
+        iconEl.className = 'fas ' + (opts.icon || accent.icon);
+        iconWrap.appendChild(iconEl);
 
         var footer = overlay.querySelector('.apx-alert-footer');
         footer.innerHTML = '';
@@ -87,13 +107,14 @@
                 if (activeOnCancel) activeOnCancel();
                 hide(id);
             }));
-            footer.appendChild(buildButton(opts.confirmText || 'Confirm', 'danger', function () {
+            footer.appendChild(buildButton(opts.confirmText || 'Confirm', opts.confirmStyle || 'danger', function () {
                 if (activeOnConfirm) activeOnConfirm();
                 hide(id);
             }));
         } else {
             overlay.removeAttribute('data-dismissable');
-            footer.appendChild(buildButton(opts.confirmText || 'OK', 'primary', function () {
+            var okStyle = opts.confirmStyle || (variant === 'success' ? 'success' : 'primary');
+            footer.appendChild(buildButton(opts.confirmText || 'OK', okStyle, function () {
                 if (activeOnConfirm) activeOnConfirm();
                 hide(id);
             }));
