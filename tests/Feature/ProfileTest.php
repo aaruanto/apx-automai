@@ -64,7 +64,11 @@ test('user can delete their account', function () {
         ->assertRedirect('/');
 
     $this->assertGuest();
-    $this->assertNull($user->fresh());
+
+    // Deletion is two-stage: the account is soft-deleted (and so recoverable
+    // for 30 days) rather than removed outright, because bookings cascade
+    // from users and a hard delete would take the shop's revenue history.
+    $this->assertSoftDeleted('users', ['id' => $user->id]);
 });
 
 test('correct password must be provided to delete account', function () {

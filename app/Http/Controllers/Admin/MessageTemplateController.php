@@ -90,7 +90,6 @@ class MessageTemplateController extends Controller
             '{branch}'       => 'APX Motors — Tandang Sora',
             '{contact}'      => '(02) 8123-4567',
             '{days_until}'   => '3',
-            '{loyalty_tier}' => 'Gold',
         ];
 
         $emailBody    = str_replace(array_keys($sample), array_values($sample), $template['email_body']);

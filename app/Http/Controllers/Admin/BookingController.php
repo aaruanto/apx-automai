@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Service;
 use App\Models\Employee;
-use Illuminate\Http\Request;
 use App\Mail\BookingConfirmed;
+use App\Services\BookingAvailability;
+use App\Exceptions\SlotUnavailableException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 
 class BookingController extends Controller
@@ -38,6 +40,7 @@ class BookingController extends Controller
         return view('admin.bookings.create', compact('services', 'employees'));
     }
 
+    // ── FIX #2: real validation + one shared availability gate ───────────────
     public function store(Request $request)
     {
         $request->validate([
@@ -45,7 +48,7 @@ class BookingController extends Controller
             'customer_phone' => 'required|string|max:20',
             'plate'          => 'required|string|max:20',
             'service_id'     => 'required|exists:services,id',
-            'booking_date'   => 'required|date',
+            'booking_date'   => 'required|date|after_or_equal:today', // no past dates
             'booking_time'   => 'required',
         ]);
 
@@ -53,7 +56,8 @@ class BookingController extends Controller
             ['phone' => $request->customer_phone],
             [
                 'name'     => $request->customer_name,
-                'email'    => $request->customer_email ?? strtolower(str_replace(' ', '', $request->customer_name)) . '@apxautomai.local',
+                'email'    => $request->customer_email
+                              ?? strtolower(str_replace(' ', '', $request->customer_name)) . '@apxautomai.local',
                 'role'     => 'customer',
                 'password' => bcrypt('password'),
             ]
@@ -68,17 +72,20 @@ class BookingController extends Controller
             ]
         );
 
-        $booking = Booking::create([
-            'user_id'          => $user->id,
-            'vehicle_id'       => $vehicle->id,
-            'service_id'       => $request->service_id,
-            'staff_id'         => $request->staff_id ?? null,
-            'booking_date'     => $request->booking_date,
-            'booking_time'     => $request->booking_time,
-            'status'           => 'pending',
-            'notes'            => $request->notes,
-            'reference_number' => 'BK-' . str_pad((Booking::withTrashed()->max('id') ?? 0) + 1, 4, '0', STR_PAD_LEFT),
-        ]);
+        try {
+            $booking = app(BookingAvailability::class)->reserve([
+                'user_id'      => $user->id,
+                'vehicle_id'   => $vehicle->id,
+                'service_id'   => $request->service_id,
+                'staff_id'     => $request->staff_id ?? null,
+                'booking_date' => $request->booking_date,
+                'booking_time' => $request->booking_time,
+                'status'       => 'pending',
+                'notes'        => $request->notes,
+            ]);
+        } catch (SlotUnavailableException $e) {
+            return back()->withInput()->withErrors(['booking_time' => $e->getMessage()]);
+        }
 
         return redirect()->route('admin.bookings.index')
             ->with('success', 'Booking #' . $booking->reference_number . ' created successfully.');
@@ -105,11 +112,33 @@ class BookingController extends Controller
             'status'       => 'required|in:pending,confirmed,in_progress,completed,cancelled',
         ]);
 
+        // Only re-run the capacity check when the slot this booking occupies
+        // actually changes — a pure status/notes edit shouldn't get blocked
+        // by the booking's own existing slot.
+        $rescheduled = $request->service_id != $booking->service_id
+            || $request->booking_date !== $booking->booking_date
+            || $request->booking_time !== $booking->booking_time;
+
+        $duration = $booking->duration;
+
+        if ($rescheduled) {
+            $duration = Service::find($request->service_id)->duration;
+
+            try {
+                app(BookingAvailability::class)->reschedule(
+                    $booking, $request->booking_date, $request->booking_time, $duration
+                );
+            } catch (SlotUnavailableException $e) {
+                return back()->withInput()->withErrors(['booking_time' => $e->getMessage()]);
+            }
+        }
+
         $booking->update([
             'service_id'   => $request->service_id,
             'staff_id'     => $request->staff_id ?? $booking->staff_id,
             'booking_date' => $request->booking_date,
             'booking_time' => $request->booking_time,
+            'duration'     => $duration,
             'status'       => $request->status,
             'notes'        => $request->notes,
         ]);
@@ -195,6 +224,20 @@ class BookingController extends Controller
     {
         $booking = Booking::findOrFail($id);
         $booking->update(['status' => 'cancelled']);
+
+        return response()->json(['success' => true]);
+    }
+
+    // ── Mark a booking "Arrived" — in_progress protects it from the
+    //    no-show auto-cancel job. ──────────────────────────────────────────
+    public function arrive($id)
+    {
+        $booking = Booking::whereIn('status', ['pending', 'confirmed'])->findOrFail($id);
+
+        $booking->update([
+            'status'     => 'in_progress',
+            'arrived_at' => now(),
+        ]);
 
         return response()->json(['success' => true]);
     }

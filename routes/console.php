@@ -10,3 +10,12 @@ Artisan::command('inspire', function () {
 
 // Run every minute so all reminder windows (7d, 3d, 1d, 2h) are checked
 Schedule::command('reminders:send')->everyMinute();
+
+// No-shows: cancel pending/confirmed bookings whose grace period (see
+// BookingAvailability::GRACE_MINUTES) has elapsed with no arrival.
+// NOTE (dev): the scheduler only fires while `php artisan schedule:work`
+// is running — start it alongside `php artisan serve` for this to work locally.
+Schedule::command('bookings:cancel-no-shows')->everyMinute();
+
+// Anonymize accounts whose 30-day deletion grace period has run out.
+Schedule::command('accounts:purge-expired')->dailyAt('03:00');

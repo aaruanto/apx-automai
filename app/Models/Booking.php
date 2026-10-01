@@ -11,7 +11,13 @@ class Booking extends Model
 
     protected $fillable = [
         'user_id', 'vehicle_id', 'service_id', 'staff_id',
-        'booking_date', 'booking_time', 'status', 'notes', 'reference_number'
+        'booking_date', 'booking_time', 'duration', 'status', 'notes', 'reference_number',
+        'cancel_reason', 'cancelled_by', 'cancelled_at', 'arrived_at',
+    ];
+
+    protected $casts = [
+        'cancelled_at' => 'datetime',
+        'arrived_at'   => 'datetime',
     ];
 
     public function customer()

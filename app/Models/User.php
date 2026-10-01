@@ -5,12 +5,13 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -47,6 +48,21 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+   /**
+    * Where this user belongs after signing in or verifying their email.
+    *
+    * Breeze ships redirects to a single route('dashboard'), but this app has a
+    * dashboard per role and no route by that name — those redirects threw a
+    * RouteNotFoundException (500) on email verification and password confirmation.
+    */
+   public function dashboardRoute(): string
+   {
+       return match ($this->role) {
+           'admin' => 'admin.dashboard',
+           'staff' => 'staff.dashboard',
+           default => 'customer.dashboard',
+       };
+   }
    public function vehicles()
 {
     return $this->hasMany(\App\Models\Vehicle::class, 'user_id');

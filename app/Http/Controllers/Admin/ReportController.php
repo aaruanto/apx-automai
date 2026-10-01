@@ -140,14 +140,6 @@ class ReportController extends Controller
             $cursor->subMonth();
         }
 
-        // ── Loyalty distribution ───────────────────────────────────────────
-        // TODO: update these queries once a loyalty column/table is added to your schema
-        $loyaltyCounts = [
-            'gold'   => \App\Models\Customer::where('tier', 'gold')->count(),
-            'silver' => \App\Models\Customer::where('tier', 'silver')->count(),
-            'bronze' => \App\Models\Customer::where('tier', 'bronze')->count(),
-        ];
-
         return view('admin.reports.index', compact(
             'totalBookings', 'totalRevenue', 'avgBookingValue',
             'totalCustomers', 'newCustomers', 'cancellationRate', 'cancelledCount',
@@ -155,8 +147,7 @@ class ReportController extends Controller
             'statusCounts',
             'revenueChartLabels', 'revenueChartData',
             'serviceStats',
-            'bookingSummary',
-            'loyaltyCounts'
+            'bookingSummary'
         ));
     }
 }

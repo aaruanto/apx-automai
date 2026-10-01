@@ -11,15 +11,22 @@ use App\Http\Controllers\Customer\DashboardController as CustomerDashboard;
 use App\Http\Controllers\Admin\MessageTemplateController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\GuestBookingController;
+use App\Models\Service;
 
 // ── Public routes ──────────────────────────────────────────────────────────
-Route::get('/',            fn() => view('index'));
+Route::get('/', function () {
+    $services = Service::where('is_active', true)
+        ->orderBy('category')
+        ->orderBy('name')
+        ->get();
+
+    return view('index', compact('services'));
+});
 Route::get('/about',       fn() => view('about'));
 Route::get('/booking',     fn() => view('booking'));
 Route::get('/contact',     fn() => view('contact'));
 Route::get('/service',     fn() => view('service'));
-Route::get('/team',        fn() => view('team'));
-Route::get('/testimonial', fn() => view('testimonial'));
+Route::get('/terms',       fn() => view('terms'))->name('terms');
 
 // ── Auth profile (Breeze default) ──────────────────────────────────────────
 Route::middleware('auth')->group(function () {
@@ -49,8 +56,8 @@ Route::middleware(['auth', 'role:admin'])
     Route::get('/bookings/{id}/rebook',       [BookingController::class, 'rebook'])   ->name('bookings.rebook');
     Route::delete('/bookings/{id}',           [BookingController::class, 'destroy'])  ->name('bookings.destroy');
     Route::patch('/bookings/{id}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
+    Route::patch('/bookings/{id}/arrive', [BookingController::class, 'arrive'])->name('bookings.arrive');
     // ── Customers ──────────────────────────────────────────────────────────
-    Route::get('/customers/loyalty',          [CustomerController::class, 'loyalty']) ->name('customers.loyalty');
     Route::get('/customers/create',           [CustomerController::class, 'create'])  ->name('customers.create');
     Route::post('/customers',                 [CustomerController::class, 'store'])   ->name('customers.store');
     Route::get('/customers',                  [CustomerController::class, 'index'])   ->name('customers.index');
@@ -69,7 +76,7 @@ Route::middleware(['auth', 'role:admin'])
     Route::get('/settings',                   [SettingsController::class, 'index'])          ->name('settings');
     Route::put('/settings/general',           [SettingsController::class, 'updateGeneral'])  ->name('settings.general');
     Route::put('/settings/booking',           [SettingsController::class, 'updateBooking'])  ->name('settings.booking');
-    Route::put('/settings/loyalty',           [SettingsController::class, 'updateLoyalty'])  ->name('settings.loyalty');
+    Route::put('/settings/system',            [SettingsController::class, 'updateSystem'])   ->name('settings.system');
     Route::post('/settings/staff',            [SettingsController::class, 'storeStaff'])     ->name('settings.staff.store');
     Route::put('/settings/staff/{id}',        [SettingsController::class, 'updateStaff'])    ->name('settings.staff.update');
     Route::delete('/settings/staff/{id}',     [SettingsController::class, 'destroyStaff'])   ->name('settings.staff.destroy');
@@ -85,12 +92,15 @@ Route::middleware(['auth', 'role:admin'])
 });
 
 // ── Staff ──────────────────────────────────────────────────────────────────
+// Staff shares the admin dashboard view, so it needs the same data — reuse the
+// controller instead of rendering the view bare (that left every stat/chart
+// variable undefined).
 Route::middleware(['auth', 'role:staff'])->group(function () {
-    Route::get('/staff/dashboard', fn() => view('dashboard.admin-dashboard'))->name('staff.dashboard');
+    Route::get('/staff/dashboard', [DashboardController::class, 'index'])->name('staff.dashboard');
 });
 
 // ── Customer ───────────────────────────────────────────────────────────────
-Route::middleware(['auth', 'role:customer'])->group(function () {
+Route::middleware(['auth', 'role:customer', 'maintenance'])->group(function () {
     Route::get('/customer/dashboard',              [CustomerDashboard::class, 'index'])          ->name('customer.dashboard');
     Route::post('/customer/bookings',              [CustomerDashboard::class, 'store'])           ->name('customer.bookings.store');
     Route::patch('/customer/bookings/{id}/cancel', [CustomerDashboard::class, 'cancelBooking'])   ->name('customer.bookings.cancel');
@@ -98,10 +108,15 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
     Route::delete('/customer/vehicles/{id}',       [CustomerDashboard::class, 'destroyVehicle'])  ->name('customer.vehicles.destroy');
     Route::patch('/customer/vehicles/{id}/primary',[CustomerDashboard::class, 'setPrimaryVehicle'])->name('customer.vehicles.setPrimary');
     Route::patch('/customer/profile',              [CustomerDashboard::class, 'updateProfile'])   ->name('customer.profile.update');
+    Route::get('/customer/account/deletion-status', [CustomerDashboard::class, 'accountDeletionStatus'])->name('customer.account.status');
+    Route::delete('/customer/account',             [CustomerDashboard::class, 'destroyAccount'])      ->name('customer.account.destroy');
 });
 
 // ── Guest Booking (public — no auth required) ──────────────────────────────
-    Route::post('/booking/guest', [GuestBookingController::class, 'store'])->name('booking.guest');
+    Route::post('/booking/guest', [GuestBookingController::class, 'store'])->middleware('maintenance')->name('booking.guest');
+
+// ── Availability picker API (public — counts only, no customer data) ──────
+    Route::get('/booking/availability', \App\Http\Controllers\AvailabilityController::class)->name('booking.availability');
 
 
 require __DIR__.'/auth.php';

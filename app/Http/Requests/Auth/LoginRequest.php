@@ -2,9 +2,12 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
+use App\Services\AccountAnonymizer;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -42,6 +45,15 @@ class LoginRequest extends FormRequest
         $this->ensureIsNotRateLimited();
 
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+            // An account deleted within the last 30 days is only soft-deleted, so
+            // Auth::attempt can't see it. Signing in is how the customer cancels
+            // a pending deletion, so check for that before rejecting them.
+            if ($this->restoreIfWithinGracePeriod()) {
+                RateLimiter::clear($this->throttleKey());
+
+                return;
+            }
+
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -50,6 +62,32 @@ class LoginRequest extends FormRequest
         }
 
         RateLimiter::clear($this->throttleKey());
+    }
+
+    /**
+     * Sign the user back in and cancel their pending deletion, but only with a
+     * valid password and only while the grace period is still running.
+     */
+    protected function restoreIfWithinGracePeriod(): bool
+    {
+        $user = User::onlyTrashed()->where('email', $this->input('email'))->first();
+
+        if (! $user || ! Hash::check($this->input('password'), $user->password)) {
+            return false;
+        }
+
+        $anonymizer = app(AccountAnonymizer::class);
+
+        if (! $anonymizer->isRestorable($user)) {
+            return false;
+        }
+
+        $anonymizer->restore($user);
+        Auth::login($user, $this->boolean('remember'));
+
+        session()->flash('account_restored', true);
+
+        return true;
     }
 
     /**

@@ -39,8 +39,6 @@ class SendBookingReminders extends Command
         $user     = $booking->user;
         $service  = $booking->service;
         $vehicle  = $booking->vehicle;
-        $customer = $user->customer ?? null;
-
         $map = [
             '{name}'         => $user->name ?? 'Customer',
             '{first_name}'   => explode(' ', $user->name ?? 'Customer')[0],
@@ -53,7 +51,6 @@ class SendBookingReminders extends Command
             '{branch}'       => config('apx.branch_name', 'APX Motors — Tandang Sora'),
             '{contact}'      => config('apx.contact_number', ''),
             '{days_until}'   => (string) Carbon::today()->diffInDays(Carbon::parse($booking->booking_date)),
-            '{loyalty_tier}' => ucfirst($customer->tier ?? 'bronze'),
         ];
 
         return str_replace(array_keys($map), array_values($map), $text);

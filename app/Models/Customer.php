@@ -12,8 +12,6 @@ class Customer extends Model
         'phone',
         'dob',
         'address',
-        'loyalty_points',
-        'tier',
     ];
 
     public function user()
@@ -36,10 +34,5 @@ class Customer extends Model
             'user_id', // customers.user_id
             'id'       // users.id
         );
-    }
-
-    public function rewards()
-    {
-        return $this->hasMany(Reward::class);
     }
 }

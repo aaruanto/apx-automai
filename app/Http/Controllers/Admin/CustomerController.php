@@ -19,20 +19,12 @@ class CustomerController extends Controller
                 $c->name       = $c->user->name ?? 'N/A';
                 $c->email      = $c->user->email ?? '';
                 $c->phone      = $c->phone ?? $c->user->phone ?? '';
-                $c->loyalty    = $c->tier ?? 'bronze';
                 $c->last_visit = $c->bookings()->latest('booking_date')->value('booking_date');
                 $c->vehicle    = $c->vehicle ?? $c->user->vehicles()->latest()->first();
                 return $c;
             });
 
-        $totalCustomers = $customers->count();
-        $goldCount      = $customers->where('loyalty', 'gold')->count();
-        $silverCount    = $customers->where('loyalty', 'silver')->count();
-        $bronzeCount    = $customers->where('loyalty', 'bronze')->count();
-
-        return view('admin.customers.index', compact(
-            'customers', 'totalCustomers', 'goldCount', 'silverCount', 'bronzeCount'
-        ));
+        return view('admin.customers.index', compact('customers'));
     }
 
     public function create()
@@ -60,10 +52,8 @@ class CustomerController extends Controller
 
         // Create customer profile
         $customer = Customer::create([
-            'user_id'        => $user->id,
-            'phone'          => $request->phone,
-            'loyalty_points' => 0,
-            'tier'           => $request->loyalty ?? 'bronze',
+            'user_id' => $user->id,
+            'phone'   => $request->phone,
         ]);
 
         // Create vehicle
@@ -87,7 +77,6 @@ class CustomerController extends Controller
         $customer->vehicle = $customer->user->vehicles()->latest()->first();
         $customer->bookings_count = $customer->bookings()->count();
         $customer->last_visit     = $customer->bookings()->latest('booking_date')->value('booking_date');
-        $customer->loyalty = $customer->tier;
 
         return view('admin.customers.create', compact('customer'));
     }
@@ -110,7 +99,6 @@ class CustomerController extends Controller
 
         $customer->update([
             'phone' => $request->phone,
-            'tier'  => $request->loyalty ?? $customer->tier,
         ]);
 
         if ($request->plate) {
@@ -142,27 +130,5 @@ class CustomerController extends Controller
 
         return redirect()->route('admin.customers.index')
             ->with('success', 'Customer deleted.');
-    }
-
-    public function loyalty()
-    {
-        $customers = Customer::with(['user', 'user.vehicles'])
-            ->withCount('bookings')
-            ->get()
-            ->map(function ($c) {
-                $c->name    = $c->user->name ?? 'N/A';
-                $c->phone   = $c->phone ?? $c->user->phone ?? '';
-                $c->vehicle = $c->user->vehicles()->latest()->first();
-                $c->loyalty = $c->tier ?? 'bronze';
-                return $c;
-            });
-
-        $grouped = [
-            'gold'   => $customers->where('loyalty', 'gold')->values(),
-            'silver' => $customers->where('loyalty', 'silver')->values(),
-            'bronze' => $customers->where('loyalty', 'bronze')->values(),
-        ];
-
-        return view('admin.customers.loyalty', compact('grouped'));
     }
 }
