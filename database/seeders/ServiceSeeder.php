@@ -42,7 +42,7 @@ class ServiceSeeder extends Seeder
                 'updated_at'  => $now,
             ];
             if ($hasCategory) $row['category']  = $s['category'];
-            if ($hasActive)   $row['is_active'] = 1;
+            if ($hasActive)   $row['is_active'] = true;
 
             DB::table('services')->updateOrInsert(['name' => $s['name']], $row);
         }

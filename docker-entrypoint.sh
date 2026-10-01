@@ -13,6 +13,17 @@ php artisan package:discover --ansi
 # during the image build. migrate --force is idempotent, so repeated starts are safe.
 php artisan migrate --force
 
+# Reference data, not sample data: the service catalogue drives the landing page,
+# the booking flow and the admin settings screen, so an unseeded database looks
+# broken. ServiceSeeder uses updateOrInsert keyed on name, so re-running it on
+# every start adds no duplicates.
+php artisan db:seed --class=ServiceSeeder --force
+
+# Registration hardcodes role=customer, so there is no public path to an admin
+# account and a fresh database has none. This provisions the first one from the
+# environment, and no-ops when ADMIN_EMAIL/ADMIN_PASSWORD are unset.
+php artisan apx:ensure-admin
+
 # Rebuild caches against the real runtime environment variables.
 php artisan config:cache
 php artisan route:cache

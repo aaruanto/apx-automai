@@ -10,16 +10,20 @@ class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // The service catalogue is reference data, not sample data: the landing
+        // page, the booking flow and the admin settings screen are all empty
+        // without it. It was never called from here, which is why a fresh
+        // database came up with no services at all.
+        $this->call(ServiceSeeder::class);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // Sample login — deliberately never created in production.
+        if (! app()->environment('production')) {
+            User::factory()->create([
+                'name'  => 'Test User',
+                'email' => 'test@example.com',
+            ]);
+        }
     }
 }
