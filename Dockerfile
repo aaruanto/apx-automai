@@ -13,7 +13,7 @@ COPY resources ./resources
 RUN npm run build          # outputs to public/build
 
 # ─── Stage 2: PHP runtime ─────────────────────────────────────────────────────
-FROM php:8.3-apache
+FROM php:8.4-apache
 
 # Render does not provide a PHP runtime, so the whole environment is built here.
 # libpq-dev is what pdo_pgsql compiles against; the rest are Laravel's requirements.
