@@ -1,0 +1,99 @@
+/* Shared design tokens — single source of truth for color usage across the
+   admin panel, customer dashboard, auth pages, and landing page.
+
+   Convention: --red is reserved for errors and destructive actions only.
+   --info (blue) is for informational/neutral messages only. Don't use red
+   for a non-error notice, and don't use blue for an error — that's the rule
+   this file exists to make consistent. Load this file before any
+   page-specific stylesheet so it can be overridden per-page if truly needed,
+   but in general treat these as canonical. */
+:root {
+    --red:         #E8192C;
+    --red-dark:    #B5101E;
+    --red-glow:    rgba(232, 25, 44, 0.18);
+
+    --info:        #3B82F6;
+    --info-dark:   #2563EB;
+    --info-glow:   rgba(59, 130, 246, 0.18);
+
+    --success:     #22C55E;
+    --success-dark:#16A34A;
+
+    --warning:     #F59E0B;
+    --warning-dark:#B45309;
+}
+
+/* Shared form-validation state, used by form-validate.js */
+.fv-invalid { border-color: var(--red) !important; box-shadow: 0 0 0 3px var(--red-glow); }
+.fv-error { color: var(--red); font-size: .78rem; margin-top: 4px; display: none; }
+.fv-error.show { display: block; }
+
+/* Shared alert-modal buttons, used by alert-modal.js — self-contained so
+   they render consistently whether the page's own button classes are
+   admin's (.btn-primary etc.) or the customer dashboard's (.btn-modal-*
+   etc.); this component intentionally doesn't depend on either. */
+.apx-alert-btn {
+    font-family: inherit;
+    font-size: .85rem;
+    font-weight: 600;
+    padding: 9px 18px;
+    border-radius: 7px;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+.apx-alert-btn--primary { background: var(--red); color: #fff; }
+.apx-alert-btn--primary:hover { background: var(--red-dark); }
+.apx-alert-btn--danger { background: var(--red); color: #fff; }
+.apx-alert-btn--danger:hover { background: var(--red-dark); }
+.apx-alert-btn--ghost { background: transparent; color: var(--text, #222); border-color: var(--border, #e5e7eb); }
+.apx-alert-btn--ghost:hover { border-color: var(--red); color: var(--red); }
+
+/* Shared password show/hide toggle, used by password-toggle.js. Pages that
+   already provide a positioned .input-wrap reuse it; everywhere else the
+   script wraps the input in .pw-field. */
+.pw-field {
+    position: relative;
+    display: block;
+}
+.pw-field > input,
+.input-wrap > input.form-control {
+    width: 100%;
+    padding-right: 40px;
+}
+.pw-toggle {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: var(--text-muted, #888);
+    font-size: .82rem;
+    line-height: 1;
+    /* Comfortable pointer target on desktop; widened below for touch. */
+    min-width: 28px;
+    min-height: 28px;
+    transition: color .2s;
+}
+.pw-toggle:hover { color: var(--text, #222); }
+.pw-toggle:focus-visible {
+    outline: 2px solid var(--red);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+/* Touch devices get the full 44x44 target without changing the icon size. */
+@media (hover: none), (max-width: 600px) {
+    .pw-toggle {
+        min-width: 44px;
+        min-height: 44px;
+        right: 2px;
+    }
+    .pw-field > input,
+    .input-wrap > input.form-control { padding-right: 52px; }
+}

@@ -1,0 +1,205 @@
+/* Two-panel availability picker — self-contained, uses each host page's own
+   CSS custom properties when present (--red, --border, --surface, --text,
+   --text-muted) and falls back to sensible defaults otherwise, so it looks
+   native whether it's dropped into the admin panel, the customer dashboard,
+   or the public landing page. */
+.avp {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-family: inherit;
+}
+
+.avp-cal-panel {
+    flex: 1 1 280px;
+    min-width: 260px;
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 10px;
+    padding: 14px;
+    background: var(--surface, #fff);
+}
+
+.avp-cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.avp-cal-title {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--text, #222);
+    font-family: 'Barlow Condensed', sans-serif;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.avp-nav {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--border, #e5e7eb);
+    background: transparent;
+    color: var(--text, #222);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.avp-nav:hover { border-color: var(--red, #E8192C); color: var(--red, #E8192C); }
+.avp-nav:disabled { opacity: 0.35; cursor: not-allowed; }
+.avp-nav:disabled:hover { border-color: var(--border, #e5e7eb); color: var(--text, #222); }
+
+.avp-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted, #888);
+    text-align: center;
+    margin-bottom: 4px;
+}
+
+.avp-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+}
+
+.avp-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1.5px solid transparent;
+    cursor: default;
+    color: var(--text, #222);
+    background: transparent;
+}
+
+.avp-day.avp-day-blank { visibility: hidden; }
+
+.avp-day.avp-day-past {
+    color: var(--text-muted, #aaa);
+    opacity: 0.4;
+}
+
+.avp-day.avp-day-open {
+    cursor: pointer;
+    background: rgba(34, 197, 94, 0.12);
+    color: #15803d;
+}
+.avp-day.avp-day-open:hover { border-color: #22c55e; }
+
+.avp-day.avp-day-full {
+    color: #b91c1c;
+    background: rgba(239, 68, 68, 0.10);
+    cursor: not-allowed;
+}
+
+.avp-day.avp-day-selected {
+    border-color: var(--red, #E8192C) !important;
+    box-shadow: 0 0 0 2px rgba(232, 25, 44, 0.15);
+}
+
+.avp-legend {
+    display: flex;
+    gap: 14px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border, #e5e7eb);
+}
+
+.avp-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    color: var(--text-muted, #888);
+}
+
+.avp-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.avp-dot-open { background: #22c55e; }
+.avp-dot-full { background: #ef4444; }
+
+.avp-slots-panel {
+    flex: 1 1 220px;
+    min-width: 200px;
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 10px;
+    padding: 14px;
+    background: var(--surface, #fff);
+    display: flex;
+    flex-direction: column;
+}
+
+.avp-slots-header {
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: var(--text, #222);
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.avp-slots-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.avp-slots-empty {
+    font-size: 0.8rem;
+    color: var(--text-muted, #888);
+    margin: 0;
+}
+
+.avp-slot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border, #e5e7eb);
+    background: transparent;
+    color: var(--text, #222);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+}
+.avp-slot:hover:not(:disabled) { border-color: var(--red, #E8192C); }
+
+.avp-slot:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.avp-slot.avp-slot-selected {
+    border-color: var(--red, #E8192C);
+    background: rgba(232, 25, 44, 0.08);
+    color: var(--red, #E8192C);
+}
+
+.avp-slot-count {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #15803d;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.avp-slot:disabled .avp-slot-count { color: #b91c1c; }

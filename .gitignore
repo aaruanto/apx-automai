@@ -1,4 +1,39 @@
+# Environment
+.env
+.env.backup
+.env.production
+
+# Dependencies
+/vendor
+/node_modules
+
+# Build output
+/public/build
+/public/hot
+
+# Laravel cache & storage
+/storage/*.key
+/storage/app/*
+/storage/framework/*
+/storage/logs/*
+!storage/app/.gitkeep
+!storage/framework/.gitkeep
+!storage/logs/.gitkeep
+
+# Testing
+/coverage
+/.phpunit.cache
+
+# IDE & OS
 .vscode/
+.idea/
 *.log
 *.sql
+.DS_Store
+Thumbs.db
+
+# Misc
 config.php
+npm-debug.log
+yarn-error.log
+pest-plugins.json
