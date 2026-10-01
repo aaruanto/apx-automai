@@ -11,7 +11,6 @@ use App\Services\BookingAvailability;
 use App\Exceptions\SlotUnavailableException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
-use Carbon\Carbon;
 
 class BookingController extends Controller
 {
@@ -259,16 +258,6 @@ class BookingController extends Controller
             ], 422);
         }
 
-        // booking_date has no date cast on the model, so it arrives as a string.
-        $date = Carbon::parse($booking->booking_date)->startOfDay();
-
-        if ($date->isAfter(Carbon::today())) {
-            return response()->json([
-                'success' => false,
-                'message' => 'This booking is scheduled for '.$date->format('M j, Y')
-                             .'. It can only be started on the day of the appointment.',
-            ], 422);
-        }
 
         // Re-check the status inside the write so two quick clicks (or two staff
         // on the same booking) can't both pass the guard above and double-stamp

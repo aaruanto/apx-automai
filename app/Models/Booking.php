@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Carbon\Carbon;
 
 class Booking extends Model
 {
@@ -31,18 +30,13 @@ class Booking extends Model
      * controller that performs the transition agree on one rule — the status
      * list was previously hardcoded separately in all three places.
      *
-     * "Arrived" means the customer is physically present, so a booking dated
-     * in the future can't be started. Past-dated ones stay startable so late
-     * arrivals and backfilled records still work.
+     * Status is the only condition: bookings are made ahead of time, so the
+     * appointment date says nothing about whether the customer is standing at
+     * the counter now. Staff decide that, not the calendar.
      */
     public function canStart(): bool
     {
-        if (! in_array($this->status, self::STARTABLE_STATUSES, true)) {
-            return false;
-        }
-
-        // booking_date is an uncast date column, so it arrives as a string.
-        return ! Carbon::parse($this->booking_date)->startOfDay()->isAfter(Carbon::today());
+        return in_array($this->status, self::STARTABLE_STATUSES, true);
     }
 
     public function customer()

@@ -98,7 +98,10 @@ it('explains why the transition was refused', function () {
     expect($response->json('message'))->toContain('cancelled');
 });
 
-it('refuses to start a booking scheduled for a future date', function () {
+it('starts a future-dated booking', function () {
+    // Bookings are made ahead of time, so the appointment date says nothing
+    // about whether the customer is at the counter. Gating on it hid the
+    // button from nearly every booking in practice.
     $booking = makeBooking([
         'status'       => 'confirmed',
         'booking_date' => today()->addDays(3)->toDateString(),
@@ -106,12 +109,12 @@ it('refuses to start a booking scheduled for a future date', function () {
 
     $this->actingAs(admin())
         ->patchJson("/admin/bookings/{$booking->id}/arrive")
-        ->assertStatus(422);
+        ->assertOk();
 
-    expect($booking->refresh()->status)->toBe('confirmed');
+    expect($booking->refresh()->status)->toBe('in_progress');
 });
 
-it('still starts a past-dated booking, for late arrivals', function () {
+it('starts a past-dated booking, for late arrivals', function () {
     $booking = makeBooking([
         'status'       => 'confirmed',
         'booking_date' => today()->subDay()->toDateString(),
@@ -148,7 +151,8 @@ it('mirrors the gate in canStart, which the views use to render the button', fun
     expect(makeBooking(['status' => 'completed'])->canStart())->toBeFalse();
     expect(makeBooking(['status' => 'cancelled'])->canStart())->toBeFalse();
     expect(makeBooking(['status' => 'in_progress'])->canStart())->toBeFalse();
+    // Date is not part of the rule.
     expect(makeBooking([
         'status' => 'confirmed', 'booking_date' => today()->addDay()->toDateString(),
-    ])->canStart())->toBeFalse();
+    ])->canStart())->toBeTrue();
 });
