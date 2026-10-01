@@ -1,6 +1,4 @@
  :root {
-            --red:        #E8192C;
-            --red-dark:   #B5101E;
             --red-glow:   rgba(232, 25, 44, 0.18);
             --black:      #0A0A0A;
             --surface:    #111111;
@@ -9,9 +7,6 @@
             --border:     rgba(255,255,255,0.07);
             --text:       #F0F0F0;
             --text-muted: #888888;
-            --success:    #22C55E;
-            --warning:    #F59E0B;
-            --info:       #3B82F6;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -77,39 +72,22 @@
         }
         #sidebarToggle:hover { color: var(--red); background: var(--red-glow); }
 
-        .topnav-search {
-            flex: 1;
-            max-width: 340px;
-            margin-left: auto;
-            position: relative;
-        }
-        .topnav-search input {
-            width: 100%;
-            background: var(--surface-3);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 7px 16px 7px 38px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            font-family: 'Barlow', sans-serif;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        .topnav-search input:focus { border-color: var(--red); }
-        .topnav-search input::placeholder { color: var(--text-muted); }
-        .topnav-search .search-icon {
-            position: absolute;
-            left: 12px; top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-            font-size: 0.8rem;
-        }
-
         .topnav-actions {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-left: 16px;
+            /* auto keeps the actions pinned right now that the search bar
+               (which previously carried the auto margin) is gone. */
+            margin-left: auto;
+        }
+
+        /* Below ~600px the brand badge + user name push the actions past the
+           viewport edge. Drop the labels only — hamburger, theme toggle and
+           avatar all stay reachable. */
+        @media (max-width: 600px) {
+            .topnav { padding: 0 12px; }
+            .topnav .brand-badge,
+            .topnav .user-name { display: none; }
         }
         .icon-btn {
             background: none;
@@ -297,7 +275,12 @@
         }
         .main-content.expanded { margin-left: 60px; }
 
-        main { flex: 1; padding: 28px 32px; }
+        /* main is a flex column with footer pushed via margin-top:auto — the
+           standard flexbox sticky-footer technique, so the footer sits at
+           the bottom of the viewport on short pages and flows naturally
+           after content on long ones (no position:fixed/sticky needed). */
+        main { flex: 1; padding: 28px 32px; display: flex; flex-direction: column; }
+        main > footer { margin-top: auto; }
 
         /* ── PAGE HEADER ── */
         .page-header {
@@ -598,69 +581,6 @@
             flex-wrap: wrap;
         }
         .booking-meta i { color: var(--red); margin-right: 3px; }
-
-        /* ── LOYALTY CARD ── */
-        .loyalty-card {
-            background: linear-gradient(135deg, #1a0a0b 0%, #2a0e10 50%, #1a0a0b 100%);
-            border: 1px solid rgba(232,25,44,0.3);
-            border-radius: 10px;
-            padding: 20px;
-            position: relative;
-            overflow: hidden;
-            margin-bottom: 20px;
-        }
-        .loyalty-card::before {
-            content: 'APX';
-            position: absolute;
-            right: -10px; top: -10px;
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 5rem;
-            font-weight: 800;
-            color: rgba(232,25,44,0.06);
-            line-height: 1;
-            pointer-events: none;
-        }
-        .loyalty-label {
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: var(--red);
-            margin-bottom: 4px;
-        }
-        .loyalty-points {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: 2.4rem;
-            font-weight: 800;
-            color: var(--text);
-            line-height: 1;
-            margin-bottom: 2px;
-        }
-        .loyalty-sub {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            margin-bottom: 16px;
-        }
-        .loyalty-bar-wrap {
-            background: rgba(255,255,255,0.06);
-            border-radius: 4px;
-            height: 6px;
-            margin-bottom: 6px;
-            overflow: hidden;
-        }
-        .loyalty-bar-fill {
-            height: 100%;
-            background: var(--red);
-            border-radius: 4px;
-            width: 62%;
-            transition: width 0.6s ease;
-        }
-        .loyalty-bar-label {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.72rem;
-            color: var(--text-muted);
-        }
 
         /* ── QUICK ACTIONS ── */
         .quick-actions {
@@ -997,6 +917,46 @@
             grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
             gap: 16px;
         }
+
+        /* ── List view (Services tab toggle) ── */
+        .services-grid.view-list {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        .services-grid.view-list .service-card {
+            flex-direction: row;
+            align-items: stretch;
+        }
+        .services-grid.view-list .service-img {
+            width: 96px;
+            aspect-ratio: 1;
+            flex-shrink: 0;
+        }
+        .services-grid.view-list .service-info {
+            flex-direction: row;
+            align-items: center;
+            gap: 16px;
+            padding: 10px 16px;
+        }
+        .services-grid.view-list .service-name { flex: 0 0 200px; }
+        .services-grid.view-list .service-desc {
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .services-grid.view-list .service-card-footer {
+            margin-top: 0;
+            flex-shrink: 0;
+            gap: 12px;
+        }
+
+        .view-toggle-group { display: flex; gap: 4px; border: 1px solid var(--border); border-radius: 8px; padding: 3px; }
+        .view-toggle-btn {
+            background: none; border: none; cursor: pointer; padding: 6px 10px; border-radius: 6px;
+            color: var(--text-muted); font-size: 0.85rem; display: flex; align-items: center;
+        }
+        .view-toggle-btn.active { background: var(--red); color: #fff; }
 
         .service-card {
             background: var(--surface);
@@ -1347,3 +1307,65 @@
         footer a { color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
         footer a:hover { color: var(--red); }
         .footer-brand span { color: var(--red); font-weight: 700; }
+/* ──────────────────────────────────────────────────────────────────────────
+   RESPONSIVE
+   The dashboard was built desktop-only: a fixed 240px sidebar plus a matching
+   margin-left on .main-content left ~150px of usable width on a phone, and
+   because the flex items default to min-width:auto nothing could shrink into
+   it — the page just overflowed (scrollWidth 1104px at a 390px viewport).
+   Below 992px the sidebar goes off-canvas and the content reclaims the width.
+   ────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 992px) {
+    /* Sidebar slides out of the way; the hamburger toggles .mobile-open. */
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        z-index: 1200;
+        box-shadow: 4px 0 24px rgba(0, 0, 0, .35);
+    }
+    .sidebar.mobile-open { transform: none; }
+
+    .main-content,
+    .main-content.expanded { margin-left: 0 !important; }
+
+    /* Without this the flex items keep their intrinsic width and overflow. */
+    .main-content, main, .tab-panel { min-width: 0; }
+    main { padding: 18px 16px; }
+
+    /* Backdrop behind the open sidebar */
+    .sidebar-backdrop {
+        position: fixed;
+        inset: 60px 0 0 0;
+        background: rgba(0, 0, 0, .5);
+        z-index: 1100;
+        display: none;
+    }
+    .sidebar-backdrop.show { display: block; }
+
+    /* Stack the multi-column layouts */
+    .cards-grid      { grid-template-columns: repeat(2, 1fr) !important; }
+    .content-grid    { grid-template-columns: 1fr !important; }
+    .quick-actions   { grid-template-columns: 1fr 1fr !important; }
+    .profile-layout  { grid-template-columns: 1fr !important; }
+    .services-grid   { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important; }
+    .vehicles-grid   { grid-template-columns: 1fr !important; }
+    .promos-grid     { grid-template-columns: 1fr !important; }
+
+    /* Header and toolbars wrap instead of forcing width */
+    .page-header   { flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+    .shop-toolbar  { flex-wrap: wrap; gap: 10px; }
+    .section-tabs  { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .filter-tabs   { overflow-x: auto; }
+
+    /* Tables scroll rather than stretch the page */
+    .table-wrap { overflow-x: auto; }
+}
+
+@media (max-width: 600px) {
+    .cards-grid    { grid-template-columns: 1fr !important; }
+    .services-grid { grid-template-columns: 1fr !important; }
+    .quick-actions { grid-template-columns: 1fr !important; }
+    .bk-card-inner { grid-template-columns: 1fr !important; gap: 10px; }
+    main           { padding: 14px 12px; }
+    .page-title    { font-size: 1.4rem; }
+}

@@ -1,6 +1,4 @@
   :root {
-            --red:        #E8192C;
-            --red-dark:   #B5101E;
             --red-glow:   rgba(232, 25, 44, 0.18);
             --black:      #0A0A0A;
             --surface:    #111111;
@@ -9,9 +7,6 @@
             --border:     rgba(255,255,255,0.07);
             --text:       #F0F0F0;
             --text-muted: #888888;
-            --success:    #22C55E;
-            --warning:    #F59E0B;
-            --info:       #3B82F6;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -76,39 +71,22 @@
         }
         #sidebarToggle:hover { color: var(--red); background: var(--red-glow); }
 
-        .topnav-search {
-            flex: 1;
-            max-width: 340px;
-            margin-left: auto;
-            position: relative;
-        }
-        .topnav-search input {
-            width: 100%;
-            background: var(--surface-3);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 7px 16px 7px 38px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            font-family: 'Barlow', sans-serif;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        .topnav-search input:focus { border-color: var(--red); }
-        .topnav-search input::placeholder { color: var(--text-muted); }
-        .topnav-search .search-icon {
-            position: absolute;
-            left: 12px; top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-            font-size: 0.8rem;
-        }
-
         .topnav-actions {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-left: 16px;
+            /* auto keeps the actions pinned right now that the search bar
+               (which previously carried the auto margin) is gone. */
+            margin-left: auto;
+        }
+
+        /* Below ~600px the brand badge + user name push the actions past the
+           viewport edge. Drop the labels only — hamburger, theme toggle and
+           avatar all stay reachable. */
+        @media (max-width: 600px) {
+            .topnav { padding: 0 12px; }
+            .topnav .brand-badge,
+            .topnav .user-name { display: none; }
         }
         .icon-btn {
             background: none;
