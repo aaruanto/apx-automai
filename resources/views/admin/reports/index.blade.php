@@ -4,6 +4,42 @@
 
 @section('content')
 
+{{-- Export PDF uses the browser's own print-to-PDF rather than a server-side
+     PDF package, which would mean a new Composer dependency and a container
+     rebuild for one button. This strips the admin chrome so the saved file is
+     the report itself, not a screenshot of the app. --}}
+@push('styles')
+<style>
+@media print {
+    .topnav, .sidebar, .page-header .filter-select,
+    .page-header .btn, .btn, .breadcrumb { display: none !important; }
+
+    .main-content { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+    body { background: #fff !important; }
+
+    /* Cards and tables default to light so dark mode does not print a black page. */
+    .card, .stat-card, .table-card, .chart-card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+        background: #fff !important;
+        break-inside: avoid;
+    }
+
+    table { page-break-inside: auto; }
+    tr    { page-break-inside: avoid; page-break-after: auto; }
+    thead { display: table-header-group; }
+
+    canvas { max-width: 100% !important; height: auto !important; }
+
+    @page { margin: 14mm; }
+}
+
+/* Only visible on the printed page, so the file says what it is. */
+.print-only { display: none; }
+@media print { .print-only { display: block !important; margin-bottom: 18px; } }
+</style>
+@endpush
+
     <!-- PAGE HEADER -->
     <div class="page-header">
         <div>
@@ -19,10 +55,19 @@
                 <option value="{{ $value }}" @selected(($period ?? 30) == $value)>{{ $label }}</option>
                 @endforeach
             </select>
-            <button class="btn btn-ghost"><i class="fas fa-file-export"></i> Export PDF</button>
+            <button type="button" class="btn btn-ghost" onclick="window.print()"><i class="fas fa-file-pdf"></i> Export PDF</button>
         </div>
     </div>
 
+    {{-- Printed output has no sidebar or page header, so it needs its own title block. --}}
+    <div class="print-only">
+        <h2 style="margin:0 0 4px;">APX Motors and Services &mdash; Reports &amp; Analytics</h2>
+        <div style="font-size:.9rem;color:#555;">
+            Period: last {{ $period ?? 30 }} days &nbsp;&bull;&nbsp;
+            Generated {{ now()->format('F j, Y') }} at {{ now()->format('g:i A') }}
+        </div>
+        <hr style="margin-top:10px;">
+    </div>
     @isset($reportError)
     <div style="display:flex;gap:12px;align-items:flex-start;padding:14px 16px;margin-bottom:20px;
                 border:1px solid var(--red);border-left-width:4px;border-radius:8px;
@@ -38,8 +83,8 @@
     <div class="stat-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px;">
         @php
             $kpis = [
-                ['label'=>'Total Bookings', 'value'=>$totalBookings ?? 0, 'icon'=>'fa-calendar-check', 'color'=>'var(--red)', 'bg'=>'var(--red-glow)', 'sub'=>'+'.($bookingsGrowth ?? 0).'% vs last period'],
-                ['label'=>'Revenue',        'value'=>'₱'.number_format($totalRevenue ?? 0,0), 'icon'=>'fa-peso-sign', 'color'=>'#22c55e', 'bg'=>'rgba(34,197,94,.1)', 'sub'=>'+'.($revenueGrowth ?? 0).'% vs last period'],
+                ['label'=>'Total Bookings', 'value'=>$totalBookings ?? 0, 'icon'=>'fa-calendar-check', 'color'=>'var(--red)', 'bg'=>'var(--red-glow)', 'sub'=>((($bookingsGrowth ?? 0) >= 0) ? '+' : '').($bookingsGrowth ?? 0).'% vs last period'],
+                ['label'=>'Revenue',        'value'=>'₱'.number_format($totalRevenue ?? 0,0), 'icon'=>'fa-peso-sign', 'color'=>'#22c55e', 'bg'=>'rgba(34,197,94,.1)', 'sub'=>((($revenueGrowth ?? 0) >= 0) ? '+' : '').($revenueGrowth ?? 0).'% vs last period'],
                 ['label'=>'Avg / Booking',  'value'=>'₱'.number_format($avgBookingValue ?? 0,0), 'icon'=>'fa-calculator', 'color'=>'#3b82f6', 'bg'=>'rgba(59,130,246,.1)', 'sub'=>'Average transaction value'],
                 ['label'=>'Customers',      'value'=>$totalCustomers ?? 0, 'icon'=>'fa-users', 'color'=>'#f59e0b', 'bg'=>'rgba(245,158,11,.1)', 'sub'=>($newCustomers ?? 0).' new this period'],
                 ['label'=>'Cancellation %', 'value'=>($cancellationRate ?? 0).'%', 'icon'=>'fa-ban', 'color'=>'#6b7280', 'bg'=>'rgba(107,114,128,.1)', 'sub'=>($cancelledCount ?? 0).' cancelled bookings'],
@@ -146,7 +191,7 @@
     <div class="card" style="margin-bottom:20px;">
         <div class="card-header">
             <div class="card-header-title"><i class="fas fa-table-list"></i> Booking Summary</div>
-            <button class="btn btn-ghost btn-sm"><i class="fas fa-file-export"></i> Export CSV</button>
+            <a href="{{ route('admin.reports.export', ['period' => $period ?? 30]) }}" class="btn btn-ghost btn-sm"><i class="fas fa-file-export"></i> Export CSV</a>
         </div>
         <div class="table-wrap">
             <table class="apx-table">

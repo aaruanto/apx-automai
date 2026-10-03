@@ -22,7 +22,7 @@
     <div class="card">
         <div class="card-header">
             <div class="card-header-title"><i class="fas fa-users"></i> Customer Records</div>
-            <button class="btn btn-ghost btn-sm"><i class="fas fa-file-export"></i> Export</button>
+            <a href="{{ route('admin.customers.export') }}" class="btn btn-ghost btn-sm"><i class="fas fa-file-export"></i> Export CSV</a>
         </div>
 
         <!-- FILTERS -->

@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Http\Request;
+use App\Support\CsvExport;
 use Carbon\Carbon;
 use Throwable;
 
@@ -208,5 +209,30 @@ class ReportController extends Controller
             'serviceStats'       => [],
             'bookingSummary'     => [],
         ];
+    }
+    /**
+     * CSV of the booking summary table, for the period currently selected.
+     * Reuses build() so the file and the on-screen figures cannot drift apart.
+     */
+    public function export(Request $request)
+    {
+        $days = $this->period($request);
+        $data = $this->build($days);
+
+        $rows = array_map(fn ($r) => [
+            $r["period"],
+            $r["total"],
+            $r["confirmed"],
+            $r["cancelled"],
+            number_format($r["revenue"], 2, ".", ""),
+            number_format($r["avg_value"], 2, ".", ""),
+            $r["growth"]."%",
+        ], $data["bookingSummary"]);
+
+        return CsvExport::stream(
+            CsvExport::filename("booking-summary"),
+            ["Period", "Total Bookings", "Confirmed", "Cancelled", "Revenue (PHP)", "Average Value (PHP)", "Growth"],
+            $rows
+        );
     }
 }

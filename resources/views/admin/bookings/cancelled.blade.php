@@ -48,7 +48,7 @@
     <div class="card">
         <div class="card-header">
             <div class="card-header-title"><i class="fas fa-ban"></i> Cancelled Records</div>
-            <button class="btn btn-ghost btn-sm"><i class="fas fa-file-export"></i> Export</button>
+            <a href="{{ route('admin.bookings.cancelled.export') }}" class="btn btn-ghost btn-sm"><i class="fas fa-file-export"></i> Export CSV</a>
         </div>
         <div class="table-wrap">
             <table class="apx-table">

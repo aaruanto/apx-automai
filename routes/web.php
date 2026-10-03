@@ -46,6 +46,8 @@ Route::middleware(['auth', 'role:admin'])
 
     // ── Bookings ───────────────────────────────────────────────────────────
     // Static sub-routes MUST come before the {id} wildcard routes
+    Route::get('/bookings/export',            [BookingController::class, 'export'])   ->name('bookings.export');
+    Route::get('/bookings/cancelled/export',  [BookingController::class, 'exportCancelled'])->name('bookings.cancelled.export');
     Route::get('/bookings/schedule',          [BookingController::class, 'schedule']) ->name('bookings.schedule');
     Route::get('/bookings/cancelled',         [BookingController::class, 'cancelled'])->name('bookings.cancelled');
     Route::get('/bookings/create',            [BookingController::class, 'create'])   ->name('bookings.create');
@@ -58,6 +60,7 @@ Route::middleware(['auth', 'role:admin'])
     Route::patch('/bookings/{id}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
     Route::patch('/bookings/{id}/arrive', [BookingController::class, 'arrive'])->name('bookings.arrive');
     // ── Customers ──────────────────────────────────────────────────────────
+    Route::get('/customers/export',           [CustomerController::class, 'export'])  ->name('customers.export');
     Route::get('/customers/create',           [CustomerController::class, 'create'])  ->name('customers.create');
     Route::post('/customers',                 [CustomerController::class, 'store'])   ->name('customers.store');
     Route::get('/customers',                  [CustomerController::class, 'index'])   ->name('customers.index');
@@ -67,6 +70,7 @@ Route::middleware(['auth', 'role:admin'])
 
     // ── Reports ────────────────────────────────────────────────────────────
     Route::get('/reports',                    [ReportController::class, 'index'])     ->name('reports.index');
+    Route::get('/reports/export',             [ReportController::class, 'export'])    ->name('reports.export');
     // ── Profile ────────────────────────────────────────────────────────────
     Route::get('/profile',                    [AdminProfileController::class, 'index'])         ->name('profile');
     Route::put('/profile',                    [AdminProfileController::class, 'update'])         ->name('profile.update');

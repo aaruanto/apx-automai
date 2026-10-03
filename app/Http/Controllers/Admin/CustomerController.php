@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Support\CsvExport;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -20,7 +21,10 @@ class CustomerController extends Controller
                 $c->email      = $c->user->email ?? '';
                 $c->phone      = $c->phone ?? $c->user->phone ?? '';
                 $c->last_visit = $c->bookings()->latest('booking_date')->value('booking_date');
-                $c->vehicle    = $c->vehicle ?? $c->user->vehicles()->latest()->first();
+                // ?? suppresses a null property read but not a null method
+                // call, so a customer whose user was soft-deleted (which
+                // account deletion does) brought down this whole page.
+                $c->vehicle    = $c->vehicle ?? $c->user?->vehicles()->latest()->first();
                 return $c;
             });
 
@@ -130,5 +134,32 @@ class CustomerController extends Controller
 
         return redirect()->route('admin.customers.index')
             ->with('success', 'Customer deleted.');
+    }
+    /** CSV of the customer list, matching the columns shown on screen. */
+    public function export()
+    {
+        $rows = (function () {
+            $customers = Customer::with(['user', 'vehicle'])->withCount('bookings')->latest()->get();
+
+            foreach ($customers as $c) {
+                $vehicle = $c->vehicle ?? $c->user?->vehicles()->latest()->first();
+
+                yield [
+                    $c->user->name ?? 'N/A',
+                    $c->user->email ?? '',
+                    $c->phone ?? $c->user->phone ?? '',
+                    $vehicle?->display_name ?? '',
+                    $vehicle?->display_plate ?? 'Not provided',
+                    $c->bookings_count,
+                    $c->bookings()->latest('booking_date')->value('booking_date') ?? 'Never',
+                ];
+            }
+        })();
+
+        return CsvExport::stream(
+            CsvExport::filename('customers'),
+            ['Customer', 'Email', 'Phone', 'Vehicle', 'Plate', 'Total Bookings', 'Last Visit'],
+            $rows
+        );
     }
 }

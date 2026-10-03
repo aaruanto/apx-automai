@@ -46,7 +46,7 @@
         <div class="card-header">
             <div class="card-header-title"><i class="fas fa-table-list"></i> Booking Records</div>
             <div style="display:flex;gap:8px;">
-                <button class="btn btn-ghost btn-sm"><i class="fas fa-file-export"></i> Export</button>
+                <a href="{{ route('admin.bookings.export') }}" class="btn btn-ghost btn-sm"><i class="fas fa-file-export"></i> Export CSV</a>
                 <button class="btn btn-ghost btn-sm"><i class="fas fa-filter"></i> Filter</button>
             </div>
         </div>

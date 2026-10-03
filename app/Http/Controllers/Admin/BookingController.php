@@ -11,6 +11,7 @@ use App\Services\BookingAvailability;
 use App\Exceptions\SlotUnavailableException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use App\Support\CsvExport;
 
 class BookingController extends Controller
 {
@@ -282,5 +283,50 @@ class BookingController extends Controller
             'status_label' => 'In Progress',
             'message'      => 'Service started for '.$booking->reference_number.'.',
         ]);
+    }
+    /**
+     * CSV of every booking. Exports the full table rather than whatever the
+     * page's client-side filters happen to show, so the file is reproducible
+     * and does not depend on UI state the server never sees.
+     */
+    public function export()
+    {
+        return CsvExport::stream(
+            CsvExport::filename('bookings'),
+            ['Reference', 'Customer', 'Email', 'Phone', 'Vehicle', 'Plate', 'Service', 'Date', 'Time', 'Status', 'Booked On'],
+            $this->bookingRows(Booking::with(['user', 'service', 'vehicle'])->latest()->cursor())
+        );
+    }
+
+    /** CSV of cancelled bookings, matching the Cancelled screen. */
+    public function exportCancelled()
+    {
+        return CsvExport::stream(
+            CsvExport::filename('cancelled-bookings'),
+            ['Reference', 'Customer', 'Email', 'Phone', 'Vehicle', 'Plate', 'Service', 'Date', 'Time', 'Status', 'Booked On'],
+            $this->bookingRows(
+                Booking::with(['user', 'service', 'vehicle'])->where('status', 'cancelled')->latest()->cursor()
+            )
+        );
+    }
+
+    /** Shared row shape, generator so rows stream instead of all loading. */
+    private function bookingRows(iterable $bookings): iterable
+    {
+        foreach ($bookings as $b) {
+            yield [
+                $b->reference_number,
+                $b->user->name ?? 'N/A',
+                $b->user->email ?? '',
+                $b->user->phone ?? '',
+                $b->vehicle?->display_name ?? '',
+                $b->vehicle?->display_plate ?? 'Not provided',
+                $b->service->name ?? '',
+                $b->booking_date,
+                $b->booking_time,
+                ucfirst(str_replace('_', ' ', $b->status)),
+                optional($b->created_at)->format('Y-m-d H:i'),
+            ];
+        }
     }
 }
