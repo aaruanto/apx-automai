@@ -1013,10 +1013,7 @@
             <span class="brand-badge">ADMIN</span>
         </a>
         <div class="topnav-actions">
-            <a href="#!" class="icon-btn" title="Notifications">
-                <i class="fas fa-bell"></i>
-                <span class="notif-dot"></span>
-            </a>
+            <x-notification-bell />
             <button id="themeToggle" class="icon-btn" title="Toggle light/dark mode" aria-label="Toggle theme">
                 <i class="fas fa-sun" id="themeIcon"></i>
             </button>
@@ -1140,6 +1137,7 @@
     <script src="{{ asset('assets/js/alert-modal.js') }}"></script>
     <script src="{{ asset('assets/js/booking-actions.js') }}"></script>
     <script src="{{ asset('assets/js/live-refresh.js') }}"></script>
+    <script src="{{ asset('assets/js/notification-bell.js') }}"></script>
     <script src="{{ asset('assets/js/password-toggle.js') }}"></script>
     <script>
         // ── Sidebar toggle ──

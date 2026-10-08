@@ -66,6 +66,8 @@ class DashboardController extends Controller
                 'status'    => $b->status,
                 'label'     => ucfirst(str_replace('_', ' ', $b->status)),
             ])->values(),
+            // Folded in here so the bell needs no poller of its own.
+            'unread'     => auth()->user()->unreadNotifications()->count(),
             'updated_at' => now()->toIso8601String(),
         ]);
     }

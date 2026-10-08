@@ -112,6 +112,7 @@ class DashboardController extends Controller
                 'staff'     => $b->staff->name ?? 'TBA',
                 'status'    => $b->status,
             ])->values(),
+            'unread'     => $user->unreadNotifications()->count(),
             'updated_at' => now()->toIso8601String(),
         ]);
     }
@@ -159,6 +160,8 @@ class DashboardController extends Controller
         } catch (SlotUnavailableException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
+
+        $this->notifyAdminsOfBooking($booking);
 
         return response()->json([
             'success'    => true,
@@ -423,4 +426,19 @@ class DashboardController extends Controller
             'grace'    => AccountAnonymizer::GRACE_DAYS,
         ]);
     }
-}
+
+    /**
+     * Alert every admin that a booking has come in.
+     *
+     * Staff are left out on purpose: the shop's admins triage requests, and
+     * notifying every mechanic for every booking would be noise.
+     */
+    private function notifyAdminsOfBooking(\App\Models\Booking $booking): void
+    {
+        $admins = \App\Models\User::where('role', 'admin')->get();
+
+        \Illuminate\Support\Facades\Notification::send(
+            $admins,
+            \App\Notifications\BookingNotification::requested($booking->fresh()->load(['user', 'services']))
+        );
+    }}

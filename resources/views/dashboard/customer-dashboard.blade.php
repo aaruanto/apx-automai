@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
     <title>My Dashboard — APX AutoMai</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
@@ -173,6 +174,7 @@
         <span class="brand-badge">CUSTOMER</span>
     </a>
     <div class="topnav-actions">
+        <x-notification-bell />
         <button id="themeToggle" class="icon-btn theme-toggle" title="Switch to light mode" aria-label="Toggle theme">
             <i class="fas fa-moon" id="themeIcon"></i>
         </button>
@@ -931,6 +933,7 @@
 <script src="{{ asset('assets/js/form-validate.js') }}"></script>
 <script src="{{ asset('assets/js/plate-mask.js') }}"></script>
 <script src="{{ asset('assets/js/live-refresh.js') }}"></script>
+<script src="{{ asset('assets/js/notification-bell.js') }}"></script>
 <script>
     // Vehicle and booking fields are user-supplied and get interpolated into
     // innerHTML below, so escape them first.
@@ -2001,6 +2004,11 @@ document.addEventListener('click', function(e) {
                 setStat('cstatCompleted', data.stats.completed);
                 setStat('cstatTotal',     data.stats.total);
                 setStat('cstatSpent', '₱' + Number(data.stats.spent || 0).toLocaleString('en-PH'));
+
+                // One poll serves both: no second timer for the bell.
+                if (window.ApxBell && typeof data.unread !== 'undefined') {
+                    ApxBell.setCount(data.unread);
+                }
 
                 // Keep the booking list in step with the server, so a booking
                 // the shop confirms or cancels shows up here on its own.

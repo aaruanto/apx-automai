@@ -270,6 +270,11 @@ new Chart(barCtx, {
             setStat('statWeek',      data.stats.this_week);
             setStat('statCompleted', data.stats.completed);
 
+            // One poll serves both: no second timer for the bell.
+            if (window.ApxBell && typeof data.unread !== 'undefined') {
+                ApxBell.setCount(data.unread);
+            }
+
             const body = document.getElementById('recentBookingsBody');
             if (!body) return;
 

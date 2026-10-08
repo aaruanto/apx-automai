@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\User;
+use App\Notifications\BookingNotification;
 use App\Models\Service;
 use App\Mail\BookingConfirmed;
 use App\Services\BookingAvailability;
@@ -107,6 +108,8 @@ class BookingController extends Controller
             return back()->withInput()->withErrors(['booking_time' => $e->getMessage()]);
         }
 
+        $this->notifyAdminsOfBooking($booking);
+
         return redirect()->route('admin.bookings.index')
             ->with('success', 'Booking #' . $booking->reference_number . ' created successfully.');
     }
@@ -124,6 +127,8 @@ class BookingController extends Controller
     {
         $booking   = Booking::findOrFail($id);
         $oldStatus = $booking->status;
+        $oldDate   = $booking->booking_date;
+        $oldTime   = $booking->booking_time;
 
         if (! $request->filled('service_ids') && $request->filled('service_id')) {
             $request->merge(['service_ids' => [$request->input('service_id')]]);
@@ -208,6 +213,24 @@ class BookingController extends Controller
         ]);
 
         $availability->attachServices($booking, $serviceIds);
+
+        // Tell the customer what changed. Only on a real transition: saving
+        // the form without touching the status or the slot should not notify.
+        if ($booking->user) {
+            if ($oldStatus !== 'confirmed' && $request->status === 'confirmed') {
+                $booking->user->notify(BookingNotification::confirmed($booking->fresh()));
+            }
+
+            if ($oldStatus !== 'completed' && $request->status === 'completed') {
+                $booking->user->notify(BookingNotification::completed($booking->fresh()));
+            }
+
+            if ($oldDate !== $booking->booking_date || $oldTime !== $booking->booking_time) {
+                $booking->user->notify(
+                    BookingNotification::rescheduled($booking->fresh(), $oldDate, $oldTime)
+                );
+            }
+        }
 
         if ($request->plate && $booking->vehicle) {
             $booking->vehicle->update([
@@ -368,6 +391,10 @@ class BookingController extends Controller
             ], 422);
         }
 
+        if ($booking->user) {
+            $booking->user->notify(BookingNotification::cancelled($booking->fresh()));
+        }
+
         return response()->json([
             'success'      => true,
             'status'       => 'cancelled',
@@ -479,4 +506,19 @@ class BookingController extends Controller
             ];
         }
     }
-}
+
+    /**
+     * Alert every admin that a booking has come in.
+     *
+     * Staff are left out on purpose: the shop's admins triage requests, and
+     * notifying every mechanic for every booking would be noise.
+     */
+    private function notifyAdminsOfBooking(\App\Models\Booking $booking): void
+    {
+        $admins = \App\Models\User::where('role', 'admin')->get();
+
+        \Illuminate\Support\Facades\Notification::send(
+            $admins,
+            \App\Notifications\BookingNotification::requested($booking->fresh()->load(['user', 'services']))
+        );
+    }}

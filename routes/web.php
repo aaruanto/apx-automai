@@ -35,6 +35,14 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+// ── Notifications (any signed-in user: admin, staff or customer) ──────────
+Route::middleware('auth')->group(function () {
+    Route::get('/notifications',                [\App\Http\Controllers\NotificationController::class, 'index'])  ->name('notifications.index');
+    Route::get('/notifications/feed',           [\App\Http\Controllers\NotificationController::class, 'feed'])   ->name('notifications.feed');
+    Route::post('/notifications/{id}/read',     [\App\Http\Controllers\NotificationController::class, 'read'])   ->name('notifications.read');
+    Route::post('/notifications/read-all',      [\App\Http\Controllers\NotificationController::class, 'readAll'])->name('notifications.readAll');
+});
+
 // ── Admin ──────────────────────────────────────────────────────────────────
 Route::middleware(['auth', 'role:admin'])
     ->prefix('admin')

@@ -136,6 +136,8 @@ class GuestBookingController extends Controller
 
         $ref = $booking->reference_number;
 
+        $this->notifyAdminsOfBooking($booking);
+
         // ── Send emails ───────────────────────────────────────────────────
         try {
             $booking->load(['user', 'service', 'vehicle']);
@@ -166,4 +168,19 @@ class GuestBookingController extends Controller
             'register_url'   => route('register'),
         ]);
     }
-}
+
+    /**
+     * Alert every admin that a booking has come in.
+     *
+     * Staff are left out on purpose: the shop's admins triage requests, and
+     * notifying every mechanic for every booking would be noise.
+     */
+    private function notifyAdminsOfBooking(\App\Models\Booking $booking): void
+    {
+        $admins = \App\Models\User::where('role', 'admin')->get();
+
+        \Illuminate\Support\Facades\Notification::send(
+            $admins,
+            \App\Notifications\BookingNotification::requested($booking->fresh()->load(['user', 'services']))
+        );
+    }}
