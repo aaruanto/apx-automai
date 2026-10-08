@@ -110,6 +110,9 @@
 
                 if (typeof onSuccess === 'function') onSuccess(result.data);
 
+                // The dashboard, if one is open behind this, is now stale.
+                if (window.ApxLiveRefresh) window.ApxLiveRefresh.refreshNow();
+
                 alertModal({
                     variant: 'success',
                     title: 'Service started',
@@ -189,6 +192,9 @@
                 }
 
                 if (typeof onSuccess === 'function') onSuccess(result.data);
+
+                // The dashboard, if one is open behind this, is now stale.
+                if (window.ApxLiveRefresh) window.ApxLiveRefresh.refreshNow();
 
                 alertModal({
                     variant: 'success',

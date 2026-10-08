@@ -43,6 +43,7 @@ Route::middleware(['auth', 'role:admin'])
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/live', [DashboardController::class, 'live'])->name('dashboard.live');
 
     // ── Bookings ───────────────────────────────────────────────────────────
     // Static sub-routes MUST come before the {id} wildcard routes
@@ -107,6 +108,7 @@ Route::middleware(['auth', 'role:staff'])->group(function () {
 // ── Customer ───────────────────────────────────────────────────────────────
 Route::middleware(['auth', 'role:customer', 'maintenance'])->group(function () {
     Route::get('/customer/dashboard',              [CustomerDashboard::class, 'index'])          ->name('customer.dashboard');
+    Route::get('/customer/dashboard/live',         [CustomerDashboard::class, 'live'])           ->name('customer.dashboard.live');
     Route::post('/customer/bookings',              [CustomerDashboard::class, 'store'])           ->name('customer.bookings.store');
     Route::patch('/customer/bookings/{id}/cancel', [CustomerDashboard::class, 'cancelBooking'])   ->name('customer.bookings.cancel');
     Route::post('/customer/vehicles',              [CustomerDashboard::class, 'storeVehicle'])    ->name('customer.vehicles.store');

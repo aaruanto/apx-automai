@@ -295,13 +295,20 @@
                 </div>
 
                 <!-- STAT CARDS -->
+                <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:8px;">
+                    <span id="cLiveUpdated" style="font-size:0.72rem;color:var(--text-muted);"></span>
+                    <button type="button" id="cLiveRefreshBtn" onclick="ApxLiveRefresh.refreshNow()" title="Refresh now"
+                            style="background:none;border:1px solid var(--border);color:var(--text-muted);width:30px;height:30px;border-radius:7px;cursor:pointer;">
+                        <i class="fas fa-rotate"></i>
+                    </button>
+                </div>
                 <div class="cards-grid">
                     <div class="stat-card primary">
                         <div class="stat-card-header">
                             <div class="stat-label">Upcoming</div>
                             <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
                         </div>
-                        <div class="stat-value">{{ $upcoming }}</div>
+                        <div class="stat-value" id="cstatUpcoming">{{ $upcoming }}</div>
                         <div class="stat-footer">
                             <a href="#" onclick="switchSection(event,'bookings'); filterBookings('upcoming')">View Bookings <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
                         </div>
@@ -311,7 +318,7 @@
                             <div class="stat-label">Completed</div>
                             <div class="stat-icon"><i class="fas fa-circle-check"></i></div>
                         </div>
-                        <div class="stat-value">{{ $completed }}</div>
+                        <div class="stat-value" id="cstatCompleted">{{ $completed }}</div>
                         <div class="stat-footer">
                             <a href="#" onclick="switchSection(event,'bookings'); filterBookings('completed')">View History <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
                         </div>
@@ -321,7 +328,7 @@
                             <div class="stat-label">Total Bookings</div>
                             <div class="stat-icon"><i class="fas fa-list-check"></i></div>
                         </div>
-                        <div class="stat-value">{{ $totalBookings }}</div>
+                        <div class="stat-value" id="cstatTotal">{{ $totalBookings }}</div>
                         <div class="stat-footer">
                             <a href="#" onclick="switchSection(event,'bookings'); filterBookings('all')">View All <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
                         </div>
@@ -331,7 +338,7 @@
                             <div class="stat-label">Total Spent</div>
                             <div class="stat-icon"><i class="fas fa-peso-sign"></i></div>
                         </div>
-                        <div class="stat-value">₱0</div>
+                        <div class="stat-value" id="cstatSpent">₱{{ number_format($totalSpent ?? 0, 0) }}</div>
                         <div class="stat-footer">
                             <a href="#">View Invoices <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
                         </div>
@@ -923,6 +930,7 @@
 <script src="{{ asset('assets/js/availability-picker.js') }}"></script>
 <script src="{{ asset('assets/js/form-validate.js') }}"></script>
 <script src="{{ asset('assets/js/plate-mask.js') }}"></script>
+<script src="{{ asset('assets/js/live-refresh.js') }}"></script>
 <script>
     // Vehicle and booking fields are user-supplied and get interpolated into
     // innerHTML below, so escape them first.
@@ -1976,6 +1984,46 @@ document.addEventListener('click', function(e) {
         localStorage.setItem('apx-theme', next);
         applyTheme(next);
     });
+
+    // ── Keep the figures current without a reload ───────────────────────
+    (function () {
+        function setStat(id, value) {
+            const el = document.getElementById(id);
+            if (el && el.textContent !== String(value)) el.textContent = value;
+        }
+
+        ApxLiveRefresh.start({
+            url:    '{{ route('customer.dashboard.live') }}',
+            stamp:  '#cLiveUpdated',
+            button: '#cLiveRefreshBtn',
+            apply(data) {
+                setStat('cstatUpcoming',  data.stats.upcoming);
+                setStat('cstatCompleted', data.stats.completed);
+                setStat('cstatTotal',     data.stats.total);
+                setStat('cstatSpent', '₱' + Number(data.stats.spent || 0).toLocaleString('en-PH'));
+
+                // Keep the booking list in step with the server, so a booking
+                // the shop confirms or cancels shows up here on its own.
+                if (Array.isArray(data.bookings)) {
+                    const byRef = new Map(data.bookings.map(b => ['#' + b.reference, b]));
+                    let changed = false;
+
+                    BOOKINGS.forEach(b => {
+                        const fresh = byRef.get(b.id);
+                        if (!fresh) return;
+                        const status = ['confirmed', 'pending'].includes(fresh.status) ? 'upcoming' : fresh.status;
+                        if (b.status !== status || b.staff !== fresh.staff) {
+                            b.status = status;
+                            b.staff  = fresh.staff;
+                            changed  = true;
+                        }
+                    });
+
+                    if (changed && typeof renderBookings === 'function') renderBookings();
+                }
+            }
+        });
+    })();
 </script>
 </body>
 </html>

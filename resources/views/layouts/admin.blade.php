@@ -1139,6 +1139,7 @@
     <script src="{{ asset('assets/js/plate-mask.js') }}"></script>
     <script src="{{ asset('assets/js/alert-modal.js') }}"></script>
     <script src="{{ asset('assets/js/booking-actions.js') }}"></script>
+    <script src="{{ asset('assets/js/live-refresh.js') }}"></script>
     <script src="{{ asset('assets/js/password-toggle.js') }}"></script>
     <script>
         // ── Sidebar toggle ──

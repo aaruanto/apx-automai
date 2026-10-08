@@ -33,7 +33,7 @@
                         <i class="fas fa-calendar-day"></i>
                     </div>
                 </div>
-                <div style="font-family:'Barlow Condensed',sans-serif;font-size:2.4rem;font-weight:800;line-height:1;color:var(--text);">{{ $todayBookings }}</div>
+                <div id="statToday" style="font-family:'Barlow Condensed',sans-serif;font-size:2.4rem;font-weight:800;line-height:1;color:var(--text);">{{ $todayBookings }}</div>
                 <div style="margin-top:10px;font-size:.75rem;color:var(--red);font-weight:600;">
                     View Schedule <i class="fas fa-arrow-right" style="font-size:.65rem;"></i>
                 </div>
@@ -51,7 +51,7 @@
                         <i class="fas fa-hourglass-half"></i>
                     </div>
                 </div>
-                <div style="font-family:'Barlow Condensed',sans-serif;font-size:2.4rem;font-weight:800;line-height:1;color:var(--text);">{{ $pending }}</div>
+                <div id="statPending" style="font-family:'Barlow Condensed',sans-serif;font-size:2.4rem;font-weight:800;line-height:1;color:var(--text);">{{ $pending }}</div>
                 <div style="margin-top:10px;font-size:.75rem;color:#f59e0b;font-weight:600;">
                     Review Pending <i class="fas fa-arrow-right" style="font-size:.65rem;"></i>
                 </div>
@@ -69,7 +69,7 @@
                         <i class="fas fa-chart-bar"></i>
                     </div>
                 </div>
-                <div style="font-family:'Barlow Condensed',sans-serif;font-size:2.4rem;font-weight:800;line-height:1;color:var(--text);">{{ $thisWeek }}</div>
+                <div id="statWeek" style="font-family:'Barlow Condensed',sans-serif;font-size:2.4rem;font-weight:800;line-height:1;color:var(--text);">{{ $thisWeek }}</div>
                 <div style="margin-top:10px;font-size:.75rem;color:#22c55e;font-weight:600;">
                     All Bookings <i class="fas fa-arrow-right" style="font-size:.65rem;"></i>
                 </div>
@@ -87,7 +87,7 @@
                         <i class="fas fa-circle-check"></i>
                     </div>
                 </div>
-                <div style="font-family:'Barlow Condensed',sans-serif;font-size:2.4rem;font-weight:800;line-height:1;color:var(--text);">{{ $completed }}</div>
+                <div id="statCompleted" style="font-family:'Barlow Condensed',sans-serif;font-size:2.4rem;font-weight:800;line-height:1;color:var(--text);">{{ $completed }}</div>
                 <div style="margin-top:10px;font-size:.75rem;color:#3b82f6;font-weight:600;">
                     View Completed <i class="fas fa-arrow-right" style="font-size:.65rem;"></i>
                 </div>
@@ -121,9 +121,18 @@
     <div class="card">
         <div class="card-header">
             <div class="card-header-title"><i class="fas fa-table-list"></i> Recent Bookings</div>
-            <a href="{{ route('admin.bookings.index') }}" style="font-size:.8rem;color:var(--red);text-decoration:none;font-weight:600;">
-                View All <i class="fas fa-arrow-right" style="font-size:.7rem;"></i>
-            </a>
+            <div style="display:flex;align-items:center;gap:12px;">
+                {{-- Visible proof the page is keeping itself current, plus a
+                     manual nudge for when someone wants it now. --}}
+                <span id="liveUpdated" style="font-size:.72rem;color:var(--text-muted);"></span>
+                <button type="button" id="liveRefreshBtn" class="btn btn-ghost btn-sm"
+                        onclick="ApxLiveRefresh.refreshNow()" title="Refresh now">
+                    <i class="fas fa-rotate"></i>
+                </button>
+                <a href="{{ route('admin.bookings.index') }}" style="font-size:.8rem;color:var(--red);text-decoration:none;font-weight:600;">
+                    View All <i class="fas fa-arrow-right" style="font-size:.7rem;"></i>
+                </a>
+            </div>
         </div>
         <div class="table-wrap">
             <table class="apx-table">
@@ -137,7 +146,7 @@
                         <th>Status</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="recentBookingsBody">
                 @forelse($recentBookings as $booking)
                 <tr>
                     <td style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--text);">
@@ -229,5 +238,57 @@ new Chart(barCtx, {
         }
     }
 });
+
+// ── Keep the dashboard current without a reload ─────────────────────────
+(function () {
+    const STATUS_CLASS = {
+        confirmed:   'badge-confirmed',
+        pending:     'badge-pending',
+        in_progress: 'badge-inprogress',
+        completed:   'badge-completed',
+        cancelled:   'badge-cancelled',
+    };
+
+    function esc(v) {
+        return String(v ?? '').replace(/[&<>"']/g, c => (
+            { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]
+        ));
+    }
+
+    function setStat(id, value) {
+        const el = document.getElementById(id);
+        if (el && el.textContent !== String(value)) el.textContent = value;
+    }
+
+    ApxLiveRefresh.start({
+        url:    '{{ route('admin.dashboard.live') }}',
+        stamp:  '#liveUpdated',
+        button: '#liveRefreshBtn',
+        apply(data) {
+            setStat('statToday',     data.stats.today);
+            setStat('statPending',   data.stats.pending);
+            setStat('statWeek',      data.stats.this_week);
+            setStat('statCompleted', data.stats.completed);
+
+            const body = document.getElementById('recentBookingsBody');
+            if (!body) return;
+
+            if (!data.bookings.length) {
+                body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">No bookings yet.</td></tr>';
+                return;
+            }
+
+            body.innerHTML = data.bookings.map(b => `
+                <tr>
+                    <td style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--text);">${esc(b.reference)}</td>
+                    <td class="primary-col">${esc(b.customer)}</td>
+                    <td>${esc(b.services)}</td>
+                    <td>${esc(b.date)}</td>
+                    <td>${esc(b.staff)}</td>
+                    <td><span class="badge ${STATUS_CLASS[b.status] || 'badge-pending'}">${esc(b.label)}</span></td>
+                </tr>`).join('');
+        }
+    });
+})();
 </script>
 @endpush

@@ -383,6 +383,7 @@ function assignStaff(select) {
             }
 
             select.dataset.initial = staffId || '';
+            if (window.ApxLiveRefresh) window.ApxLiveRefresh.refreshNow();
             const row = select.closest('tr');
             if (row) row.dataset.staff = staffId || '__unassigned';
             applyFilters();

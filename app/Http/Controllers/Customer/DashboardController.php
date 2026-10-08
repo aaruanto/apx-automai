@@ -35,6 +35,8 @@ class DashboardController extends Controller
         $upcoming      = $bookings->whereIn('status', ['confirmed', 'pending'])->count();
         $completed     = $bookings->where('status', 'completed')->count();
         $totalBookings = $bookings->count();
+        // Completed work only, from the per-booking price snapshots.
+        $totalSpent    = $bookings->where('status', 'completed')->sum(fn ($b) => $b->total_price);
 
         $bookingsJs = $bookings->map(function($b) {
             return [
@@ -73,10 +75,45 @@ class DashboardController extends Controller
 
         return view('dashboard.customer-dashboard', compact(
             'bookings', 'vehicles', 'services',
-            'upcoming', 'completed', 'totalBookings',
+            'upcoming', 'completed', 'totalBookings', 'totalSpent',
             'bookingsJs', 'vehiclesJs',
             'customer'
         ));
+    }
+
+    /**
+     * The customer's own figures and bookings, for polling.
+     *
+     * Scoped to the signed-in user throughout, so this cannot leak another
+     * customer's bookings even if the id were tampered with — there is no id
+     * to tamper with.
+     */
+    public function live()
+    {
+        $user = Auth::user();
+
+        $bookings = Booking::with(['service', 'vehicle', 'staff', 'services'])
+            ->where('user_id', $user->id)
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'stats' => [
+                'upcoming'  => $bookings->whereIn('status', ['confirmed', 'pending'])->count(),
+                'completed' => $bookings->where('status', 'completed')->count(),
+                'total'     => $bookings->count(),
+                'spent'     => $bookings->where('status', 'completed')->sum(fn ($b) => $b->total_price),
+            ],
+            'bookings' => $bookings->take(20)->map(fn (Booking $b) => [
+                'reference' => $b->reference_number,
+                'services'  => $b->service_list,
+                'date'      => $b->booking_date,
+                'time'      => $b->booking_time,
+                'staff'     => $b->staff->name ?? 'TBA',
+                'status'    => $b->status,
+            ])->values(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
     }
 
     // FIX #3: validate input, confirm vehicle ownership, and run the availability gate
