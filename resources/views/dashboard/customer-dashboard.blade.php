@@ -353,7 +353,7 @@
                                     <span class="mon">{{ date('M', strtotime($b->booking_date)) }}</span>
                                 </div>
                                 <div class="booking-info">
-                                    <div class="booking-service">{{ $b->service->name ?? 'N/A' }}</div>
+                                    <div class="booking-service">{{ $b->service_list }}</div>
                                     <div class="booking-meta">
                                         <span><i class="fas fa-clock"></i>{{ date('g:i A', strtotime($b->booking_time)) }}</span>
                                         <span><i class="fas fa-user"></i>{{ $b->employee->name ?? 'TBA' }}</span>
@@ -793,6 +793,21 @@
                                     <div class="chip-cat" id="modalServiceCat">—</div>
                                 </div>
                             </div>
+
+                            {{-- One booking can cover several services. The one
+                                 clicked stays primary; these are added to it. --}}
+                            <div class="m-form-group">
+                                <label class="m-label" style="display:flex;justify-content:space-between;align-items:center;">
+                                    <span>Add more services <span style="color:var(--text-muted);font-weight:400;">(optional)</span></span>
+                                    <button type="button" id="extrasToggle" style="background:none;border:none;color:var(--red);font-size:.78rem;font-weight:600;cursor:pointer;">Show</button>
+                                </label>
+                                <div id="extrasList" style="display:none;border:1px solid var(--border);border-radius:8px;max-height:190px;overflow-y:auto;padding:4px;margin-top:6px;"></div>
+                            </div>
+
+                            <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;background:var(--surface-2,rgba(0,0,0,.03));margin-bottom:14px;font-size:.84rem;">
+                                <span style="color:var(--text-muted);">Total</span>
+                                <span><strong id="bkTotalPrice">—</strong> <span style="color:var(--text-muted);">&middot; <span id="bkTotalDuration">—</span></span></span>
+                            </div>
                             <div class="m-form-group">
                                 <label class="m-label">Preferred Date &amp; Time</label>
                                 <input type="hidden" id="mDate" required />
@@ -1010,7 +1025,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             { match: /free.*inspect|basic.*inspect/i, cat:'free',       catLabel:'Free Service',       icon:'fa-clipboard-check',    duration:'20–30 min', free:true  },
         ];
         const defaults = { cat:'inspection', catLabel:'Inspection', icon:'fa-wrench', duration:'30–60 min', free:false };
-        const dbServices = {!! json_encode($services->map(fn($s) => ['id'=>$s->id,'name'=>$s->name,'desc'=>$s->description??'','duration'=>$s->duration])->values()) !!};
+        const dbServices = {!! json_encode($services->map(fn($s) => ['id'=>$s->id,'name'=>$s->name,'desc'=>$s->description??'','duration'=>$s->duration,'price'=>(float)$s->price])->values()) !!};
         return dbServices.map((s, i) => {
             const meta = META_MAP.find(m => m.match.test(s.name)) || defaults;
             let dur = meta.duration;
@@ -1018,7 +1033,10 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                 const d = parseInt(s.duration);
                 dur = d < 60 ? d + ' min' : (Math.floor(d/60) + 'h' + (d%60 ? ' ' + d%60 + 'min' : ''));
             }
-            return { id:'svc-'+String(i+1).padStart(2,'0'), dbId:s.id, name:s.name, cat:meta.cat, catLabel:meta.catLabel, icon:meta.icon, desc:s.desc||meta.catLabel+' service.', duration:dur, free:meta.free };
+            return { id:'svc-'+String(i+1).padStart(2,'0'), dbId:s.id, name:s.name, cat:meta.cat, catLabel:meta.catLabel, icon:meta.icon, desc:s.desc||meta.catLabel+' service.', duration:dur, free:meta.free,
+                     // Raw values, for summing across several services.
+                     priceValue:s.price||0, durationValue:parseInt(s.duration)||0,
+                     price:(s.price ? '₱'+Number(s.price).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}) : 'Free') };
         });
     })();
 
@@ -1219,11 +1237,67 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
 
     let selectedService = null;
 
+    // Extra services ticked alongside the primary one.
+    function extraBoxes() {
+        return Array.from(document.querySelectorAll('#extrasList input[type="checkbox"]'));
+    }
+
+    function chosenServiceIds() {
+        if (!selectedService) return [];
+        return [selectedService.dbId].concat(
+            extraBoxes().filter(b => b.checked).map(b => parseInt(b.value, 10))
+        );
+    }
+
+    function renderExtras() {
+        const list = document.getElementById('extrasList');
+        if (!list || !selectedService) return;
+
+        list.innerHTML = SERVICES
+            .filter(s => s.dbId !== selectedService.dbId)
+            .map(s => `<label style="display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:6px;cursor:pointer;font-size:.82rem;">
+                    <input type="checkbox" value="${s.dbId}" data-price="${s.priceValue ?? 0}" data-duration="${s.durationValue ?? 0}">
+                    <span style="flex:1;">${esc(s.name)}</span>
+                    <span style="color:var(--text-muted);white-space:nowrap;">${esc(s.price)}</span>
+                </label>`)
+            .join('');
+
+        extraBoxes().forEach(b => b.addEventListener('change', () => {
+            refreshBookingTotal();
+            if (typeof bookingPicker !== 'undefined') bookingPicker.refresh();
+        }));
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const t = document.getElementById('extrasToggle');
+        if (!t) return;
+        t.addEventListener('click', function () {
+            const list = document.getElementById('extrasList');
+            const open = list.style.display !== 'none';
+            list.style.display = open ? 'none' : 'block';
+            t.textContent = open ? 'Show' : 'Hide';
+        });
+    });
+
+    function refreshBookingTotal() {
+        if (!selectedService) return;
+
+        const price = (selectedService.priceValue ?? 0)
+            + extraBoxes().filter(b => b.checked).reduce((t, b) => t + parseFloat(b.dataset.price || 0), 0);
+        const mins = (selectedService.durationValue ?? 0)
+            + extraBoxes().filter(b => b.checked).reduce((t, b) => t + parseInt(b.dataset.duration || 0, 10), 0);
+
+        document.getElementById('bkTotalPrice').textContent =
+            '₱' + price.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('bkTotalDuration').textContent = mins + ' min';
+    }
+
     const bookingPicker = new AvailabilityPicker({
         root: '#cdAvp',
         dateInput: document.getElementById('mDate'),
         timeInput: document.getElementById('mTime'),
-        getServiceIds: () => selectedService ? [selectedService.dbId] : [],
+        // Every chosen service counts toward how long the bay is held.
+        getServiceIds: () => chosenServiceIds(),
     });
 
     function openModal(svcId) {
@@ -1235,6 +1309,11 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         document.getElementById('modalServiceNameChip').textContent = selectedService.name;
         document.getElementById('modalServiceCat').textContent      = selectedService.catLabel + ' · ' + selectedService.duration;
         document.getElementById('modalServiceIcon').className       = 'fas ' + selectedService.icon;
+
+        renderExtras();
+        refreshBookingTotal();
+        document.getElementById('extrasList').style.display = 'none';
+        document.getElementById('extrasToggle').textContent = 'Show';
         bookingPicker.reset();
         document.getElementById('mPhone').value = '';
         document.getElementById('mNotes').value = '';
@@ -1296,7 +1375,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                 'Accept': 'application/json'
             },
             body: JSON.stringify({
-                service_id:   selectedService.dbId,
+                service_ids:  chosenServiceIds(),
                 vehicle_id:   vehicleId,
                 booking_date: date,
                 booking_time: time,

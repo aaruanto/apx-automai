@@ -119,15 +119,17 @@ class GuestBookingController extends Controller
                 'user_id'      => $user->id,
                 'vehicle_id'   => $vehicle->id,
                 'service_id'   => $firstService->id,
+                'service_ids'  => $request->service_ids,
                 'staff_id'     => null,
                 'booking_date' => $request->booking_date,
                 'booking_time' => $request->booking_time,
                 'status'       => 'pending',
-                'notes'        => ($request->notes ?? '') .
-                                  ($services->count() > 1
-                                    ? "\n[Additional services: " . $services->where('id', '!=', $firstService->id)->pluck('name')->implode(', ') . "]"
-                                    : ''),
-            ], $availability->durationForServices($request->service_ids));
+                // Extra services used to be appended to the note as
+                // "[Additional services: ...]" because only one could be
+                // stored. They are real pivot rows now, so the note is the
+                // customer's own text again.
+                'notes'        => $request->notes ?: null,
+            ]);
         } catch (SlotUnavailableException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }

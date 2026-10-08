@@ -7,7 +7,7 @@ This is a friendly reminder that you have an upcoming service appointment **tomo
 
 @component('mail::panel')
 **Reference No:** {{ $booking->reference_number }}
-**Service:** {{ $booking->service->name }}
+**Service:** {{ $booking->service_list }}
 **Date:** {{ \Carbon\Carbon::parse($booking->booking_date)->format('F d, Y') }}
 **Time:** {{ \Carbon\Carbon::parse($booking->booking_time)->format('g:i A') }}
 @endcomponent

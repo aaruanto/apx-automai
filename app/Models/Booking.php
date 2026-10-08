@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -91,6 +92,55 @@ class Booking extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Every service on this booking.
+     *
+     * The pivot carries price and duration as they were when the booking was
+     * made, so a later price change does not rewrite history. bookings.service_id
+     * is kept alongside this and points at the first service, so any screen
+     * that still reads a single service keeps working.
+     */
+    public function services()
+    {
+        return $this->belongsToMany(Service::class)
+                    ->withPivot('price', 'duration')
+                    ->withTimestamps();
+    }
+
+    /** Summed price of every attached service, from the snapshots. */
+    protected function totalPrice(): Attribute
+    {
+        return Attribute::get(fn () => (float) $this->services->sum(fn ($s) => $s->pivot->price));
+    }
+
+    /** Summed duration in minutes. Falls back to the stored block length. */
+    protected function totalDuration(): Attribute
+    {
+        return Attribute::get(function () {
+            $sum = (int) $this->services->sum(fn ($s) => $s->pivot->duration);
+
+            return $sum > 0 ? $sum : (int) ($this->duration ?? 0);
+        });
+    }
+
+    /**
+     * Service names for display, e.g. "Change Oil (Diesel) + CVT Fluid Change".
+     * Falls back to the single relation so a booking whose pivot rows are not
+     * loaded still renders something.
+     */
+    protected function serviceList(): Attribute
+    {
+        return Attribute::get(function () {
+            $names = $this->services->pluck('name');
+
+            if ($names->isNotEmpty()) {
+                return $names->implode(' + ');
+            }
+
+            return $this->service->name ?? 'N/A';
+        });
     }
 
     public function service()

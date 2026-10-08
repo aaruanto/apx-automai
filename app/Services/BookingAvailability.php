@@ -108,10 +108,29 @@ class BookingAvailability
     public function reserve(array $attributes, ?int $durationMinutes = null): Booking
     {
         return DB::transaction(function () use ($attributes, $durationMinutes) {
+            // service_ids is not a bookings column; it drives the pivot below.
+            $serviceIds = array_values(array_unique(array_map(
+                'intval',
+                $attributes['service_ids'] ?? []
+            )));
+            unset($attributes['service_ids']);
+
+            // service_id stays populated with the first selection so any screen
+            // still reading a single service keeps working.
+            if ($serviceIds !== []) {
+                $attributes['service_id'] = $attributes['service_id'] ?? $serviceIds[0];
+            } elseif (! empty($attributes['service_id'])) {
+                $serviceIds = [(int) $attributes['service_id']];
+            }
+
             $duration = $durationMinutes
+                ?? ($serviceIds !== [] ? $this->durationForServices($serviceIds) : null)
                 ?? $attributes['duration']
-                ?? optional(Service::find($attributes['service_id'] ?? null))->duration
                 ?? $this->gridMinutes();
+
+            if ($duration <= 0) {
+                $duration = $this->gridMinutes();
+            }
 
             $start = Carbon::parse($attributes['booking_date'] . ' ' . $attributes['booking_time']);
             $end   = $start->copy()->addMinutes($duration);
@@ -121,8 +140,33 @@ class BookingAvailability
             $attributes['duration']          = $duration;
             $attributes['reference_number'] ??= $this->nextReference();
 
-            return Booking::create($attributes);
+            $booking = Booking::create($attributes);
+
+            // Inside the same transaction, so a failure here rolls the booking
+            // back rather than leaving one with no services attached.
+            $this->attachServices($booking, $serviceIds);
+
+            return $booking;
         });
+    }
+
+    /**
+     * Attach services, snapshotting price and duration as they are now so a
+     * later price change cannot rewrite what this booking cost.
+     */
+    public function attachServices(Booking $booking, array $serviceIds): void
+    {
+        if ($serviceIds === []) {
+            return;
+        }
+
+        $pivot = Service::whereIn('id', $serviceIds)->get()
+            ->mapWithKeys(fn (Service $s) => [
+                $s->id => ['price' => $s->price, 'duration' => $s->duration],
+            ])
+            ->all();
+
+        $booking->services()->sync($pivot);
     }
 
     /**

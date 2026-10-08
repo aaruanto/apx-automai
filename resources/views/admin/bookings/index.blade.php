@@ -91,14 +91,14 @@
                 </thead>
                 <tbody id="tableBody">
                 @forelse($bookings as $b)
-                <tr data-status="{{ $b->status }}" data-service="{{ $b->service->name ?? '' }}" data-search="{{ strtolower(($b->customer->name ?? '').' '.$b->reference_number) }}">
+                <tr data-status="{{ $b->status }}" data-service="{{ $b->services->pluck('name')->implode('|') }}" data-search="{{ strtolower(($b->customer->name ?? '').' '.$b->reference_number) }}">
                     <td>
                         <div class="primary-col">{{ $b->customer->name ?? 'N/A' }}</div>
                         <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;">{{ $b->reference_number }}</div>
                     </td>
                     <td style="white-space:nowrap;">{{ $b->vehicle?->display_name ?? '—' }}</td>
                     <td style="white-space:nowrap;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.04em;">{{ $b->vehicle?->display_plate ?? 'Not provided' }}</td>
-                    <td>{{ $b->service->name ?? 'N/A' }}</td>
+                    <td>{{ $b->service_list }}</td>
                     <td style="white-space:nowrap;">{{ $b->booking_date }} {{ $b->booking_time }}</td>
                     <td>
                         @php
@@ -121,7 +121,7 @@
                                 data-customer="{{ $b->customer->name ?? 'N/A' }}"
                                 data-vehicle="{{ $b->vehicle?->display_plate ?? 'Not provided' }}"
                                 data-model="{{ $b->vehicle?->display_name ?? '' }}"
-                                data-service="{{ $b->service->name ?? 'N/A' }}"
+                                data-service="{{ $b->service_list }}"
                                 data-datetime="{{ $b->booking_date }} {{ $b->booking_time }}"
                                 data-notes="{{ $b->notes ?? '—' }}"
                                 data-cancel-reason="{{ $b->cancel_reason }}"
@@ -263,7 +263,8 @@ function applyFilters() {
     rows.forEach(row => {
         const matchSearch  = !search  || (row.dataset.search || '').includes(search);
         const matchStatus  = !status  || row.dataset.status  === status;
-        const matchService = !service || row.dataset.service === service;
+        // A booking can carry several services; match if any of them is the one picked.
+        const matchService = !service || (row.dataset.service || '').split('|').includes(service);
         const show = matchSearch && matchStatus && matchService;
         row.style.display = show ? '' : 'none';
         if(show) visible++;

@@ -18,7 +18,7 @@ class BookingController extends Controller
 {
     public function index()
     {
-        $bookings = Booking::with(['user', 'service', 'vehicle', 'employee', 'cancelledBy'])
+        $bookings = Booking::with(['user', 'service', 'vehicle', 'employee', 'cancelledBy', 'services'])
                         ->latest()
                         ->get();
 
@@ -45,11 +45,18 @@ class BookingController extends Controller
     // ── FIX #2: real validation + one shared availability gate ───────────────
     public function store(Request $request)
     {
+        // Accept a single service_id too, so anything still posting the old
+        // shape keeps working, same as the customer and edit paths.
+        if (! $request->filled('service_ids') && $request->filled('service_id')) {
+            $request->merge(['service_ids' => [$request->input('service_id')]]);
+        }
+
         $request->validate([
             'customer_name'  => 'required|string|max:255',
             'customer_phone' => 'required|string|max:20',
             'plate'          => 'required|string|max:20',
-            'service_id'     => 'required|exists:services,id',
+            'service_ids'    => 'required|array|min:1',
+            'service_ids.*'  => 'integer|exists:services,id',
             'booking_date'   => 'required|date|after_or_equal:today', // no past dates
             'booking_time'   => 'required',
         ]);
@@ -84,7 +91,7 @@ class BookingController extends Controller
             $booking = app(BookingAvailability::class)->reserve([
                 'user_id'      => $user->id,
                 'vehicle_id'   => $vehicle->id,
-                'service_id'   => $request->service_id,
+                'service_ids'  => $request->service_ids,
                 'staff_id'     => $request->staff_id ?? null,
                 'booking_date' => $request->booking_date,
                 'booking_time' => $request->booking_time,
@@ -101,7 +108,7 @@ class BookingController extends Controller
 
     public function edit($id)
     {
-        $booking   = Booking::with(['user', 'vehicle', 'service', 'employee'])->findOrFail($id);
+        $booking   = Booking::with(['user', 'vehicle', 'service', 'employee', 'services'])->findOrFail($id);
         $services  = Service::orderBy('name')->get();
         $employees = Employee::where('status', 'active')->orderBy('name')->get();
 
@@ -113,8 +120,13 @@ class BookingController extends Controller
         $booking   = Booking::findOrFail($id);
         $oldStatus = $booking->status;
 
+        if (! $request->filled('service_ids') && $request->filled('service_id')) {
+            $request->merge(['service_ids' => [$request->input('service_id')]]);
+        }
+
         $request->validate([
-            'service_id'   => 'required|exists:services,id',
+            'service_ids'   => 'required|array|min:1',
+            'service_ids.*' => 'integer|exists:services,id',
             'booking_date' => 'required|date',
             'booking_time' => 'required',
             // 'cancelled' is deliberately absent. Reaching it through this
@@ -126,17 +138,28 @@ class BookingController extends Controller
         // Only re-run the capacity check when the slot this booking occupies
         // actually changes — a pure status/notes edit shouldn't get blocked
         // by the booking's own existing slot.
-        $rescheduled = $request->service_id != $booking->service_id
+        $availability = app(BookingAvailability::class);
+
+        $serviceIds = array_values(array_unique(array_map('intval', $request->service_ids)));
+
+        // Compare as sets: a different order is not a different booking.
+        $sortedNew  = $serviceIds; sort($sortedNew);
+        $sortedOld  = $booking->services()->pluck('services.id')->map('intval')->sort()->values()->all();
+        $servicesMoved = $sortedNew !== $sortedOld;
+
+        // Changing which services are on the booking changes how long it
+        // occupies the bay, so the slot has to be re-checked for that too.
+        $rescheduled = $servicesMoved
             || $request->booking_date !== $booking->booking_date
             || $request->booking_time !== $booking->booking_time;
 
         $duration = $booking->duration;
 
         if ($rescheduled) {
-            $duration = Service::find($request->service_id)->duration;
+            $duration = $availability->durationForServices($serviceIds);
 
             try {
-                app(BookingAvailability::class)->reschedule(
+                $availability->reschedule(
                     $booking, $request->booking_date, $request->booking_time, $duration
                 );
             } catch (SlotUnavailableException $e) {
@@ -145,7 +168,9 @@ class BookingController extends Controller
         }
 
         $booking->update([
-            'service_id'   => $request->service_id,
+            // Kept pointing at the first selection for screens still reading
+            // a single service.
+            'service_id'   => $serviceIds[0],
             'staff_id'     => $request->staff_id ?? $booking->staff_id,
             'booking_date' => $request->booking_date,
             'booking_time' => $request->booking_time,
@@ -153,6 +178,8 @@ class BookingController extends Controller
             'status'       => $request->status,
             'notes'        => $request->notes,
         ]);
+
+        $availability->attachServices($booking, $serviceIds);
 
         if ($request->plate && $booking->vehicle) {
             $booking->vehicle->update([
@@ -183,7 +210,7 @@ class BookingController extends Controller
 
     public function schedule()
     {
-        $bookings = Booking::with(['user', 'service', 'vehicle'])
+        $bookings = Booking::with(['user', 'service', 'vehicle', 'services'])
                         ->whereDate('booking_date', today())
                         ->orderBy('booking_time')
                         ->get();
@@ -202,7 +229,7 @@ class BookingController extends Controller
 
     public function cancelled()
     {
-        $cancelled = Booking::with(['user', 'service', 'vehicle', 'cancelledBy'])
+        $cancelled = Booking::with(['user', 'service', 'vehicle', 'cancelledBy', 'services'])
                         ->where('status', 'cancelled')
                         ->latest()
                         ->get();
@@ -214,7 +241,7 @@ class BookingController extends Controller
 
     public function rebook($id)
     {
-        $original  = Booking::with(['user', 'vehicle', 'service', 'employee'])->findOrFail($id);
+        $original  = Booking::with(['user', 'vehicle', 'service', 'employee', 'services'])->findOrFail($id);
         $services  = Service::orderBy('name')->get();
         $employees = Employee::where('status', 'active')->orderBy('name')->get();
 
@@ -333,7 +360,7 @@ class BookingController extends Controller
         return CsvExport::stream(
             CsvExport::filename('bookings'),
             ['Reference', 'Customer', 'Email', 'Phone', 'Vehicle', 'Plate', 'Service', 'Date', 'Time', 'Status', 'Booked On'],
-            $this->bookingRows(Booking::with(['user', 'service', 'vehicle'])->latest()->cursor())
+            $this->bookingRows(Booking::with(['user', 'service', 'vehicle', 'services'])->latest()->cursor())
         );
     }
 
@@ -344,7 +371,7 @@ class BookingController extends Controller
             CsvExport::filename('cancelled-bookings'),
             ['Reference', 'Customer', 'Email', 'Phone', 'Vehicle', 'Plate', 'Service', 'Date', 'Time', 'Status', 'Booked On'],
             $this->bookingRows(
-                Booking::with(['user', 'service', 'vehicle'])->where('status', 'cancelled')->latest()->cursor()
+                Booking::with(['user', 'service', 'vehicle', 'services'])->where('status', 'cancelled')->latest()->cursor()
             )
         );
     }

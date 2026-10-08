@@ -112,16 +112,37 @@
                     </div>
                     <div class="card-body">
                         <div class="form-group">
-                            <label class="form-label">Service Type <span style="color:var(--red)">*</span></label>
-                            <select class="form-control" name="service_id" required>
-                                <option value="">— Select a service —</option>
-                                @foreach($services as $svc)
-                                <option value="{{ $svc->id }}"
-                                    {{ isset($src) && $src->service_id == $svc->id ? 'selected' : '' }}>
-                                    {{ $svc->name }} — ₱{{ number_format($svc->price, 2) }}
-                                </option>
+                            <label class="form-label">Services <span style="color:var(--red)">*</span></label>
+                            @php
+                                // Services already on the booking, when editing or rebooking.
+                                $picked = isset($src)
+                                    ? $src->services->pluck('id')->all()
+                                    : [];
+                                if (! $picked && isset($src) && $src->service_id) {
+                                    $picked = [$src->service_id];
+                                }
+                            @endphp
+                            <div id="servicePicker" style="border:1px solid var(--border);border-radius:8px;max-height:260px;overflow-y:auto;padding:4px;">
+                                @foreach($services->groupBy('category') as $category => $group)
+                                <div style="padding:7px 10px 3px;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);">
+                                    {{ $category ?: 'Other' }}
+                                </div>
+                                    @foreach($group as $svc)
+                                    <label style="display:flex;align-items:center;gap:9px;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:.85rem;"
+                                           onmouseover="this.style.background='var(--surface-2,rgba(0,0,0,.03))'"
+                                           onmouseout="this.style.background='none'">
+                                        <input type="checkbox" name="service_ids[]" value="{{ $svc->id }}"
+                                               data-price="{{ $svc->price }}" data-duration="{{ $svc->duration }}"
+                                               {{ in_array($svc->id, $picked) ? 'checked' : '' }}>
+                                        <span style="flex:1;">{{ $svc->name }}</span>
+                                        <span style="color:var(--text-muted);white-space:nowrap;">
+                                            ₱{{ number_format($svc->price, 2) }} &middot; {{ $svc->duration }}m
+                                        </span>
+                                    </label>
+                                    @endforeach
                                 @endforeach
-                            </select>
+                            </div>
+                            <div class="fv-error" id="serviceError">Please choose at least one service.</div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Assigned Staff</label>
@@ -265,7 +286,8 @@
 @push('scripts')
 <script src="{{ asset('assets/js/availability-picker.js') }}"></script>
 <script>
-const serviceSelect   = document.querySelector('[name="service_id"]');
+const serviceBoxes    = () => Array.from(document.querySelectorAll('input[name="service_ids[]"]'));
+const checkedServices = () => serviceBoxes().filter(b => b.checked);
 const summaryPrice    = document.getElementById('summaryPrice');
 const summaryDuration = document.getElementById('summaryDuration');
 
@@ -287,7 +309,9 @@ const adminPicker = new AvailabilityPicker({
     root: '#adminAvp',
     dateInput: document.getElementById('adminBookingDate'),
     timeInput: document.getElementById('adminBookingTime'),
-    getServiceIds: () => serviceSelect.value ? [parseInt(serviceSelect.value, 10)] : [],
+    // Summed duration decides how long a slot is held, so the picker needs
+    // every ticked service, not just one.
+    getServiceIds: () => checkedServices().map(b => parseInt(b.value, 10)),
 });
 
 // Editing/rebooking an existing booking — adopt its current date/time so the
@@ -302,19 +326,35 @@ if (prefillDate && prefillTime) {
     adminPicker.selectedTime = prefillTime;
 }
 
-serviceSelect.addEventListener('change', function() {
-    const data = serviceData[this.value];
-    if (data) {
-        summaryPrice.textContent    = data.price;
-        summaryDuration.textContent = data.duration;
-    } else {
+function refreshServiceSummary() {
+    const picked = checkedServices();
+
+    if (!picked.length) {
         summaryPrice.textContent    = '—';
         summaryDuration.textContent = '—';
+    } else {
+        const price    = picked.reduce((t, b) => t + parseFloat(b.dataset.price || 0), 0);
+        const duration = picked.reduce((t, b) => t + parseInt(b.dataset.duration || 0, 10), 0);
+        summaryPrice.textContent    = '₱' + price.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        summaryDuration.textContent = duration + ' min';
     }
-    adminPicker.refresh();
-});
 
-if (serviceSelect.value) serviceSelect.dispatchEvent(new Event('change'));
-else adminPicker.refresh();
+    document.getElementById('serviceError').classList.toggle('show', picked.length === 0);
+    adminPicker.refresh();
+}
+
+serviceBoxes().forEach(b => b.addEventListener('change', refreshServiceSummary));
+refreshServiceSummary();
+
+// The submit button is driven by FormValidate, which does not know about the
+// checkbox group, so the service rule is enforced here as well.
+document.getElementById('bookingForm').addEventListener('submit', function (e) {
+    if (!checkedServices().length) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        document.getElementById('serviceError').classList.add('show');
+        document.getElementById('servicePicker').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}, true);
 </script>
 @endpush

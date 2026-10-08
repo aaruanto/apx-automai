@@ -24,7 +24,7 @@ class DashboardController extends Controller
             ['phone' => $user->phone ?? null]
         );
 
-        $bookings = Booking::with(['service', 'vehicle', 'employee'])
+        $bookings = Booking::with(['service', 'vehicle', 'employee', 'services'])
                         ->where('user_id', $user->id)
                         ->latest()
                         ->get();
@@ -89,12 +89,19 @@ class DashboardController extends Controller
             $request->merge($json);
         }
 
+        // A booking may cover several services. service_id is still accepted
+        // so an older client posting a single id keeps working.
+        if (! $request->filled('service_ids') && $request->filled('service_id')) {
+            $request->merge(['service_ids' => [$request->input('service_id')]]);
+        }
+
         $data = $request->validate([
-            'service_id'   => 'required|exists:services,id',
-            'vehicle_id'   => 'required|exists:vehicles,id',
-            'booking_date' => 'required|date|after_or_equal:today',
-            'booking_time' => 'required',
-            'notes'        => 'nullable|string|max:500',
+            'service_ids'   => 'required|array|min:1',
+            'service_ids.*' => 'integer|exists:services,id',
+            'vehicle_id'    => 'required|exists:vehicles,id',
+            'booking_date'  => 'required|date|after_or_equal:today',
+            'booking_time'  => 'required',
+            'notes'         => 'nullable|string|max:500',
         ]);
 
         // The vehicle must belong to THIS customer — stops booking with someone else's vehicle_id.
@@ -105,7 +112,7 @@ class DashboardController extends Controller
         try {
             $booking = app(BookingAvailability::class)->reserve([
                 'user_id'      => Auth::id(),
-                'service_id'   => $data['service_id'],
+                'service_ids'  => $data['service_ids'],
                 'vehicle_id'   => $data['vehicle_id'],
                 'booking_date' => $data['booking_date'],
                 'booking_time' => $data['booking_time'],

@@ -66,13 +66,13 @@
                 @forelse($cancelled as $b)
                 <tr id="row-{{ $b->id }}"
                     data-search="{{ strtolower(($b->customer->name ?? '').' '.$b->reference_number) }}"
-                    data-service="{{ $b->service->name ?? '' }}">
+                    data-service="{{ $b->services->pluck('name')->implode('|') }}">
                     <td>
                         <div class="primary-col">{{ $b->customer->name ?? 'N/A' }}</div>
                         <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;">{{ $b->reference_number }}</div>
                     </td>
                     <td>{{ $b->vehicle?->display_plate ?? 'Not provided' }}</td>
-                    <td>{{ $b->service->name ?? 'N/A' }}</td>
+                    <td>{{ $b->service_list }}</td>
                     <td style="white-space:nowrap;">{{ $b->booking_date }} {{ $b->booking_time }}</td>
                     <td style="min-width:220px;">
                         @if($b->cancel_reason)
@@ -173,7 +173,7 @@ function applyFilters() {
     let visible   = 0;
     rows.forEach(row => {
         const ms = !search  || (row.dataset.search || '').includes(search);
-        const mv = !service || row.dataset.service === service;
+        const mv = !service || (row.dataset.service || '').split('|').includes(service);
         row.style.display = ms && mv ? '' : 'none';
         if(ms && mv) visible++;
     });

@@ -69,7 +69,7 @@
                 @endphp
                 <div class="event-block {{ $booking->status }}" style="margin-bottom:12px;">
                     <div>
-                        <div class="event-title">{{ $booking->service->name ?? 'N/A' }}</div>
+                        <div class="event-title">{{ $booking->service_list }}</div>
                         <div class="event-meta">
                             {{ $booking->customer->name ?? 'N/A' }} &middot;
                             <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;">
@@ -88,7 +88,7 @@
                                 data-customer="{{ $booking->customer->name ?? 'N/A' }}"
                                 data-vehicle="{{ $booking->vehicle?->display_plate ?? 'Not provided' }}"
                                 data-model="{{ $booking->vehicle?->display_name ?? '' }}"
-                                data-service="{{ $booking->service->name ?? 'N/A' }}"
+                                data-service="{{ $booking->service_list }}"
                                 data-datetime="{{ $booking->booking_date }} {{ $booking->booking_time }}"
                                 data-notes="{{ $booking->notes ?? '—' }}"
                             ><i class="fas fa-eye"></i></button>

@@ -7,7 +7,7 @@ Your booking has been **confirmed** by APX AutoMai. Here are your appointment de
 
 @component('mail::panel')
 **Reference No:** {{ $booking->reference_number }}
-**Service:** {{ $booking->service->name }}
+**Service:** {{ $booking->service_list }}
 **Date:** {{ \Carbon\Carbon::parse($booking->booking_date)->format('F d, Y') }}
 **Time:** {{ \Carbon\Carbon::parse($booking->booking_time)->format('g:i A') }}
 **Status:** Confirmed ✅
