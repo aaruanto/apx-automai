@@ -146,7 +146,7 @@
                     <td class="primary-col">{{ $booking->customer->name ?? 'N/A' }}</td>
                     <td>{{ $booking->service_list }}</td>
                     <td>{{ $booking->booking_date }}</td>
-                    <td>{{ $booking->employee->name ?? 'N/A' }}</td>
+                    <td>{{ $booking->staff->name ?? 'Unassigned' }}</td>
                     <td>
                         @php
                             $map = [

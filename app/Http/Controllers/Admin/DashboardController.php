@@ -18,7 +18,7 @@ class DashboardController extends Controller
                             Carbon::now()->endOfWeek()
                          ])->count();
         $completed     = Booking::where('status', 'completed')->count();
-        $recentBookings = Booking::with(['customer', 'service', 'employee', 'services'])
+        $recentBookings = Booking::with(['customer', 'service', 'staff', 'services'])
                             ->latest()
                             ->take(12)
                             ->get();

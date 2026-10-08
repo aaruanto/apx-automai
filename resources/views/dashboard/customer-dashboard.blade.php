@@ -356,7 +356,7 @@
                                     <div class="booking-service">{{ $b->service_list }}</div>
                                     <div class="booking-meta">
                                         <span><i class="fas fa-clock"></i>{{ date('g:i A', strtotime($b->booking_time)) }}</span>
-                                        <span><i class="fas fa-user"></i>{{ $b->employee->name ?? 'TBA' }}</span>
+                                        <span><i class="fas fa-user"></i>{{ $b->staff->name ?? 'TBA' }}</span>
                                         <span><i class="fas fa-car"></i>{{ ($b->vehicle->make ?? '') . ' (' . ($b->vehicle?->display_plate ?? 'Not provided') . ')' }}</span>
                                     </div>
                                 </div>

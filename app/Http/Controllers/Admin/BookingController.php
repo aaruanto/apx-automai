@@ -4,21 +4,23 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\User;
 use App\Models\Service;
-use App\Models\Employee;
 use App\Mail\BookingConfirmed;
 use App\Services\BookingAvailability;
 use App\Exceptions\SlotUnavailableException;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 use App\Support\CsvExport;
 
 class BookingController extends Controller
 {
     public function index()
     {
-        $bookings = Booking::with(['user', 'service', 'vehicle', 'employee', 'cancelledBy', 'services'])
+        $bookings = Booking::with(['user', 'service', 'vehicle', 'staff', 'cancelledBy', 'services'])
                         ->latest()
                         ->get();
 
@@ -31,13 +33,15 @@ class BookingController extends Controller
 
         $services = Service::orderBy('name')->get();
 
-        return view('admin.bookings.index', compact('bookings', 'counts', 'services'));
+        $staffMembers = User::staffMembers()->get();
+
+        return view('admin.bookings.index', compact('bookings', 'counts', 'services', 'staffMembers'));
     }
 
     public function create()
     {
         $services  = Service::orderBy('name')->get();
-        $employees = Employee::where('status', 'active')->orderBy('name')->get();
+        $employees = User::staffMembers()->get();
 
         return view('admin.bookings.create', compact('services', 'employees'));
     }
@@ -59,6 +63,7 @@ class BookingController extends Controller
             'service_ids.*'  => 'integer|exists:services,id',
             'booking_date'   => 'required|date|after_or_equal:today', // no past dates
             'booking_time'   => 'required',
+            'staff_id'       => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'staff')],
         ]);
 
         $user = \App\Models\User::firstOrCreate(
@@ -108,9 +113,9 @@ class BookingController extends Controller
 
     public function edit($id)
     {
-        $booking   = Booking::with(['user', 'vehicle', 'service', 'employee', 'services'])->findOrFail($id);
+        $booking   = Booking::with(['user', 'vehicle', 'service', 'staff', 'services'])->findOrFail($id);
         $services  = Service::orderBy('name')->get();
-        $employees = Employee::where('status', 'active')->orderBy('name')->get();
+        $employees = User::staffMembers()->get();
 
         return view('admin.bookings.create', compact('booking', 'services', 'employees'));
     }
@@ -133,6 +138,7 @@ class BookingController extends Controller
             // dropdown skipped the required-reason flow entirely, which is the
             // whole point of the cancel action. Use that instead.
             'status'       => 'required|in:pending,confirmed,in_progress,completed',
+            'staff_id'     => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'staff')],
         ]);
 
         // Only re-run the capacity check when the slot this booking occupies
@@ -167,6 +173,28 @@ class BookingController extends Controller
             }
         }
 
+        // Same overlap rule as capacity: one mechanic cannot be in two bays at
+        // once. Blocked here rather than warned, because the edit form is the
+        // deliberate path; the quick Assign control offers an override.
+        $newStaffId = $request->staff_id ?? $booking->staff_id;
+
+        if ($newStaffId) {
+            [$winStart, $winEnd] = $availability->windowFor(
+                $request->booking_date, $request->booking_time, $duration
+            );
+
+            $clash = $availability->staffConflict(
+                $newStaffId, $request->booking_date, $winStart, $winEnd, $booking->id
+            );
+
+            if ($clash) {
+                return back()->withInput()->withErrors([
+                    'staff_id' => 'That mechanic is already on '.$clash->reference_number
+                                  .' at '.Carbon::parse($clash->booking_time)->format('g:i A')
+                                  .' that day. Choose another, or change the time.',
+                ]);
+            }
+        }
         $booking->update([
             // Kept pointing at the first selection for screens still reading
             // a single service.
@@ -241,9 +269,9 @@ class BookingController extends Controller
 
     public function rebook($id)
     {
-        $original  = Booking::with(['user', 'vehicle', 'service', 'employee', 'services'])->findOrFail($id);
+        $original  = Booking::with(['user', 'vehicle', 'service', 'staff', 'services'])->findOrFail($id);
         $services  = Service::orderBy('name')->get();
-        $employees = Employee::where('status', 'active')->orderBy('name')->get();
+        $employees = User::staffMembers()->get();
 
         return view('admin.bookings.create', [
             'services'  => $services,
@@ -256,6 +284,62 @@ class BookingController extends Controller
     {
         Booking::findOrFail($id)->delete();
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Assign (or clear) the mechanic on a booking without opening the full
+     * edit form.
+     *
+     * Warns rather than blocks: a clash returns 409 with the clashing booking
+     * named, and the caller may repeat the request with force to accept it.
+     * Double-booking is sometimes deliberate, but it should never be silent.
+     */
+    public function assignStaff(Request $request, $id)
+    {
+        $data = $request->validate([
+            'staff_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'staff')],
+            'force'    => ['nullable', 'boolean'],
+        ], [
+            'staff_id.exists' => 'That staff member no longer exists.',
+        ]);
+
+        $booking  = Booking::findOrFail($id);
+        $staffId  = $data['staff_id'] ?? null;
+
+        if ($staffId && empty($data['force'])) {
+            $availability = app(BookingAvailability::class);
+            [$start, $end] = $availability->windowFor(
+                $booking->booking_date,
+                $booking->booking_time,
+                $booking->duration ?? $availability->gridMinutes()
+            );
+
+            $clash = $availability->staffConflict(
+                $staffId, $booking->booking_date, $start, $end, $booking->id
+            );
+
+            if ($clash) {
+                return response()->json([
+                    'success'  => false,
+                    'conflict' => true,
+                    'message'  => 'That mechanic is already on '.$clash->reference_number
+                                  .' at '.Carbon::parse($clash->booking_time)->format('g:i A')
+                                  .' on the same day. Assign anyway?',
+                ], 409);
+            }
+        }
+
+        $booking->update(['staff_id' => $staffId]);
+        $booking->load('staff');
+
+        return response()->json([
+            'success'     => true,
+            'staff_id'    => $staffId,
+            'staff_name'  => $booking->staff->name ?? 'Unassigned',
+            'message'     => $staffId
+                ? $booking->staff->name.' is now assigned to '.$booking->reference_number.'.'
+                : 'Mechanic cleared from '.$booking->reference_number.'.',
+        ]);
     }
 
     /**

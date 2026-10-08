@@ -24,6 +24,10 @@ class User extends Authenticatable
     'phone',
     'role',
     'password',
+    // Admins deactivate staff rather than deleting them. It was missing
+    // here, so update() silently dropped it and both callers that needed
+    // it had to reach past mass assignment with forceFill.
+    'is_active',
 ];
 
     /**
@@ -45,9 +49,22 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'is_active'         => 'boolean',
             'password' => 'hashed',
         ];
     }
+   /**
+    * Mechanics available to assign to a booking.
+    *
+    * Staff are users with role = staff: that is what bookings.staff_id
+    * references and what admin settings creates. Inactive accounts are
+    * excluded so someone who has left cannot be given new work.
+    */
+   public function scopeStaffMembers($query)
+   {
+       return $query->where('role', 'staff')->where('is_active', true)->orderBy('name');
+   }
+
    /**
     * Where this user belongs after signing in or verifying their email.
     *

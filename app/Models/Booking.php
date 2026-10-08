@@ -153,8 +153,18 @@ class Booking extends Model
         return $this->belongsTo(Vehicle::class);
     }
 
-    public function employee()
+    /**
+     * The mechanic this booking is assigned to.
+     *
+     * staff_id is a foreign key to users, and staff are users with
+     * role = 'staff' — that is what admin settings creates and what the
+     * role:staff middleware serves. This relation previously resolved
+     * against the Employee model instead, a different table the foreign key
+     * does not reference, so an assignment would have violated the key on
+     * PostgreSQL. It never fired only because nothing had ever been assigned.
+     */
+    public function staff()
     {
-        return $this->belongsTo(Employee::class, 'staff_id');
+        return $this->belongsTo(User::class, 'staff_id');
     }
 }

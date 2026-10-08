@@ -59,6 +59,7 @@ Route::middleware(['auth', 'role:admin'])
     Route::delete('/bookings/{id}',           [BookingController::class, 'destroy'])  ->name('bookings.destroy');
     Route::patch('/bookings/{id}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
     Route::patch('/bookings/{id}/arrive', [BookingController::class, 'arrive'])->name('bookings.arrive');
+    Route::patch('/bookings/{id}/staff',  [BookingController::class, 'assignStaff'])->name('bookings.staff');
     // ── Customers ──────────────────────────────────────────────────────────
     Route::get('/customers/export',           [CustomerController::class, 'export'])  ->name('customers.export');
     Route::get('/customers/create',           [CustomerController::class, 'create'])  ->name('customers.create');

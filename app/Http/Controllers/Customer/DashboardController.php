@@ -24,7 +24,7 @@ class DashboardController extends Controller
             ['phone' => $user->phone ?? null]
         );
 
-        $bookings = Booking::with(['service', 'vehicle', 'employee', 'services'])
+        $bookings = Booking::with(['service', 'vehicle', 'staff', 'services'])
                         ->where('user_id', $user->id)
                         ->latest()
                         ->get();
@@ -47,7 +47,7 @@ class DashboardController extends Controller
                 'mon'       => date('M', strtotime($b->booking_date)),
                 'yr'        => date('Y', strtotime($b->booking_date)),
                 'time'      => date('g:i A', strtotime($b->booking_time)),
-                'staff'     => $b->employee->name ?? 'TBA',
+                'staff'     => $b->staff->name ?? 'TBA',
                 'vehicle'   => ($b->vehicle->make ?? '') . ' (' . ($b->vehicle?->display_plate ?? 'Not provided') . ')',
                 'vehicle_id'=> $b->vehicle_id,
                 'amount'    => 'TBA',

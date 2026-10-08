@@ -325,6 +325,45 @@ class BookingAvailability
     /**
      * @return Collection<int, array{start: Carbon, end: Carbon}>
      */
+    /**
+     * The booking, if any, that would clash with putting this mechanic on the
+     * given window. Uses the same interval-overlap rule as capacity, so the
+     * two cannot drift apart.
+     *
+     * Returns the clashing booking rather than a boolean so the caller can say
+     * which one it is.
+     */
+    public function staffConflict(
+        int $staffId,
+        string $date,
+        Carbon $start,
+        Carbon $end,
+        ?int $excludeBookingId = null
+    ): ?Booking {
+        return Booking::with('service:id,duration')
+            ->where('booking_date', $date)
+            ->where('staff_id', $staffId)
+            ->whereIn('status', self::ACTIVE_STATUSES)
+            ->when($excludeBookingId, fn ($q) => $q->where('id', '!=', $excludeBookingId))
+            ->get()
+            ->first(function (Booking $other) use ($date, $start, $end) {
+                $otherStart = Carbon::parse($date.' '.$other->booking_time);
+                $otherEnd   = $otherStart->copy()->addMinutes(
+                    $other->duration ?? optional($other->service)->duration ?? $this->gridMinutes()
+                );
+
+                return $otherStart->lt($end) && $otherEnd->gt($start);
+            });
+    }
+
+    /** The window a booking occupies, for the checks above. */
+    public function windowFor(string $date, string $time, int $durationMinutes): array
+    {
+        $start = Carbon::parse($date.' '.$time);
+
+        return [$start, $start->copy()->addMinutes($durationMinutes)];
+    }
+
     private function activeIntervalsForDate(string $date, ?int $excludeId = null, bool $lock = false): Collection
     {
         $query = Booking::with('service:id,duration')
