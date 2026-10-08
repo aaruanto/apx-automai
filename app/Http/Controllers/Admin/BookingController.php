@@ -11,6 +11,7 @@ use App\Services\BookingAvailability;
 use App\Exceptions\SlotUnavailableException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use App\Support\CsvExport;
 
 class BookingController extends Controller
@@ -60,7 +61,13 @@ class BookingController extends Controller
                 'email'    => $request->customer_email
                               ?? strtolower(str_replace(' ', '', $request->customer_name)) . '@apxautomai.local',
                 'role'     => 'customer',
-                'password' => bcrypt('password'),
+                // A literal "password" here meant anyone who worked out the
+                // email pattern could sign in as that customer. Random and
+                // never displayed: the account carries bookings but cannot be
+                // logged into until the customer claims it by registering with
+                // this email, or an admin resets it. Matches what
+                // GuestBookingController already does.
+                'password' => Str::password(32),
             ]
         );
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use Illuminate\Support\Str;
 use App\Support\CsvExport;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -51,7 +52,11 @@ class CustomerController extends Controller
             'email'    => $request->email,
             'phone'    => $request->phone,
             'role'     => 'customer',
-            'password' => bcrypt('password'), // temporary default
+            // Not a password anyone knows, by design: a shared default let
+            // anyone guessing the email sign in as this customer. They claim
+            // the account by registering with the same email, or an admin
+            // resets it.
+            'password' => Str::password(32),
         ]);
 
         // Create customer profile

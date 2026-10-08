@@ -7,7 +7,6 @@ use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
@@ -55,9 +54,9 @@ class RegisteredUserController extends Controller
         ]);
 
         event(new Registered($existingUser));
-        Auth::login($existingUser);
 
-        return redirect()->route('customer.dashboard');
+        return redirect()->route('login')
+            ->with('status', 'Your account has been set up. Please log in to continue.');
     }
 
     // Brand new user
@@ -70,8 +69,12 @@ class RegisteredUserController extends Controller
     ]);
 
     event(new Registered($user));
-    Auth::login($user);
 
-    return redirect()->route('customer.dashboard');
+    // Deliberately no Auth::login here: registering should not grant a session.
+    // The customer signs in with the credentials they just chose, which both
+    // confirms they recorded the password and keeps account creation and
+    // authentication as two distinct, auditable steps.
+    return redirect()->route('login')
+        ->with('status', 'Account created successfully. Please log in to continue.');
 }
 }

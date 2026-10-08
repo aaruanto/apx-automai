@@ -31,6 +31,13 @@
 
             <div class="auth-body">
 
+                {{-- Success flash, e.g. after registering or resetting a password --}}
+                @if (session('status'))
+                <div style="display:flex;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.35);border-radius:7px;padding:10px 14px;margin-bottom:16px;font-size:0.83rem;color:#16A34A;align-items:center;gap:8px;">
+                    <i class="fas fa-circle-check"></i>
+                    <span>{{ session('status') }}</span>
+                </div>
+                @endif
                 {{-- Show validation errors --}}
                 @if ($errors->any())
                 <div style="display:flex;background:rgba(232,25,44,0.1);border:1px solid rgba(232,25,44,0.3);border-radius:7px;padding:10px 14px;margin-bottom:16px;font-size:0.83rem;color:#E8192C;align-items:center;gap:8px;">
