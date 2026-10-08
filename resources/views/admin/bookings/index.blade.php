@@ -124,12 +124,17 @@
                                 data-service="{{ $b->service->name ?? 'N/A' }}"
                                 data-datetime="{{ $b->booking_date }} {{ $b->booking_time }}"
                                 data-notes="{{ $b->notes ?? '—' }}"
+                                data-cancel-reason="{{ $b->cancel_reason }}"
+                                data-cancel-by="{{ $b->cancelledBy->name ?? ($b->status === 'cancelled' ? 'System' : '') }}"
+                                data-cancel-at="{{ $b->cancelled_at?->format('M j, Y g:i A') }}"
                             ><i class="fas fa-eye"></i></button>
                             <a href="{{ route('admin.bookings.edit', ['id' => $b->id]) }}" class="btn btn-ghost btn-sm btn-icon" title="Edit"><i class="fas fa-pen"></i></a>
                             @if($b->canStart())
                             <button class="btn btn-ghost btn-sm btn-icon" title="Arrived / Start Service" onclick="markArrived({{ $b->id }}, this)"><i class="fas fa-person-walking-arrow-right"></i></button>
                             @endif
+                            @if($b->canCancel())
                             <button class="btn btn-danger btn-sm btn-icon" title="Cancel" onclick="cancelBooking({{ $b->id }}, this)"><i class="fas fa-ban"></i></button>
+                            @endif
                         </div>
                     </td>
                 </tr>
@@ -192,6 +197,16 @@
                     <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Notes</div>
                     <div id="modal-notes">—</div>
                 </div>
+                {{-- Shown only for a cancelled booking. Everything above stays
+                     populated: cancelling records the reason, it does not strip
+                     the booking of its details. --}}
+                <div style="grid-column:1/-1;display:none;" id="modal-cancel-block">
+                    <div style="border:1px solid var(--red);border-left-width:3px;border-radius:7px;padding:10px 14px;background:var(--red-glow);">
+                        <div style="font-size:.72rem;color:var(--red);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;font-weight:700;">Cancellation</div>
+                        <div id="modal-cancel-reason">—</div>
+                        <div style="font-size:.74rem;color:var(--text-muted);margin-top:3px;" id="modal-cancel-meta"></div>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="modal-footer">
@@ -213,6 +228,17 @@ function openViewModal(btn) {
     const plate   = btn.dataset.vehicle;
     const vehicle = btn.dataset.model;
     document.getElementById('modal-vehicle').textContent = vehicle ? vehicle + ' (' + plate + ')' : plate;
+
+    const cancelBlock = document.getElementById('modal-cancel-block');
+    if (btn.dataset.status === 'cancelled') {
+        document.getElementById('modal-cancel-reason').textContent =
+            btn.dataset.cancelReason || 'No reason recorded';
+        document.getElementById('modal-cancel-meta').textContent =
+            [btn.dataset.cancelBy, btn.dataset.cancelAt].filter(Boolean).join(' \u00b7 ');
+        cancelBlock.style.display = '';
+    } else {
+        cancelBlock.style.display = 'none';
+    }
 
     const statusEl = document.getElementById('modal-status');
     const statusMap = {
@@ -250,25 +276,32 @@ function clearFilters() {
     applyFilters();
 }
 function cancelBooking(id, btn) {
-    if (!confirm('Are you sure you want to cancel this booking?')) return;
-    fetch(`/admin/bookings/${id}/cancel`, {
-        method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    // Reason prompt, validation and error reporting live in
+    // assets/js/booking-actions.js. The previous version used a bare
+    // confirm() and swallowed every failure into console.error.
+    ApxBookingActions.cancelBooking(id, btn, data => {
+        const row   = btn.closest('tr');
+        const badge = row.querySelector('.badge');
+        row.dataset.status = data.status;
+        badge.className    = 'badge badge-cancelled';
+        badge.textContent  = data.status_label;
+
+        // Keep the view modal truthful without a reload.
+        const view = row.querySelector('[data-status]');
+        if (view) {
+            view.dataset.status       = data.status;
+            view.dataset.cancelReason = data.cancel_reason || '';
+            view.dataset.cancelBy     = data.cancelled_by || '';
+            view.dataset.cancelAt     = data.cancelled_at || '';
         }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            const row = btn.closest('tr');
-            row.dataset.status = 'cancelled';
-            row.querySelector('.badge').className = 'badge badge-cancelled';
-            row.querySelector('.badge').textContent = 'Cancelled';
-            applyFilters();
-        }
-    })
-    .catch(err => console.error('Cancel failed:', err));
+
+        // Cancel and Start Service no longer apply to this row.
+        btn.remove();
+        const start = row.querySelector('button[title="Arrived / Start Service"]');
+        if (start) start.remove();
+
+        applyFilters();
+    });
 }
 function markArrived(id, btn) {
     // Confirmation, error reporting and the double-click guard live in

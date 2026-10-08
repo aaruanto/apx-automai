@@ -1104,6 +1104,16 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             const cancelBtn = canCancel
                 ? `<div style="margin-top:8px;"><button onclick="cancelBooking(${b.dbId})" style="background:none;border:1px solid rgba(232,25,44,0.4);color:var(--red);padding:5px 14px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:background 0.2s;" onmouseover="this.style.background='var(--red-glow)'" onmouseout="this.style.background='none'"><i class="fas fa-ban"></i> Cancel Booking</button></div>`
                 : '';
+
+            // Cancelled bookings keep all their details; this adds why.
+            const cancelNote = (b.status === 'cancelled' && (b.cancelReason || b.cancelledAt))
+                ? `<div style="margin-top:8px;padding:8px 11px;border-radius:7px;border:1px solid rgba(232,25,44,0.35);border-left-width:3px;background:var(--red-glow);">
+                       <div style="font-size:.7rem;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Cancellation</div>
+                       <div style="font-size:.78rem;">${esc(b.cancelReason || 'No reason recorded')}</div>
+                       ${b.cancelledAt ? `<div style="font-size:.72rem;color:var(--text-muted);margin-top:2px;">${esc(b.cancelledAt)}</div>` : ''}
+                   </div>`
+                : '';
+
             return `<div class="bk-card">
                 <div class="bk-card-inner">
                     <div class="bk-date-col">
@@ -1122,6 +1132,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                             <span><i class="fas fa-car"></i>${esc(b.vehicle)}</span>
                         </div>
                         ${cancelBtn}
+                        ${cancelNote}
                     </div>
                     <div class="bk-status-col">
                         <span class="badge ${meta.cls}"><i class="fas ${meta.icon}"></i>${meta.label}</span>

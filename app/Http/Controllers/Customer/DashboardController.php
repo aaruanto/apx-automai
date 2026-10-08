@@ -52,6 +52,10 @@ class DashboardController extends Controller
                 'vehicle_id'=> $b->vehicle_id,
                 'amount'    => 'TBA',
                 'status'    => in_array($b->status, ['confirmed', 'pending']) ? 'upcoming' : $b->status,
+                // So a customer can see why a booking of theirs was cancelled,
+                // including when the shop or the no-show sweep did it.
+                'cancelReason' => $b->cancel_reason,
+                'cancelledAt'  => $b->cancelled_at?->format('M j, Y g:i A'),
             ];
         })->values();
 
@@ -202,14 +206,19 @@ class DashboardController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function cancelBooking($id)
+    public function cancelBooking(Request $request, $id)
     {
         $booking = Booking::where('id', $id)
                           ->where('user_id', Auth::id())
                           ->whereIn('status', ['pending', 'confirmed'])
                           ->firstOrFail();
 
-        $booking->update(['status' => 'cancelled']);
+        // Optional here, unlike the admin side: a customer cancelling their
+        // own booking owes no justification, but the shop still wants to know
+        // who cancelled and when, and the reason when one is offered.
+        $reason = trim((string) ($request->input('reason') ?? ''));
+
+        $booking->cancel($reason !== '' ? $reason : 'Cancelled by customer', Auth::id());
 
         return response()->json(['success' => true]);
     }

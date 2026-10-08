@@ -58,6 +58,7 @@
                         <th>Vehicle / Plate</th>
                         <th>Service Type</th>
                         <th>Scheduled For</th>
+                        <th>Cancellation</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -73,6 +74,20 @@
                     <td>{{ $b->vehicle?->display_plate ?? 'Not provided' }}</td>
                     <td>{{ $b->service->name ?? 'N/A' }}</td>
                     <td style="white-space:nowrap;">{{ $b->booking_date }} {{ $b->booking_time }}</td>
+                    <td style="min-width:220px;">
+                        @if($b->cancel_reason)
+                        <div style="color:var(--text);">{{ $b->cancel_reason }}</div>
+                        @else
+                        <div style="color:var(--text-muted);font-style:italic;">No reason recorded</div>
+                        @endif
+                        <div style="font-size:.74rem;color:var(--text-muted);margin-top:3px;">
+                            {{-- A null cancelled_by means the no-show sweep did it, not a person. --}}
+                            {{ $b->cancelledBy->name ?? 'System' }}
+                            @if($b->cancelled_at)
+                                &middot; {{ $b->cancelled_at->format('M j, Y g:i A') }}
+                            @endif
+                        </div>
+                    </td>
                     <td style="text-align:center;">
                         <div style="display:flex;gap:6px;justify-content:center;">
                             <a href="{{ route('admin.bookings.rebook', ['id' => $b->id]) }}" class="btn btn-ghost btn-sm" title="Rebook">
@@ -87,7 +102,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted);">No cancelled bookings.</td>
+                    <td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">No cancelled bookings.</td>
                 </tr>
                 @endforelse
                 </tbody>

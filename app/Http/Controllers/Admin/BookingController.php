@@ -18,7 +18,7 @@ class BookingController extends Controller
 {
     public function index()
     {
-        $bookings = Booking::with(['user', 'service', 'vehicle', 'employee'])
+        $bookings = Booking::with(['user', 'service', 'vehicle', 'employee', 'cancelledBy'])
                         ->latest()
                         ->get();
 
@@ -117,7 +117,10 @@ class BookingController extends Controller
             'service_id'   => 'required|exists:services,id',
             'booking_date' => 'required|date',
             'booking_time' => 'required',
-            'status'       => 'required|in:pending,confirmed,in_progress,completed,cancelled',
+            // 'cancelled' is deliberately absent. Reaching it through this
+            // dropdown skipped the required-reason flow entirely, which is the
+            // whole point of the cancel action. Use that instead.
+            'status'       => 'required|in:pending,confirmed,in_progress,completed',
         ]);
 
         // Only re-run the capacity check when the slot this booking occupies
@@ -199,7 +202,7 @@ class BookingController extends Controller
 
     public function cancelled()
     {
-        $cancelled = Booking::with(['user', 'service', 'vehicle'])
+        $cancelled = Booking::with(['user', 'service', 'vehicle', 'cancelledBy'])
                         ->where('status', 'cancelled')
                         ->latest()
                         ->get();
@@ -228,12 +231,41 @@ class BookingController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function cancel($id)
+    /**
+     * Cancel a booking, with a reason on the record.
+     *
+     * The reason is required because this is the accountability trail the
+     * panel asked for: a cancelled booking should always say who cancelled it
+     * and why. Nothing else about the booking is touched.
+     */
+    public function cancel(Request $request, $id)
     {
-        $booking = Booking::findOrFail($id);
-        $booking->update(['status' => 'cancelled']);
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'min:3', 'max:500'],
+        ], [
+            'reason.required' => 'Please give a reason for cancelling this booking.',
+            'reason.min'      => 'Please give a little more detail than that.',
+        ]);
 
-        return response()->json(['success' => true]);
+        $booking = Booking::findOrFail($id);
+
+        if (! $booking->cancel($validated['reason'], $request->user()->id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This booking is '.(self::STATUS_LABELS[$booking->status] ?? $booking->status)
+                             .' and can no longer be cancelled.',
+            ], 422);
+        }
+
+        return response()->json([
+            'success'      => true,
+            'status'       => 'cancelled',
+            'status_label' => 'Cancelled',
+            'message'      => 'Booking '.$booking->reference_number.' has been cancelled.',
+            'cancel_reason' => $booking->cancel_reason,
+            'cancelled_by'  => $request->user()->name,
+            'cancelled_at'  => $booking->cancelled_at?->format('M j, Y g:i A'),
+        ]);
     }
 
     private const STATUS_LABELS = [

@@ -12,6 +12,9 @@ class Booking extends Model
     /** Statuses a booking may be moved to in_progress from. */
     public const STARTABLE_STATUSES = ['pending', 'confirmed'];
 
+    /** Statuses a booking may still be cancelled from. */
+    public const CANCELLABLE_STATUSES = ['pending', 'confirmed', 'in_progress'];
+
     protected $fillable = [
         'user_id', 'vehicle_id', 'service_id', 'staff_id',
         'booking_date', 'booking_time', 'duration', 'status', 'notes', 'reference_number',
@@ -37,6 +40,47 @@ class Booking extends Model
     public function canStart(): bool
     {
         return in_array($this->status, self::STARTABLE_STATUSES, true);
+    }
+
+    public function canCancel(): bool
+    {
+        return in_array($this->status, self::CANCELLABLE_STATUSES, true);
+    }
+
+    /**
+     * Cancel, recording why and by whom.
+     *
+     * The three audit columns have existed since the bookings table was
+     * created, but only the no-show job ever filled them — every other caller
+     * wrote the status alone, so a cancelled booking carried no explanation of
+     * who cancelled it or why. Centralised here so that cannot drift again.
+     *
+     * $byUserId is null for a cancellation the system performed itself, such
+     * as the no-show sweep, which is how those are told apart from a person's.
+     */
+    public function cancel(?string $reason = null, ?int $byUserId = null): bool
+    {
+        if (! $this->canCancel()) {
+            return false;
+        }
+
+        // Only these four fields change. Customer, vehicle, service, staff,
+        // notes and the original date and time are all left untouched, so the
+        // record stays complete for history and reporting.
+        $this->forceFill([
+            'status'        => 'cancelled',
+            'cancel_reason' => $reason,
+            'cancelled_by'  => $byUserId,
+            'cancelled_at'  => now(),
+        ])->save();
+
+        return true;
+    }
+
+    /** Who cancelled it, for display. Null means the system did. */
+    public function cancelledBy()
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 
     public function customer()

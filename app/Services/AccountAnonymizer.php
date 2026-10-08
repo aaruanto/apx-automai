@@ -62,7 +62,7 @@ class AccountAnonymizer
             foreach ($this->upcomingBookings($user) as $booking) {
                 // Free the slot straight away — the shop shouldn't hold a bay for
                 // an account that's on its way out.
-                $booking->update(['status' => 'cancelled']);
+                $booking->cancel('Account deleted by customer', $user->id);
                 $cancelled++;
             }
 

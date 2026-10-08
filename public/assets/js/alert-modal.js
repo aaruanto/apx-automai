@@ -95,6 +95,44 @@
         iconEl.className = 'fas ' + (opts.icon || accent.icon);
         iconWrap.appendChild(iconEl);
 
+        // Optional single input, for a confirm that needs a value with it —
+        // a cancellation reason, say. Rebuilt per call so a previous dialog's
+        // text never carries over.
+        var body = overlay.querySelector('.modal-body');
+        var existing = overlay.querySelector('.apx-alert-input-wrap');
+        if (existing) existing.remove();
+
+        var inputEl = null;
+        if (opts.input) {
+            var wrap = document.createElement('div');
+            wrap.className = 'apx-alert-input-wrap';
+            wrap.style.cssText = 'grid-column:1/-1;margin-top:12px;';
+
+            if (opts.input.label) {
+                var lab = document.createElement('label');
+                lab.textContent = opts.input.label;
+                lab.style.cssText = 'display:block;font-size:.76rem;color:var(--text-muted);margin-bottom:5px;';
+                wrap.appendChild(lab);
+            }
+
+            inputEl = document.createElement(opts.input.multiline ? 'textarea' : 'input');
+            inputEl.className = 'apx-alert-input';
+            inputEl.placeholder = opts.input.placeholder || '';
+            if (opts.input.maxlength) inputEl.maxLength = opts.input.maxlength;
+            if (opts.input.multiline) inputEl.rows = 3;
+            inputEl.style.cssText = 'width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--border,#e5e7eb);'
+                + 'background:var(--surface,#fff);color:var(--text,#222);font-family:inherit;font-size:.85rem;resize:vertical;';
+            wrap.appendChild(inputEl);
+
+            var err = document.createElement('div');
+            err.className = 'fv-error apx-alert-input-error';
+            err.textContent = opts.input.requiredMessage || 'This field is required.';
+            wrap.appendChild(err);
+
+            body.parentNode.insertBefore(wrap, body.nextSibling);
+            wrap.style.padding = '0 20px';
+        }
+
         var footer = overlay.querySelector('.apx-alert-footer');
         footer.innerHTML = '';
 
@@ -108,7 +146,19 @@
                 hide(id);
             }));
             footer.appendChild(buildButton(opts.confirmText || 'Confirm', opts.confirmStyle || 'danger', function () {
-                if (activeOnConfirm) activeOnConfirm();
+                if (inputEl && opts.input.required) {
+                    var value = inputEl.value.trim();
+                    if (value.length < (opts.input.minlength || 1)) {
+                        // Keep the dialog open and say why, rather than
+                        // silently submitting an empty reason.
+                        inputEl.classList.add('fv-invalid');
+                        overlay.querySelector('.apx-alert-input-error').classList.add('show');
+                        inputEl.focus();
+                        return;
+                    }
+                }
+                var val = inputEl ? inputEl.value.trim() : null;
+                if (activeOnConfirm) activeOnConfirm(val);
                 hide(id);
             }));
         } else {
@@ -121,6 +171,14 @@
         }
 
         overlay.classList.add('open');
+
+        if (inputEl) {
+            inputEl.addEventListener('input', function () {
+                inputEl.classList.remove('fv-invalid');
+                overlay.querySelector('.apx-alert-input-error').classList.remove('show');
+            });
+            inputEl.focus();
+        }
     }
 
     document.addEventListener('DOMContentLoaded', function () {

@@ -128,5 +128,85 @@
             });
     }
 
-    window.ApxBookingActions = { markArrived: markArrived };
+    /**
+     * Cancel a booking, collecting the reason the server now requires.
+     * Red here, unlike Start Service: this one is destructive.
+     */
+    function cancelBooking(id, btn, onSuccess) {
+        alertModal({
+            variant: 'confirm',
+            title: 'Cancel this booking?',
+            message: 'The booking stays on record with the reason below. The slot is freed straight away.',
+            confirmText: 'Cancel booking',
+            cancelText: 'Keep booking',
+            input: {
+                label: 'Reason for cancelling',
+                placeholder: 'e.g. Customer rescheduled by phone',
+                required: true,
+                minlength: 3,
+                maxlength: 500,
+                multiline: true,
+                requiredMessage: 'Please give a reason for cancelling this booking.'
+            },
+            onConfirm: function (reason) { sendCancel(id, btn, reason, onSuccess); }
+        });
+    }
+
+    function sendCancel(id, btn, reason, onSuccess) {
+        if (btn) {
+            if (btn.disabled) return;
+            btn.disabled = true;
+            btn.style.opacity = '.55';
+        }
+
+        function release() {
+            if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+        }
+
+        fetch('/admin/bookings/' + id + '/cancel', {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfToken()
+            },
+            body: JSON.stringify({ reason: reason })
+        })
+            .then(parse)
+            .then(function (result) {
+                if (!result.ok || !result.data || !result.data.success) {
+                    release();
+                    alertModal({
+                        variant: 'error',
+                        title: 'Could not cancel booking',
+                        // A 422 from validation nests its text under errors.reason.
+                        message: (result.data && result.data.errors && result.data.errors.reason
+                                    ? result.data.errors.reason[0]
+                                    : failureMessage(result))
+                    });
+                    return;
+                }
+
+                if (typeof onSuccess === 'function') onSuccess(result.data);
+
+                alertModal({
+                    variant: 'success',
+                    title: 'Booking cancelled',
+                    message: result.data.message || 'The booking has been cancelled.',
+                    confirmText: 'Done'
+                });
+            })
+            .catch(function (err) {
+                release();
+                console.error('Cancel failed:', err);
+                alertModal({
+                    variant: 'error',
+                    title: 'Could not cancel booking',
+                    message: 'Could not reach the server. Check your connection and try again.'
+                });
+            });
+    }
+
+    window.ApxBookingActions = { markArrived: markArrived, cancelBooking: cancelBooking };
 })(window, document);
