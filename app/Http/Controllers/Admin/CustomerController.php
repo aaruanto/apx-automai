@@ -13,19 +13,27 @@ class CustomerController extends Controller
 {
     public function index()
     {
-        $customers = Customer::with(['user', 'vehicle'])
+        // user.vehicles is eager-loaded rather than counted per row: the list
+        // needs both the count and every plate for the search box, and this
+        // fetches them all in one query instead of two per customer.
+        $customers = Customer::with(['user.vehicles'])
             ->withCount('bookings')
             ->latest()
             ->get()
             ->map(function ($c) {
+                $vehicles = $c->user?->vehicles ?? collect();
+
                 $c->name       = $c->user->name ?? 'N/A';
                 $c->email      = $c->user->email ?? '';
                 $c->phone      = $c->phone ?? $c->user->phone ?? '';
                 $c->last_visit = $c->bookings()->latest('booking_date')->value('booking_date');
-                // ?? suppresses a null property read but not a null method
-                // call, so a customer whose user was soft-deleted (which
-                // account deletion does) brought down this whole page.
-                $c->vehicle    = $c->vehicle ?? $c->user?->vehicles()->latest()->first();
+
+                // A customer can own several vehicles, so showing one plate
+                // here misrepresented them. The count is the honest summary;
+                // the plates themselves live on the customer's own page.
+                $c->vehicle_count = $vehicles->count();
+                $c->plate_search  = $vehicles->pluck('plate_number')->implode(' ');
+
                 return $c;
             });
 
@@ -83,7 +91,8 @@ class CustomerController extends Controller
         $customer          = Customer::with(['user', 'user.vehicles'])->findOrFail($id);
         $customer->name    = $customer->user->name ?? '';
         $customer->email   = $customer->user->email ?? '';
-        $customer->vehicle = $customer->user->vehicles()->latest()->first();
+        $customer->vehicle  = $customer->user?->vehicles()->latest()->first();
+        $customer->vehicles = $customer->user?->vehicles ?? collect();
         $customer->bookings_count = $customer->bookings()->count();
         $customer->last_visit     = $customer->bookings()->latest('booking_date')->value('booking_date');
 

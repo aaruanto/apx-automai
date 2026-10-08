@@ -1519,7 +1519,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                         ${v.color ? `<span><i class="fas fa-palette"></i>${esc(v.color)}</span>` : ''}
                     </div>
                     <div class="vehicle-card-actions">
-                        ${!v.primary ? `<button class="btn-veh-action" onclick="setPrimaryVehicle('${v.id}')"><i class="fas fa-star"></i> Set Primary</button>` : '<button class="btn-veh-action" disabled style="opacity:0.4;cursor:default;"><i class="fas fa-star" style="color:var(--warning);"></i> Primary</button>'}
+                        <button class="btn-veh-action" onclick="editVehicle(${v.id})"><i class="fas fa-pen"></i> Edit</button>
                         <button class="btn-veh-action danger" onclick="deleteVehicle(${v.id})"><i class="fas fa-trash"></i> Remove</button>
                     </div>
                 </div>
@@ -1527,14 +1527,53 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         refreshProfileVehicleSummary();
     }
 
+    // Null when adding, a vehicle id when editing. The same form serves both
+    // rather than maintaining a second near-identical one.
+    let editingVehicleId = null;
+
+    function setVehicleFormMode(mode) {
+        const btn   = document.querySelector('.btn-avf-save');
+        const title = document.querySelector('#addVehicleForm .add-vehicle-form-title');
+        if (btn)   btn.innerHTML = mode === 'edit'
+            ? '<i class="fas fa-floppy-disk"></i> Save Changes'
+            : '<i class="fas fa-floppy-disk"></i> Save Vehicle';
+        if (title) title.innerHTML = mode === 'edit'
+            ? '<i class="fas fa-pen"></i> Edit Vehicle'
+            : '<i class="fas fa-circle-plus"></i> Register a New Vehicle';
+    }
+
     function toggleAddVehicleForm() {
         const form = document.getElementById('addVehicleForm');
         form.classList.toggle('open');
         if (form.classList.contains('open')) {
+            editingVehicleId = null;
+            setVehicleFormMode('add');
             ['avfMake','avfYear','avfPlate','avfColor'].forEach(id => document.getElementById(id).value = '');
             document.getElementById('avfType').value = 'car';
             setTimeout(() => document.getElementById('avfMake').focus(), 100);
         }
+    }
+
+    function editVehicle(id) {
+        const v = MY_VEHICLES.find(x => x.id == id);
+        if (!v) return;
+
+        editingVehicleId = v.id;
+
+        const form = document.getElementById('addVehicleForm');
+        form.classList.add('open');
+        setVehicleFormMode('edit');
+
+        document.getElementById('avfMake').value  = v.make  || '';
+        document.getElementById('avfYear').value  = v.year  || '';
+        // "Not provided" is the placeholder a blank plate displays as; it is
+        // not a real plate, so it must not be typed back into the field.
+        document.getElementById('avfPlate').value = (v.plate && v.plate !== 'Not provided') ? v.plate : '';
+        document.getElementById('avfColor').value = v.color || '';
+        document.getElementById('avfType').value  = v.type  || 'car';
+
+        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => document.getElementById('avfMake').focus(), 200);
     }
 
     // ── Add-vehicle field validation ────────────────────────────────────────
@@ -1554,31 +1593,56 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         return;
     }
 
-    // Fix 3: Confirmation popup before registering
+    // The same form adds and edits, so the request differs only in verb and URL.
+    const editing = editingVehicleId !== null;
+
     apxDialog({
-        type: 'info', title: 'Confirm Vehicle Registration',
+        type: 'info',
+        title: editing ? 'Confirm Vehicle Changes' : 'Confirm Vehicle Registration',
         msg: `Please confirm the vehicle details:<br><br>
               <strong>Make / Model:</strong> ${make}<br>
               <strong>Year:</strong> ${year}<br>
               <strong>Plate:</strong> ${plate}${color ? '<br><strong>Color:</strong> ' + color : ''}`,
-        confirmLabel: '<i class="fas fa-floppy-disk" style="margin-right:5px;"></i> Register',
+        confirmLabel: editing
+            ? '<i class="fas fa-floppy-disk" style="margin-right:5px;"></i> Save Changes'
+            : '<i class="fas fa-floppy-disk" style="margin-right:5px;"></i> Register',
         cancelLabel: 'Go Back',
         onConfirm: () => {
-            fetch('/customer/vehicles', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            fetch(editing ? `/customer/vehicles/${editingVehicleId}` : '/customer/vehicles', {
+                method: editing ? 'PATCH' : 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
                 body: JSON.stringify({ brand: make, model: '', plate, year: parseInt(year), color, vehicle_type: vtype })
             })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    MY_VEHICLES.push(data.vehicle);
-                    toggleAddVehicleForm();
-                    renderVehicles();
-                    apxDialog({ type: 'success', title: 'Vehicle Registered', msg: `<strong>${make}</strong> has been added to your account.`, confirmLabel: 'OK' });
-                } else {
-                    apxDialog({ type: 'danger', title: 'Registration Failed', msg: data.message || 'Failed to save vehicle. Please try again.', confirmLabel: 'OK' });
+            .then(r => r.json().catch(() => ({})).then(d => ({ ok: r.ok, data: d })))
+            .then(({ ok, data }) => {
+                if (!ok || !data.success) {
+                    // Laravel returns 422 validation errors under errors{}.
+                    const first = data.errors ? Object.values(data.errors)[0][0] : null;
+                    apxDialog({
+                        type: 'danger',
+                        title: editing ? 'Update Failed' : 'Registration Failed',
+                        msg: first || data.message || 'Failed to save vehicle. Please try again.',
+                        confirmLabel: 'OK'
+                    });
+                    return;
                 }
+
+                if (editing) {
+                    MY_VEHICLES = MY_VEHICLES.map(v => v.id == editingVehicleId ? data.vehicle : v);
+                } else {
+                    MY_VEHICLES.push(data.vehicle);
+                }
+
+                editingVehicleId = null;
+                toggleAddVehicleForm();
+                renderVehicles();
+
+                apxDialog({
+                    type: 'success',
+                    title: editing ? 'Vehicle Updated' : 'Vehicle Registered',
+                    msg: `<strong>${make}</strong> has been ${editing ? 'updated' : 'added to your account'}.`,
+                    confirmLabel: 'OK'
+                });
             })
             .catch(() => apxDialog({ type: 'danger', title: 'Error', msg: 'Could not connect to the server. Please try again.', confirmLabel: 'OK' }));
         }

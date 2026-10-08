@@ -92,6 +92,30 @@
                                    value="{{ $customer->vehicle->model ?? '' }}"
                                    placeholder="e.g. Toyota Vios 2021" />
                         </div>
+
+                        {{-- The list view shows a count rather than one plate,
+                             because a customer can own several. This is where
+                             the plates themselves are readable. --}}
+                        @if(isset($customer) && ($customer->vehicles ?? collect())->count() > 1)
+                        <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border);">
+                            <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">
+                                All registered vehicles ({{ $customer->vehicles->count() }})
+                            </div>
+                            @foreach($customer->vehicles as $veh)
+                            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:.85rem;">
+                                <i class="fas fa-{{ $veh->vehicle_type === 'motorcycle' ? 'motorcycle' : 'car' }}" style="color:var(--text-muted);width:16px;"></i>
+                                <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.04em;">{{ $veh->display_plate }}</span>
+                                <span style="color:var(--text-muted);">{{ $veh->display_name }}</span>
+                                @if($veh->is_primary)
+                                <span style="margin-left:auto;font-size:.68rem;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.06em;">Primary</span>
+                                @endif
+                            </div>
+                            @endforeach
+                            <div style="font-size:.74rem;color:var(--text-muted);margin-top:9px;">
+                                The fields above edit the most recently added vehicle.
+                            </div>
+                        </div>
+                        @endif
                     </div>
                 </div>
             </div>

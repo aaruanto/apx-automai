@@ -42,7 +42,7 @@
                     <tr>
                         <th>Customer</th>
                         <th>Contact</th>
-                        <th>Vehicle</th>
+                        <th>Vehicles</th>
                         <th>Bookings</th>
                         <th>Last Visit</th>
                         <th style="text-align:center;">Actions</th>
@@ -53,7 +53,7 @@
                 @php
                     $initials = strtoupper(substr($c->name,0,1).substr(strrchr($c->name,' '),1,1));
                 @endphp
-                <tr data-search="{{ strtolower($c->name.' '.$c->phone.' '.($c->vehicle->plate_number ?? '')) }}">
+                <tr data-search="{{ strtolower($c->name.' '.$c->phone.' '.$c->plate_search) }}">
                     <td>
                         <div style="display:flex;align-items:center;gap:10px;">
                             <div style="width:34px;height:34px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border);
@@ -72,8 +72,17 @@
                         <div style="font-size:.74rem;color:var(--text-muted);">{{ $c->email }}</div>
                     </td>
                     <td>
-                        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.04em;">{{ $c->vehicle?->display_plate ?? '—' }}</div>
-                        <div style="font-size:.74rem;color:var(--text-muted);">{{ $c->vehicle->model ?? '' }}</div>
+                        @if($c->vehicle_count)
+                        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.05rem;">
+                            {{ $c->vehicle_count }}
+                        </div>
+                        <div style="font-size:.74rem;color:var(--text-muted);">
+                            {{ \Illuminate\Support\Str::plural('vehicle', $c->vehicle_count) }}
+                        </div>
+                        @else
+                        <div style="color:var(--text-muted);">—</div>
+                        <div style="font-size:.74rem;color:var(--text-muted);">none registered</div>
+                        @endif
                     </td>
                     <td>
                         <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.1rem;color:var(--text);">{{ $c->bookings_count ?? 0 }}</span>

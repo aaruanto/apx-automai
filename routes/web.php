@@ -109,6 +109,7 @@ Route::middleware(['auth', 'role:customer', 'maintenance'])->group(function () {
     Route::post('/customer/bookings',              [CustomerDashboard::class, 'store'])           ->name('customer.bookings.store');
     Route::patch('/customer/bookings/{id}/cancel', [CustomerDashboard::class, 'cancelBooking'])   ->name('customer.bookings.cancel');
     Route::post('/customer/vehicles',              [CustomerDashboard::class, 'storeVehicle'])    ->name('customer.vehicles.store');
+    Route::patch('/customer/vehicles/{id}',        [CustomerDashboard::class, 'updateVehicle'])   ->name('customer.vehicles.update');
     Route::delete('/customer/vehicles/{id}',       [CustomerDashboard::class, 'destroyVehicle'])  ->name('customer.vehicles.destroy');
     Route::patch('/customer/vehicles/{id}/primary',[CustomerDashboard::class, 'setPrimaryVehicle'])->name('customer.vehicles.setPrimary');
     Route::patch('/customer/profile',              [CustomerDashboard::class, 'updateProfile'])   ->name('customer.profile.update');

@@ -167,6 +167,11 @@ class DashboardController extends Controller
             ], 422);
         }
 
+        // The booking form preselects the primary vehicle, so a customer whose
+        // vehicles are all non-primary got no default. The first one they add
+        // becomes primary.
+        $isFirst = ! Vehicle::where('user_id', Auth::id())->exists();
+
         $vehicle = Vehicle::create([
             'user_id'      => Auth::id(),
             'make'         => $data['brand'],
@@ -175,6 +180,7 @@ class DashboardController extends Controller
             'vehicle_type' => $data['vehicle_type'] ?? 'car',
             'year'         => $data['year'],
             'color'        => $data['color'] ?? '',
+            'is_primary'   => $isFirst,
         ]);
 
         return response()->json([
@@ -186,8 +192,74 @@ class DashboardController extends Controller
                 'plate'   => $vehicle->display_plate,
                 'color'   => $vehicle->color,
                 'type'    => $vehicle->vehicle_type,
-                'primary' => false,
+                'primary' => (bool) $vehicle->is_primary,
             ]
+        ]);
+    }
+
+    /**
+     * Edit one of the signed-in customer's own vehicles.
+     *
+     * Looked up by owner as well as id, so passing someone else's vehicle id
+     * is a 404 rather than an edit. destroyVehicle already did this; there was
+     * simply no update path at all before.
+     */
+    public function updateVehicle(Request $request, $id)
+    {
+        $json = json_decode($request->getContent(), true);
+        if (is_array($json)) {
+            $request->merge($json);
+        }
+
+        $vehicle = Vehicle::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
+
+        $data = $request->validate([
+            'brand'        => 'required|string|max:100',
+            'model'        => 'nullable|string|max:100',
+            'plate'        => ['required', 'string', 'max:20', 'regex:/^[A-Z]{3} \d{3,4}$/i'],
+            'year'         => 'required|integer|min:1990|max:2100',
+            'color'        => 'nullable|string|max:40',
+            'vehicle_type' => 'nullable|in:car,motorcycle',
+        ], [
+            'plate.regex' => 'Enter a valid plate number (e.g. ABC 1234).',
+        ]);
+
+        $plate = strtoupper(trim($data['plate']));
+
+        // Plates are unique across the system, since a plate identifies one
+        // real vehicle. The vehicle's own current plate is allowed through so
+        // editing anything else about it does not trip the check.
+        $taken = Vehicle::where('plate_number', $plate)
+            ->where('id', '!=', $vehicle->id)
+            ->exists();
+
+        if ($taken) {
+            return response()->json([
+                'success' => false,
+                'message' => 'That plate number is already registered.',
+            ], 422);
+        }
+
+        $vehicle->update([
+            'make'         => $data['brand'],
+            'model'        => $data['model'] ?? '',
+            'plate_number' => $plate,
+            'vehicle_type' => $data['vehicle_type'] ?? $vehicle->vehicle_type,
+            'year'         => $data['year'],
+            'color'        => $data['color'] ?? '',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'vehicle' => [
+                'id'      => $vehicle->id,
+                'make'    => trim($vehicle->make . ' ' . $vehicle->model),
+                'year'    => $vehicle->year,
+                'plate'   => $vehicle->display_plate,
+                'color'   => $vehicle->color,
+                'type'    => $vehicle->vehicle_type,
+                'primary' => (bool) $vehicle->is_primary,
+            ],
         ]);
     }
 
