@@ -344,27 +344,60 @@ class DashboardController extends Controller
 
     public function updateProfile(Request $request)
     {
-        $body = json_decode($request->getContent(), true);
-        $user = Auth::user();
-
-        // Save phone to users table
-        if (!empty($body['phone'])) {
-            $user->update(['phone' => $body['phone']]);
+        // The form posts a JSON body; merge it so validation can see the fields.
+        $json = json_decode($request->getContent(), true);
+        if (is_array($json)) {
+            $request->merge($json);
         }
 
-        // Save dob and address to customers table
+        // Empty strings from untouched date/text inputs would otherwise fail
+        // the date rule rather than reading as "not set".
+        foreach (['dob', 'address', 'phone'] as $optional) {
+            if ($request->input($optional) === '') {
+                $request->merge([$optional => null]);
+            }
+        }
+
+        // There was no validation here at all, so a bad value failed silently.
+        $data = $request->validate([
+            'name'    => ['required', 'string', 'max:255'],
+            'phone'   => ['nullable', 'string', 'max:20'],
+            'dob'     => ['nullable', 'date'],
+            'address' => ['nullable', 'string', 'max:500'],
+        ], [
+            'name.required' => 'Your full name is required.',
+        ]);
+
+        $user = Auth::user();
+
+        // name was never written here. The form offered it, the request never
+        // carried it, and this method never looked for it, so saving appeared
+        // to work and changed nothing.
+        $user->update([
+            'name'  => trim($data['name']),
+            'phone' => $data['phone'] ?? $user->phone,
+        ]);
+
+        // Email is intentionally absent: the field is readonly on the form and
+        // is not accepted here, so Phase 1's uniqueness rules have nothing to
+        // guard on this path.
+
         $customer = Customer::firstOrCreate(
             ['user_id' => $user->id],
             ['phone'   => $user->phone ?? null]
         );
 
         $customer->update([
-            'phone'   => $body['phone']   ?? $customer->phone,
-            'dob'     => $body['dob']     ?? $customer->dob,
-            'address' => $body['address'] ?? $customer->address,
+            'phone'   => $data['phone']   ?? $customer->phone,
+            'dob'     => $data['dob']     ?? $customer->dob,
+            'address' => $data['address'] ?? $customer->address,
         ]);
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'name'    => $user->name,
+            'initials' => strtoupper(mb_substr($user->name, 0, 2)),
+        ]);
     }
 
     // ── Account deletion (self-service, no admin approval) ─────────────────

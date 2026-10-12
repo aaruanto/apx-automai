@@ -603,7 +603,7 @@
                                 <div class="profile-field-grid">
                                     <div class="profile-field">
                                         <label>Full Name</label>
-                                        <div class="profile-read-val"><i class="fas fa-user"></i> {{ Auth::user()->name }}</div>
+                                        <div class="profile-read-val" id="prv-name"><i class="fas fa-user"></i> {{ Auth::user()->name }}</div>
                                     </div>
                                     <div class="profile-field">
                                         <label>Email Address</label>
@@ -1589,6 +1589,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
 
     // ── Add-vehicle field validation ────────────────────────────────────────
     PlateMask.attach(document.getElementById('avfPlate'));
+    FormValidate.register(document.getElementById('pef-name'), { rules: [FormValidate.rules.required('Your full name is required.')] });
     FormValidate.register(document.getElementById('avfMake'), { rules: [FormValidate.rules.required('Make / model is required.')] });
     FormValidate.register(document.getElementById('avfYear'), { rules: [FormValidate.rules.required('Year is required.')] });
     FormValidate.register(document.getElementById('avfPlate'), { rules: [FormValidate.rules.required('Plate number is required.'), FormValidate.rules.plate()] });
@@ -1748,11 +1749,17 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
 
     // Fix 6: Save profile info to backend, then update read view on success
     function saveProfileInfo() {
+        // name was collected by the form but never read here, so it never
+        // reached the server and "Save Changes" silently discarded it.
+        const name    = document.getElementById('pef-name').value.trim();
         const phone   = document.getElementById('pef-phone').value.trim();
         const dob     = document.getElementById('pef-dob').value;
         const address = document.getElementById('pef-address').value.trim();
 
-        if (!FormValidate.validateField(document.getElementById('pef-phone'))) return;
+        if (!FormValidate.validateForm([
+            document.getElementById('pef-name'),
+            document.getElementById('pef-phone'),
+        ])) return;
 
         const saveBtn = document.querySelector('#profileEditView .btn-profile-save');
         if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…'; }
@@ -1760,12 +1767,30 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         fetch('/customer/profile', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify({ phone, dob, address })
+            body: JSON.stringify({ name, phone, dob, address })
         })
-        .then(r => r.json())
+        .then(r => r.json().catch(() => ({})).then(d => { d._ok = r.ok; return d; }))
         .then(data => {
             if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-floppy-disk"></i> Save Changes'; }
+
+            // A 422 nests its text under errors{}; without this the real
+            // reason was replaced by a generic "failed, please try again".
+            if (!data._ok && data.errors) {
+                data.message = Object.values(data.errors)[0][0];
+            }
             if (data.success) {
+                // Patch every place the name appears, so it is consistent
+                // without a reload. It lives in one column, so everywhere else
+                // picks it up on the next page load.
+                const freshName = data.name || name;
+                document.getElementById('prv-name').innerHTML = '<i class="fas fa-user"></i> ' + freshName;
+
+                const navName = document.querySelector('.user-name');
+                if (navName) navName.textContent = freshName;
+
+                const avatar = document.querySelector('.user-avatar');
+                if (avatar && data.initials) avatar.textContent = data.initials;
+
                 if (phone)   document.getElementById('prv-phone').innerHTML   = '<i class="fas fa-phone"></i> ' + phone;
                 if (dob)     document.getElementById('prv-dob').innerHTML     = '<i class="fas fa-cake-candles"></i> ' + dob;
                 if (address) document.getElementById('prv-address').innerHTML = '<i class="fas fa-location-dot"></i> ' + address;
