@@ -255,6 +255,16 @@
                 <a href="#how-it-works" class="nav-item nav-link">How It Works</a>
                 <a href="#testimonials" class="nav-item nav-link">Reviews</a>
                 <a href="#about" class="nav-item nav-link">About</a>
+
+                {{-- Login inside the collapsed menu. The desktop button below
+                     is d-none d-lg-block, so below 992px it was hidden and
+                     there was no other way in from the landing page.
+                     min-height keeps the tap target at 44px. --}}
+                <a href="{{ route('login') }}"
+                   class="btn btn-primary d-lg-none mt-3 d-flex align-items-center justify-content-center"
+                   style="min-height:48px;">
+                    <i class="fa fa-right-to-bracket me-2"></i> Login
+                </a>
             </div>
             <a href="{{ route('login') }}" class="btn btn-primary py-4 px-lg-5 d-none d-lg-block">Login</a>
         </div>
