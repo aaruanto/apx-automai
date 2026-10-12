@@ -66,14 +66,16 @@ test('the credentials chosen at registration work at login', function () {
     $this->assertAuthenticated();
 });
 
-test('claiming a guest account does not sign the user in either', function () {
-    // Guest bookings create an unverified placeholder account, which the
-    // customer later claims by registering with the same email.
+test('registering with a guest account email is rejected, not claimed', function () {
+    // This used to overwrite the existing account's password and hand it over.
+    // Claiming now goes through the password-reset flow instead, which proves
+    // control of the mailbox; registration only ever creates.
     $guest = User::create([
         'name'     => 'Guest Person',
         'email'    => 'guest@example.com',
         'role'     => 'customer',
-        'password' => 'unknown-to-anyone',
+        'password' => 'placeholder-nobody-knows',
+        'is_guest' => true,
     ]);
 
     $this->post('/register', [
@@ -82,18 +84,11 @@ test('claiming a guest account does not sign the user in either', function () {
         'email'      => 'guest@example.com',
         'password'   => 'chosen-at-claim',
         'password_confirmation' => 'chosen-at-claim',
-    ])->assertRedirect(route('login', absolute: false));
+    ])->assertSessionHasErrors('email');
 
     $this->assertGuest();
 
-    // The claim replaced the placeholder password rather than adding a user.
+    // Untouched, and no second row created.
     expect(User::where('email', 'guest@example.com')->count())->toBe(1);
-
-    $this->post('/login', [
-        'email' => 'guest@example.com',
-        'password' => 'chosen-at-claim',
-    ]);
-    $this->assertAuthenticated();
-
-    expect($guest->fresh()->name)->toBe('Guest Person');
+    expect(Illuminate\Support\Facades\Hash::check('placeholder-nobody-knows', $guest->fresh()->password))->toBeTrue();
 });

@@ -28,6 +28,7 @@ class User extends Authenticatable
     // here, so update() silently dropped it and both callers that needed
     // it had to reach past mass assignment with forceFill.
     'is_active',
+    'is_guest',
 ];
 
     /**
@@ -50,6 +51,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'is_active'         => 'boolean',
+            'is_guest'          => 'boolean',
             'password' => 'hashed',
         ];
     }

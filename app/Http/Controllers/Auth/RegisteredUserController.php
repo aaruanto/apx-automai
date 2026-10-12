@@ -28,38 +28,31 @@ class RegisteredUserController extends Controller
      */
  public function store(Request $request): RedirectResponse
 {
+    // Normalise before validating, so "  User@Mail.COM " cannot slip past the
+    // uniqueness check as a different address from "user@mail.com".
+    $request->merge([
+        'email' => strtolower(trim((string) $request->input('email'))),
+    ]);
+
     $request->validate([
         'first_name' => ['required', 'string', 'max:255'],
         'last_name'  => ['required', 'string', 'max:255'],
-        'email'      => ['required', 'string', 'lowercase', 'email', 'max:255'],
+        // unique was missing here, and only here: every other path that
+        // creates a user already had it. Without it, the block below was the
+        // only thing standing between a stranger and an existing account.
+        'email'      => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
         'phone'      => ['nullable', 'string', 'max:20'],
         'password'   => ['required', 'confirmed', Rules\Password::defaults()],
+    ], [
+        'email.unique' => 'This email is already registered. Please log in instead, '
+                          .'or use "Forgot password?" if you booked as a guest and have not set one yet.',
     ]);
 
-    // Check if email belongs to a guest account (auto-created during guest booking)
-    $existingUser = User::where('email', $request->email)->first();
-
-    if ($existingUser) {
-        // If it's a real registered account, block it
-        if ($existingUser->email_verified_at || !str_starts_with($existingUser->name, $request->first_name)) {
-            return back()->withErrors(['email' => 'This email is already registered. Please login instead.'])->withInput();
-        }
-
-        // It's a guest account — let them claim it
-        $existingUser->update([
-            'name'      => $request->first_name . ' ' . $request->last_name,
-            'phone'     => $request->phone ?? $existingUser->phone,
-            'password'  => Hash::make($request->password),
-            'role'      => 'customer',
-        ]);
-
-        event(new Registered($existingUser));
-
-        return redirect()->route('login')
-            ->with('status', 'Your account has been set up. Please log in to continue.');
-    }
-
-    // Brand new user
+    // Registration only ever creates. It previously overwrote an existing
+    // user's password when their account was unverified and their name began
+    // with whatever first_name was typed — and since nothing sets
+    // email_verified_at, and str_starts_with matches a single letter, that
+    // was an account takeover with an email address and one guess.
     $user = User::create([
         'name'     => $request->first_name . ' ' . $request->last_name,
         'email'    => $request->email,

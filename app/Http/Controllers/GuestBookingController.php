@@ -18,6 +18,10 @@ class GuestBookingController extends Controller
 {
     public function store(Request $request)
     {
+        $request->merge([
+            'guest_email' => strtolower(trim((string) $request->input('guest_email'))),
+        ]);
+
         $request->validate([
             'guest_name'     => 'required|string|max:255',
             'guest_email'    => 'required|email|max:255',
@@ -34,17 +38,22 @@ class GuestBookingController extends Controller
             'vehicle_plate.regex' => 'Enter a valid plate number (e.g. ABC 1234).',
         ]);
 
-        // ── Block existing registered accounts from booking as guest ──────
+        // ── Block real accounts from booking as a guest ───────────────────
+        // This gate used to test email_verified_at, which nothing in this app
+        // ever sets, so it never fired: a guest booking with a known email was
+        // silently filed into that person's account. is_guest marks an account
+        // the shop created on someone's behalf, which they have never set a
+        // password for; booking again as a guest on one of those is fine.
         $existingUser = User::where('email', $request->guest_email)->first();
 
-        if ($existingUser && $existingUser->email_verified_at) {
+        if ($existingUser && ! $existingUser->is_guest) {
             return response()->json([
                 'success' => false,
-                'message' => 'This email already has an account. Please login to book a service.',
+                'message' => 'This email already has an account. Please log in to book a service.',
             ], 422);
         }
 
-        // ── Find or create a guest/customer user account ──────────────────
+        // ── Find or create the guest's account ────────────────────────────
         $user = User::firstOrCreate(
             ['email' => $request->guest_email],
             [
@@ -53,6 +62,7 @@ class GuestBookingController extends Controller
                 'role'      => 'customer',
                 'password'  => bcrypt(Str::random(16)),
                 'is_active' => true,
+                'is_guest'  => true,
             ]
         );
 

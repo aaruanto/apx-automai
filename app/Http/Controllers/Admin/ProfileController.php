@@ -30,6 +30,8 @@ class ProfileController extends Controller
 
     public function update(Request $request)
     {
+        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+
         $request->validate([
             'name'  => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . Auth::id(),
