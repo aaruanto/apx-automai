@@ -470,7 +470,7 @@ class BookingController extends Controller
     {
         return CsvExport::stream(
             CsvExport::filename('bookings'),
-            ['Reference', 'Customer', 'Email', 'Phone', 'Vehicle', 'Plate', 'Service', 'Date', 'Time', 'Status', 'Booked On'],
+            ['Reference', 'Customer', 'Service', 'Date', 'Time', 'Status', 'Booked On'],
             $this->bookingRows(Booking::with(['user', 'service', 'vehicle', 'services'])->latest()->cursor())
         );
     }
@@ -480,7 +480,7 @@ class BookingController extends Controller
     {
         return CsvExport::stream(
             CsvExport::filename('cancelled-bookings'),
-            ['Reference', 'Customer', 'Email', 'Phone', 'Vehicle', 'Plate', 'Service', 'Date', 'Time', 'Status', 'Booked On'],
+            ['Reference', 'Customer', 'Service', 'Date', 'Time', 'Status', 'Booked On'],
             $this->bookingRows(
                 Booking::with(['user', 'service', 'vehicle', 'services'])->where('status', 'cancelled')->latest()->cursor()
             )
@@ -491,14 +491,16 @@ class BookingController extends Controller
     private function bookingRows(iterable $bookings): iterable
     {
         foreach ($bookings as $b) {
+            // Email, phone, vehicle and plate are deliberately absent: an
+            // exported file is the easiest thing to mislay, and none of them
+            // are needed to read a booking list.
+            //
+            // service_list rather than service->name, which showed only the
+            // first service once a booking could carry several.
             yield [
                 $b->reference_number,
                 $b->user->name ?? 'N/A',
-                $b->user->email ?? '',
-                $b->user->phone ?? '',
-                $b->vehicle?->display_name ?? '',
-                $b->vehicle?->display_plate ?? 'Not provided',
-                $b->service->name ?? '',
+                $b->service_list,
                 $b->booking_date,
                 $b->booking_time,
                 ucfirst(str_replace('_', ' ', $b->status)),

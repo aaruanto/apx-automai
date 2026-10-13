@@ -59,7 +59,9 @@ it('exports bookings as csv', function () {
     // The BOM matters: without it Excel reads the peso sign and accented
     // names using the system codepage and mangles them.
     expect($body)->toStartWith("\xEF\xBB\xBF");
-    expect($body)->toContain('Reference,Customer,Email');
+    // 5c removed Email, Phone, Vehicle and Plate from every export.
+    expect($body)->toContain('Reference,Customer,Service');
+    expect($body)->not->toContain('Email');
     expect($body)->toContain('Export Tester');
 });
 
@@ -79,7 +81,8 @@ it('exports customers as csv', function () {
 
     $body = csvBody($this->actingAs(exportAdmin())->get('/admin/customers/export')->assertOk());
 
-    expect($body)->toContain('Customer,Email,Phone,Vehicle,Plate');
+    expect($body)->toContain('Customer,Vehicles,');
+    expect($body)->not->toContain('Phone');
     expect($body)->toContain('Export Tester');
 });
 

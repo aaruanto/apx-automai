@@ -90,9 +90,22 @@
                     <td style="font-size:.8rem;">{{ $c->last_visit ? \Carbon\Carbon::parse($c->last_visit)->format('M d, Y') : '—' }}</td>
                     <td style="text-align:center;">
                         <div style="display:flex;gap:6px;justify-content:center;">
-                            <button class="btn btn-ghost btn-sm btn-icon" title="View History" onclick="openModal('viewCustomerModal')"><i class="fas fa-eye"></i></button>
-                            <a href="{{ route('admin.customers.edit', $c->id) }}" class="btn btn-ghost btn-sm btn-icon" title="Edit"><i class="fas fa-pen"></i></a>
-                            <button class="btn btn-danger btn-sm btn-icon" title="Delete" onclick="openModal('deleteCustomerModal')"><i class="fas fa-trash"></i></button>
+                            <button class="btn btn-ghost btn-sm btn-icon" title="View Details"
+                                    onclick="viewCustomer(this)"
+                                    data-name="{{ $c->name }}"
+                                    data-cid="{{ $c->id_display ?? 'C-'.str_pad($c->id, 3, '0', STR_PAD_LEFT) }}"
+                                    data-email="{{ $c->email }}"
+                                    data-phone="{{ $c->phone }}"
+                                    data-vehicles="{{ $c->vehicle_count }}"
+                                    data-plates="{{ $c->user?->vehicles->pluck('plate_number')->implode(', ') }}"
+                                    data-bookings="{{ $c->bookings_count ?? 0 }}"
+                                    data-last="{{ $c->last_visit ? \Carbon\Carbon::parse($c->last_visit)->format('M d, Y') : 'Never' }}"
+                            ><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-danger btn-sm btn-icon" title="Delete"
+                                    onclick="deleteCustomer(this)"
+                                    data-name="{{ $c->name }}"
+                                    data-action="{{ route('admin.customers.destroy', $c->id) }}"
+                            ><i class="fas fa-trash"></i></button>
                         </div>
                     </td>
                 </tr>
@@ -112,8 +125,21 @@
 
 @endsection
 
+@push('styles')
+<style>
+    .vc-label { font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:3px; }
+    .vc-value { font-size:.9rem; color:var(--text); }
+</style>
+@endpush
+
 @section('modals')
-<!-- VIEW CUSTOMER MODAL -->
+{{-- VIEW CUSTOMER MODAL
+     Both modals used to be static placeholders opened with no customer id, so
+     every row showed the same empty panel. They are filled from the clicked
+     row's data attributes now.
+
+     Read-only by design: personal details belong to the customer and are not
+     the shop's to edit (see CustomerController::update). --}}
 <div class="modal-overlay" id="viewCustomerModal">
     <div class="modal">
         <div class="modal-header">
@@ -121,7 +147,44 @@
             <button class="modal-close" onclick="closeModal('viewCustomerModal')"><i class="fas fa-xmark"></i></button>
         </div>
         <div class="modal-body">
-            <p style="color:var(--text-muted);font-size:.85rem;">Select a customer row to view their full details here.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;">
+                <div>
+                    <div class="vc-label">Name</div>
+                    <div class="vc-value" id="vc-name">—</div>
+                </div>
+                <div>
+                    <div class="vc-label">Customer ID</div>
+                    <div class="vc-value" id="vc-id">—</div>
+                </div>
+                <div>
+                    <div class="vc-label">Email</div>
+                    <div class="vc-value" id="vc-email">—</div>
+                </div>
+                <div>
+                    <div class="vc-label">Contact Number</div>
+                    <div class="vc-value" id="vc-phone">—</div>
+                </div>
+                <div>
+                    <div class="vc-label">Vehicles</div>
+                    <div class="vc-value" id="vc-vehicles">—</div>
+                </div>
+                <div>
+                    <div class="vc-label">Total Bookings</div>
+                    <div class="vc-value" id="vc-bookings">—</div>
+                </div>
+                <div style="grid-column:1/-1;">
+                    <div class="vc-label">Last Visit</div>
+                    <div class="vc-value" id="vc-last">—</div>
+                </div>
+                <div style="grid-column:1/-1;">
+                    <div class="vc-label">Registered Plates</div>
+                    <div class="vc-value" id="vc-plates">—</div>
+                </div>
+            </div>
+            <p style="margin:16px 0 0;font-size:.76rem;color:var(--text-muted);">
+                <i class="fas fa-lock" style="margin-right:5px;"></i>
+                Personal details are read-only. The customer updates these from their own account.
+            </p>
         </div>
         <div class="modal-footer">
             <button class="btn btn-ghost" onclick="closeModal('viewCustomerModal')">Close</button>
@@ -131,26 +194,58 @@
 
 <!-- DELETE CUSTOMER MODAL -->
 <div class="modal-overlay" id="deleteCustomerModal">
-    <div class="modal" style="max-width:380px;">
+    <div class="modal" style="max-width:420px;">
         <div class="modal-header">
             <div class="modal-title" style="color:var(--red);"><i class="fas fa-trash" style="margin-right:8px;"></i>Delete Customer?</div>
             <button class="modal-close" onclick="closeModal('deleteCustomerModal')"><i class="fas fa-xmark"></i></button>
         </div>
-        <div class="modal-body">
-            <p style="color:var(--text-muted);font-size:.9rem;line-height:1.6;">
-                This will <strong style="color:var(--red);">permanently delete</strong> this customer and all associated data. Are you sure?
-            </p>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="closeModal('deleteCustomerModal')">Cancel</button>
-            <button class="btn btn-danger"><i class="fas fa-trash"></i> Delete</button>
-        </div>
+        {{-- A real form: the Delete button here was a bare <button> with no
+             action, method or token, so it submitted nothing. --}}
+        <form method="POST" id="deleteCustomerForm" action="">
+            @csrf
+            @method('DELETE')
+            <div class="modal-body">
+                <p style="color:var(--text-muted);font-size:.9rem;line-height:1.6;margin:0;">
+                    Delete <strong id="dc-name" style="color:var(--text);">this customer</strong>?
+                </p>
+                <p style="color:var(--text-muted);font-size:.84rem;line-height:1.6;margin:10px 0 0;">
+                    A customer with bookings on record cannot be deleted, so their
+                    service history is never lost. If they have none, the account is
+                    removed and can be restored by a developer if this was a mistake.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('deleteCustomerModal')">Cancel</button>
+                <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Delete</button>
+            </div>
+        </form>
     </div>
 </div>
 @endsection
 
 @push('scripts')
 <script>
+function viewCustomer(btn) {
+    const d = btn.dataset;
+    const set = (id, v) => document.getElementById(id).textContent = (v && v !== '') ? v : '\u2014';
+    set('vc-name', d.name);
+    set('vc-id', d.cid);
+    set('vc-email', d.email);
+    set('vc-phone', d.phone);
+    set('vc-vehicles', d.vehicles);
+    set('vc-plates', d.plates);
+    set('vc-bookings', d.bookings);
+    set('vc-last', d.last);
+    openModal('viewCustomerModal');
+}
+
+function deleteCustomer(btn) {
+    // The form action is per-customer, so the modal deletes the row that
+    // opened it rather than nothing at all.
+    document.getElementById('dc-name').textContent = btn.dataset.name || 'this customer';
+    document.getElementById('deleteCustomerForm').action = btn.dataset.action;
+    openModal('deleteCustomerModal');
+}
 function applyFilters() {
     const search = document.getElementById('searchInput').value.toLowerCase();
     const rows   = document.querySelectorAll('#tableBody tr');

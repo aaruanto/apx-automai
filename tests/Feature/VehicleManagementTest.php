@@ -164,8 +164,12 @@ it('shows a vehicle count rather than one plate', function () {
     $response->assertSee('Vehicles');
     expect($response->viewData('customers')->first()->vehicle_count)->toBe(3);
 
-    // A single plate must not stand in for all three.
-    $response->assertDontSee('AAA 1111');
+    // The column is a count. The plates themselves now travel in the view
+    // modal payload, which is where an admin reads them.
+    $response->assertSee('data-plates=', false);
+    // Count and label render on separate lines, so assert the label only;
+    // the count itself is checked through viewData above.
+    $response->assertSee('vehicles', false);
 });
 
 it('still finds a customer by any of their plates', function () {

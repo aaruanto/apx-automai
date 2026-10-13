@@ -103,73 +103,73 @@ class CustomerController extends Controller
         return view('admin.customers.create', compact('customer'));
     }
 
+    /**
+     * A customer's personal details are not the shop's to edit.
+     *
+     * Name, email, phone and address belong to the customer and are changed by
+     * them from their own dashboard. This used to write all three straight onto
+     * the User record. It is refused here rather than only hidden in the form,
+     * so a crafted request cannot do what the screen no longer offers.
+     */
     public function update(Request $request, $id)
     {
-        $customer = Customer::findOrFail($id);
+        Customer::findOrFail($id);
 
-        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
-
-        $request->validate([
-            'name'  => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $customer->user_id,
-            'phone' => 'required|string|max:20',
-        ]);
-
-        $customer->user->update([
-            'name'  => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-        ]);
-
-        $customer->update([
-            'phone' => $request->phone,
-        ]);
-
-        if ($request->plate) {
-            $vehicle = $customer->user->vehicles()->latest()->first();
-            if ($vehicle) {
-                $vehicle->update([
-                    'plate_number' => strtoupper($request->plate),
-                    'model'        => $request->car_model ?? $vehicle->model,
-                    'color'        => $request->color ?? $vehicle->color,
-                ]);
-            } else {
-                $customer->user->vehicles()->create([
-                    'plate_number' => strtoupper($request->plate),
-                    'model'        => $request->car_model ?? '',
-                    'color'        => $request->color ?? '',
-                ]);
-            }
-        }
-
-        return redirect()->route('admin.customers.index')
-            ->with('success', 'Customer updated successfully.');
+        return redirect()
+            ->route('admin.customers.index')
+            ->with('error', 'Customer personal details are read-only. The customer can update them from their own account; booking details are edited from the booking itself.');
     }
 
+
+    /**
+     * Delete a customer, provided they have no bookings.
+     *
+     * A booking is a service and financial record, so a customer who has one is
+     * not deleted — the request is refused and says how many there are. The
+     * customer can still close their own account from their dashboard, which
+     * anonymises rather than destroys.
+     *
+     * The button behind this never worked: it opened a modal whose Delete was a
+     * bare <button> with no form, action or CSRF token, so nothing was ever
+     * submitted and no customer has ever been deleted through it.
+     */
     public function destroy($id)
     {
-        $customer = Customer::findOrFail($id);
-        $customer->user->delete(); // soft deletes user
+        $customer = Customer::with('user')->findOrFail($id);
+
+        $bookings = $customer->bookings()->count();
+
+        if ($bookings > 0) {
+            return redirect()->route('admin.customers.index')->with(
+                'error',
+                'This customer has '.$bookings.' booking'.($bookings === 1 ? '' : 's')
+                .' on record and cannot be deleted. Their service history would be lost.'
+            );
+        }
+
+        $name = $customer->user->name ?? 'Customer';
+
+        // Soft deletes: the row stays for referential safety, and the account
+        // can be recovered if this was a mistake.
+        $customer->user?->delete();
         $customer->delete();
 
         return redirect()->route('admin.customers.index')
-            ->with('success', 'Customer deleted.');
+            ->with('success', $name.' has been deleted.');
     }
     /** CSV of the customer list, matching the columns shown on screen. */
     public function export()
     {
         $rows = (function () {
-            $customers = Customer::with(['user', 'vehicle'])->withCount('bookings')->latest()->get();
+            $customers = Customer::with(['user.vehicles'])->withCount('bookings')->latest()->get();
 
             foreach ($customers as $c) {
-                $vehicle = $c->vehicle ?? $c->user?->vehicles()->latest()->first();
-
+                // No email, phone or plate: the file would otherwise be a
+                // contact list, and a count answers "how many vehicles"
+                // without identifying any of them.
                 yield [
                     $c->user->name ?? 'N/A',
-                    $c->user->email ?? '',
-                    $c->phone ?? $c->user->phone ?? '',
-                    $vehicle?->display_name ?? '',
-                    $vehicle?->display_plate ?? 'Not provided',
+                    $c->user?->vehicles->count() ?? 0,
                     $c->bookings_count,
                     $c->bookings()->latest('booking_date')->value('booking_date') ?? 'Never',
                 ];
@@ -178,7 +178,7 @@ class CustomerController extends Controller
 
         return CsvExport::stream(
             CsvExport::filename('customers'),
-            ['Customer', 'Email', 'Phone', 'Vehicle', 'Plate', 'Total Bookings', 'Last Visit'],
+            ['Customer', 'Vehicles', 'Total Bookings', 'Last Visit'],
             $rows
         );
     }
