@@ -106,7 +106,7 @@
     <footer>
         <div class="footer-brand"><span>APX</span> AutoMai &mdash; Admin Portal &copy; 2025</div>
         <div>
-            <a href="#">Privacy Policy</a>
+            <a href="{{ route('privacy') }}" target="_blank">Privacy Policy</a>
             &nbsp;&middot;&nbsp;
             <a href="{{ route('terms') }}" target="_blank">Terms &amp; Conditions</a>
         </div>

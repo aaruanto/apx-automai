@@ -907,7 +907,7 @@
             <!-- FOOTER -->
             <footer>
                 <div class="footer-brand"><span>APX</span> AutoMai &mdash; Customer Portal &copy; {{ date('Y') }}</div>
-                <div><a href="#">Privacy Policy</a> &nbsp;·&nbsp; <a href="{{ route('terms') }}" target="_blank">Terms &amp; Conditions</a></div>
+                <div><a href="{{ route('privacy') }}" target="_blank">Privacy Policy</a> &nbsp;·&nbsp; <a href="{{ route('terms') }}" target="_blank">Terms &amp; Conditions</a></div>
             </footer>
         </main>
     </div>

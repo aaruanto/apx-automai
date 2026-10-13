@@ -27,6 +27,7 @@ Route::get('/booking',     fn() => view('booking'));
 Route::get('/contact',     fn() => view('contact'));
 Route::get('/service',     fn() => view('service'));
 Route::get('/terms',       fn() => view('terms'))->name('terms');
+Route::get('/privacy',     fn() => view('privacy'))->name('privacy');
 
 // ── Auth profile (Breeze default) ──────────────────────────────────────────
 Route::middleware('auth')->group(function () {

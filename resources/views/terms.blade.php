@@ -79,7 +79,6 @@
         <div class="container">
             <div class="row justify-content-center">
                 <div class="col-lg-9">
-                    <h6 class="text-primary text-uppercase">// Legal //</h6>
                     <h1 class="mb-4">Terms &amp; Conditions</h1>
 
                     <p class="mb-4" style="color:#6b7280;">Last updated: {{ now()->format('F j, Y') }}</p>

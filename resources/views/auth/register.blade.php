@@ -112,7 +112,7 @@
 
                     <label class="terms-check">
                         <input type="checkbox" id="inputAgreeTerms" required />
-                        I agree to the <a href="{{ route('terms') }}" target="_blank">Terms &amp; Conditions</a> and <a href="#">Privacy Policy</a>
+                        I agree to the <a href="{{ route('terms') }}" target="_blank">Terms &amp; Conditions</a> and <a href="{{ route('privacy') }}" target="_blank">Privacy Policy</a>
                     </label>
 
                     <button type="submit" class="btn-primary" id="registerSubmitBtn">
@@ -131,7 +131,7 @@
     <footer>
         <div class="footer-brand"><span>APX</span> AutoMai &mdash; Portal &copy; 2025</div>
         <div>
-            <a href="#">Privacy Policy</a>
+            <a href="{{ route('privacy') }}" target="_blank">Privacy Policy</a>
             &nbsp;&middot;&nbsp;
             <a href="{{ route('terms') }}" target="_blank">Terms &amp; Conditions</a>
         </div>
