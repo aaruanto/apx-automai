@@ -33,14 +33,21 @@ class BookingAvailability
     /**
      * Operating hours by ISO weekday (1 = Monday ... 7 = Sunday), as [open, close].
      */
+    /**
+     * Opening hours by ISO weekday. null means closed that day.
+     *
+     * Monday to Friday, 9:00 AM to 6:00 PM; the shop does not take bookings at
+     * weekends. Admin Settings can still override the weekday times; a blank
+     * setting falls back to the value here.
+     */
     private const HOURS = [
-        1 => ['09:00', '21:00'],
-        2 => ['09:00', '21:00'],
-        3 => ['09:00', '21:00'],
-        4 => ['09:00', '21:00'],
-        5 => ['09:00', '21:00'],
-        6 => ['09:00', '12:00'],
-        7 => ['09:00', '12:00'],
+        1 => ['09:00', '18:00'],
+        2 => ['09:00', '18:00'],
+        3 => ['09:00', '18:00'],
+        4 => ['09:00', '18:00'],
+        5 => ['09:00', '18:00'],
+        6 => null,
+        7 => null,
     ];
 
     /**
@@ -49,20 +56,63 @@ class BookingAvailability
      *
      * @return array{0: Carbon, 1: Carbon}
      */
-    public function hoursFor(Carbon $date): array
+    public function hoursFor(Carbon $date): ?array
     {
         // Admin-configurable via Settings -> Booking. The HOURS map above is the
         // fallback for any value that has never been saved.
         $isWeekend = $date->dayOfWeekIso >= 6;
-        [$fallbackOpen, $fallbackClose] = self::HOURS[$date->dayOfWeekIso];
+        $fallback  = self::HOURS[$date->dayOfWeekIso];
 
-        $open  = Setting::get($isWeekend ? 'weekend_open_time'  : 'open_time')  ?: $fallbackOpen;
-        $close = Setting::get($isWeekend ? 'weekend_close_time' : 'close_time') ?: $fallbackClose;
+        $open  = Setting::get($isWeekend ? 'weekend_open_time'  : 'open_time')  ?: ($fallback[0] ?? null);
+        $close = Setting::get($isWeekend ? 'weekend_close_time' : 'close_time') ?: ($fallback[1] ?? null);
+
+        // Closed: no hours in the map and none configured. Weekends are closed
+        // by default, but an admin can reopen them by saving weekend times.
+        if (! $open || ! $close) {
+            return null;
+        }
 
         return [
             Carbon::parse($date->toDateString() . ' ' . $open),
             Carbon::parse($date->toDateString() . ' ' . $close),
         ];
+    }
+
+    /** Whether the shop takes bookings on this date at all. */
+    public function isOpenOn(Carbon $date): bool
+    {
+        return $this->hoursFor($date) !== null;
+    }
+
+    /**
+     * Reject a booking that falls outside opening hours or on a closed day.
+     *
+     * The hours were previously only used to build the calendar, so a request
+     * that posted a time directly — bypassing the picker — was never checked
+     * against them and could book 3 AM on a Sunday.
+     *
+     * @throws SlotUnavailableException
+     */
+    public function assertWithinHours(string $date, Carbon $start, Carbon $end): void
+    {
+        $day   = Carbon::parse($date)->startOfDay();
+        $hours = $this->hoursFor($day);
+
+        if ($hours === null) {
+            throw new SlotUnavailableException(
+                'We are closed on '.$day->format('l').'s. Please choose a weekday.'
+            );
+        }
+
+        [$open, $close] = $hours;
+
+        if ($start->lt($open) || $end->gt($close)) {
+            throw new SlotUnavailableException(
+                'That time is outside our opening hours ('
+                .$open->format('g:i A').' to '.$close->format('g:i A')
+                .'). Please choose another time.'
+            );
+        }
     }
 
     /** Start-time grid step — Settings -> Booking Slot Duration. */
@@ -135,6 +185,9 @@ class BookingAvailability
             $start = Carbon::parse($attributes['booking_date'] . ' ' . $attributes['booking_time']);
             $end   = $start->copy()->addMinutes($duration);
 
+            // Hours first: a slot outside opening hours is not a capacity
+            // question, and the message should say so.
+            $this->assertWithinHours($attributes['booking_date'], $start, $end);
             $this->assertAvailable($attributes['booking_date'], $start, $end, null, lock: true);
 
             $attributes['duration']          = $duration;
@@ -182,6 +235,7 @@ class BookingAvailability
             $start = Carbon::parse($date . ' ' . $time);
             $end   = $start->copy()->addMinutes($durationMinutes);
 
+            $this->assertWithinHours($date, $start, $end);
             $this->assertAvailable($date, $start, $end, $booking->id, lock: true);
         });
     }
@@ -193,7 +247,7 @@ class BookingAvailability
     {
         if ($this->maxOverlap($date, $start, $end, $excludeBookingId, $lock) >= self::MECHANIC_CAPACITY) {
             throw new SlotUnavailableException(
-                'That time slot is fully booked. Please choose another time.'
+                'That time slot is unavailable. Please choose another time.'
             );
         }
 
@@ -203,7 +257,7 @@ class BookingAvailability
 
         if ($cap > 0 && $this->bookingsOnDate($date, $excludeBookingId) >= $cap) {
             throw new SlotUnavailableException(
-                'We\'re fully booked on that date. Please choose another day.'
+                'That date is unavailable. Please choose another day.'
             );
         }
     }
@@ -217,8 +271,16 @@ class BookingAvailability
      */
     public function dayAvailability(string $date, int $durationMinutes): array
     {
-        $day = Carbon::parse($date)->startOfDay();
-        [$open, $close] = $this->hoursFor($day);
+        $day   = Carbon::parse($date)->startOfDay();
+        $hours = $this->hoursFor($day);
+
+        // Closed days have no slots at all, so the calendar shows the date as
+        // unavailable rather than offering times nobody can take.
+        if ($hours === null) {
+            return [];
+        }
+
+        [$open, $close] = $hours;
         $isToday = $day->isToday();
         $now     = now();
 

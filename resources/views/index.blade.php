@@ -476,7 +476,7 @@
                         <div class="bg-light p-4" style="border-radius:12px; border-left:4px solid #e63946;">
                             <h5 class="fw-bold mb-3" style="font-family:'Barlow',sans-serif;">APX Automai Service Center</h5>
                             <p class="mb-2"><i class="fa fa-map-marker-alt text-primary me-2"></i>5 Glenn St., Quezon City</p>
-                            <p class="mb-2"><i class="fa fa-clock text-primary me-2"></i>Mon – Fri: 9:00 AM – 9:00 PM &nbsp;|&nbsp; Sat – Sun: 9:00 AM – 12:00 PM</p>
+                            <p class="mb-2"><i class="fa fa-clock text-primary me-2"></i>Mon – Fri: 9:00 AM – 6:00 PM &nbsp;|&nbsp; Sat – Sun: Closed</p>
                             <p class="mb-0"><i class="fa fa-phone-alt text-primary me-2"></i>+63 9544 8888 50</p>
                         </div>
                         <!-- Shop photo thumbnails -->
@@ -871,9 +871,9 @@
                 <div class="col-lg-3 col-md-6">
                     <h4 class="text-light mb-4">Opening Hours</h4>
                     <h6 class="text-light">Monday - Friday:</h6>
-                    <p class="mb-4">09:00 AM - 09:00 PM</p>
+                    <p class="mb-4">09:00 AM - 06:00 PM</p>
                     <h6 class="text-light">Saturday - Sunday:</h6>
-                    <p class="mb-0">09:00 AM - 12:00 PM</p>
+                    <p class="mb-0">Closed</p>
                 </div>
             </div>
         </div>

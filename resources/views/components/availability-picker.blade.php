@@ -1,8 +1,8 @@
 @props(['id' => 'avp'])
 {{--
     Two-panel availability picker: a month calendar (green = has open
-    capacity, red = fully booked) on the left, a time-slot list ("Available:
-    N" / "Fully Booked") on the right. Purely presentational — all the logic
+    capacity, red = unavailable) on the left, a time-slot list ("Available:
+    N" / "Unavailable") on the right. Purely presentational — all the logic
     lives in /assets/js/availability-picker.js. A page wires it up with:
 
         const picker = new AvailabilityPicker({
@@ -28,7 +28,7 @@
         <div class="avp-days"></div>
         <div class="avp-legend">
             <span class="avp-legend-item"><i class="avp-dot avp-dot-open"></i> Available</span>
-            <span class="avp-legend-item"><i class="avp-dot avp-dot-full"></i> Fully booked</span>
+            <span class="avp-legend-item"><i class="avp-dot avp-dot-full"></i> Unavailable</span>
         </div>
     </div>
     <div class="avp-slots-panel">

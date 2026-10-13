@@ -192,7 +192,7 @@
             label.textContent = slot.label;
             var count = document.createElement('span');
             count.className = 'avp-slot-count';
-            count.textContent = slot.bookable ? ('Available: ' + slot.remaining) : 'Fully Booked';
+            count.textContent = slot.bookable ? ('Available: ' + slot.remaining) : 'Unavailable';
 
             btn.appendChild(label);
             btn.appendChild(count);
