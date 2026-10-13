@@ -84,7 +84,7 @@ Route::middleware(['auth', 'role:admin'])
     // ── Profile ────────────────────────────────────────────────────────────
     Route::get('/profile',                    [AdminProfileController::class, 'index'])         ->name('profile');
     Route::put('/profile',                    [AdminProfileController::class, 'update'])         ->name('profile.update');
-    Route::put('/profile/password',           [AdminProfileController::class, 'updatePassword']) ->name('profile.password');
+    Route::put('/profile/password',           [AdminProfileController::class, 'updatePassword']) ->name('profile.password')->middleware('throttle:6,1');
 
     // ── Settings ───────────────────────────────────────────────────────────
     Route::get('/settings',                   [SettingsController::class, 'index'])          ->name('settings');
@@ -124,6 +124,7 @@ Route::middleware(['auth', 'role:customer', 'maintenance'])->group(function () {
     Route::delete('/customer/vehicles/{id}',       [CustomerDashboard::class, 'destroyVehicle'])  ->name('customer.vehicles.destroy');
     Route::patch('/customer/vehicles/{id}/primary',[CustomerDashboard::class, 'setPrimaryVehicle'])->name('customer.vehicles.setPrimary');
     Route::patch('/customer/profile',              [CustomerDashboard::class, 'updateProfile'])   ->name('customer.profile.update');
+    Route::put('/customer/password',              [CustomerDashboard::class, 'updatePassword'])  ->name('customer.password.update')->middleware('throttle:6,1');
     Route::get('/customer/account/deletion-status', [CustomerDashboard::class, 'accountDeletionStatus'])->name('customer.account.status');
     Route::delete('/customer/account',             [CustomerDashboard::class, 'destroyAccount'])      ->name('customer.account.destroy');
 });

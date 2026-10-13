@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\EmailRule;
+
 use App\Models\Service;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -24,7 +26,7 @@ class GuestBookingController extends Controller
 
         $request->validate([
             'guest_name'     => 'required|string|max:255',
-            'guest_email'    => 'required|email|max:255',
+            'guest_email'    => ['required', EmailRule::strict(), 'max:255'],
             'booking_date'   => 'required|date|after_or_equal:today',
             'booking_time'   => 'required',
             'service_ids'    => 'required|array|min:1',

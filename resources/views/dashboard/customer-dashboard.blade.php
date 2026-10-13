@@ -756,9 +756,38 @@
                                 <div class="settings-row-label">Change Password</div>
                                 <div class="settings-row-desc">Update your account password regularly for security.</div>
                             </div>
-                            <a href="/forgot-password" style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:7px 16px;border-radius:6px;font-size:0.8rem;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:5px;transition:color 0.2s,border-color 0.2s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-muted)'">
+                            {{-- This used to link to /forgot-password, which emails a
+                                 reset link; with mail unconfigured nothing arrived, so
+                                 there was no way to change a password at all. --}}
+                            <button type="button" id="pwToggleBtn" onclick="togglePasswordForm()"
+                                    style="background:none;border:1px solid var(--border);color:var(--text-muted);padding:7px 16px;border-radius:6px;font-size:0.8rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;">
                                 <i class="fas fa-key"></i> Change
-                            </a>
+                            </button>
+                        </div>
+
+                        <div id="changePasswordForm" style="display:none;padding:4px 0 14px;">
+                            <div class="m-form-group">
+                                <label class="m-label">Current password</label>
+                                <div class="m-input-wrap"><i class="fas fa-lock"></i>
+                                    <input class="m-control" id="cpCurrent" type="password" autocomplete="current-password" />
+                                </div>
+                            </div>
+                            <div class="m-form-group">
+                                <label class="m-label">New password</label>
+                                <div class="m-input-wrap"><i class="fas fa-key"></i>
+                                    <input class="m-control" id="cpNew" type="password" autocomplete="new-password" />
+                                </div>
+                                <div class="m-hint">At least 8 characters, with upper and lower case, a number and a symbol.</div>
+                            </div>
+                            <div class="m-form-group">
+                                <label class="m-label">Confirm new password</label>
+                                <div class="m-input-wrap"><i class="fas fa-key"></i>
+                                    <input class="m-control" id="cpConfirm" type="password" autocomplete="new-password" />
+                                </div>
+                            </div>
+                            <button class="btn-avf-save" onclick="submitPasswordChange()">
+                                <i class="fas fa-floppy-disk"></i> Update Password
+                            </button>
                         </div>
                         <div class="settings-row">
                             <div class="settings-row-info">
@@ -2057,6 +2086,72 @@ document.addEventListener('click', function(e) {
             }
         });
     })();
+
+    // ── Change password, in-app ─────────────────────────────────────────
+    function togglePasswordForm() {
+        const form = document.getElementById('changePasswordForm');
+        const open = form.style.display !== 'none';
+        form.style.display = open ? 'none' : 'block';
+        document.getElementById('pwToggleBtn').innerHTML = open
+            ? '<i class="fas fa-key"></i> Change'
+            : '<i class="fas fa-xmark"></i> Cancel';
+        if (!open) {
+            ['cpCurrent', 'cpNew', 'cpConfirm'].forEach(id => document.getElementById(id).value = '');
+            setTimeout(() => document.getElementById('cpCurrent').focus(), 80);
+        }
+    }
+
+    function submitPasswordChange() {
+        const current = document.getElementById('cpCurrent').value;
+        const next    = document.getElementById('cpNew').value;
+        const confirm = document.getElementById('cpConfirm').value;
+
+        if (!current || !next || !confirm) {
+            apxDialog({ type: 'danger', title: 'Missing details', msg: 'Please fill in all three password fields.', confirmLabel: 'OK' });
+            return;
+        }
+        if (next !== confirm) {
+            apxDialog({ type: 'danger', title: 'Passwords do not match', msg: 'The new password and its confirmation are different.', confirmLabel: 'OK' });
+            return;
+        }
+
+        fetch('/customer/password', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                current_password: current,
+                password: next,
+                password_confirmation: confirm
+            })
+        })
+        .then(r => r.json().catch(() => ({})).then(d => { d._ok = r.ok; return d; }))
+        .then(data => {
+            if (!data._ok || !data.success) {
+                // A 422 nests its text under errors{}; show the real reason.
+                const first = data.errors ? Object.values(data.errors)[0][0] : null;
+                apxDialog({
+                    type: 'danger', title: 'Could not update password',
+                    msg: first || data.message || 'Please check the details and try again.',
+                    confirmLabel: 'OK'
+                });
+                return;
+            }
+
+            // Never echo the values back; just clear them.
+            ['cpCurrent', 'cpNew', 'cpConfirm'].forEach(id => document.getElementById(id).value = '');
+            togglePasswordForm();
+            apxDialog({
+                type: 'success', title: 'Password Updated',
+                msg: data.message || 'Your password has been changed.',
+                confirmLabel: 'OK'
+            });
+        })
+        .catch(() => apxDialog({ type: 'danger', title: 'Error', msg: 'Could not connect to the server. Please try again.', confirmLabel: 'OK' }));
+    }
 </script>
 </body>
 </html>

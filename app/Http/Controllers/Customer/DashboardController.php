@@ -12,6 +12,7 @@ use App\Services\BookingAvailability;
 use App\Exceptions\SlotUnavailableException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Support\Facades\Hash;
 
 class DashboardController extends Controller
@@ -400,6 +401,48 @@ class DashboardController extends Controller
         ]);
     }
 
+    /**
+     * Change the signed-in customer's password from inside the dashboard.
+     *
+     * The Settings tab previously linked to /forgot-password, which emails a
+     * reset link — and with mail unconfigured nothing ever arrived, so
+     * customers had no way to change their password at all.
+     */
+    public function updatePassword(Request $request)
+    {
+        $json = json_decode($request->getContent(), true);
+        if (is_array($json)) {
+            $request->merge($json);
+        }
+
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'password'         => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
+        ], [
+            'current_password.current_password' => 'Your current password is incorrect.',
+        ]);
+
+        $user = Auth::user();
+
+        if (Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your new password must be different from your current one.',
+            ], 422);
+        }
+
+        // The hashed cast handles hashing; the plain value is never stored,
+        // logged, or returned.
+        $user->update(['password' => $request->password]);
+
+        // Signs out anywhere else this account is open.
+        Auth::logoutOtherDevices($request->password);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password updated. Any other devices have been signed out.',
+        ]);
+    }
     // ── Account deletion (self-service, no admin approval) ─────────────────
 
     /**

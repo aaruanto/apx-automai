@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Support\EmailRule;
+
 use App\Http\Controllers\Controller;
 use App\Models\AccountDeletion;
 use App\Models\Service;
@@ -91,7 +93,7 @@ class SettingsController extends Controller
 
         $request->validate([
             'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email',
+            'email'    => ['required', EmailRule::strict(), 'unique:users,email'],
             'role'     => 'required|in:admin,staff',
             'password' => 'required|min:8|confirmed',
         ]);

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Support\EmailRule;
+
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
@@ -40,7 +42,7 @@ class RegisteredUserController extends Controller
         // unique was missing here, and only here: every other path that
         // creates a user already had it. Without it, the block below was the
         // only thing standing between a stranger and an existing account.
-        'email'      => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
+        'email'      => ['required', 'string', 'lowercase', EmailRule::strict(), 'max:255', 'unique:users,email'],
         'phone'      => ['nullable', 'string', 'max:20'],
         'password'   => ['required', 'confirmed', Rules\Password::defaults()],
     ], [

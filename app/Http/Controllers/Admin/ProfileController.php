@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class ProfileController extends Controller
 {
@@ -43,21 +44,36 @@ class ProfileController extends Controller
         return back()->with('success', 'Profile updated successfully.');
     }
 
+    /**
+     * Change the signed-in admin's password.
+     *
+     * Previously min:8|confirmed only, with no strength requirement and no
+     * check that the "new" password was actually different.
+     */
     public function updatePassword(Request $request)
     {
         $request->validate([
-            'current_password' => 'required',
-            'password'         => 'required|min:8|confirmed',
+            // current_password compares against the signed-in user's hash and
+            // never puts the value anywhere it could be logged.
+            'current_password' => ['required', 'current_password'],
+            'password'         => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
+        ], [
+            'current_password.current_password' => 'Current password is incorrect.',
         ]);
 
-        if (!Hash::check($request->current_password, Auth::user()->password)) {
-            return back()->withErrors(['current_password' => 'Current password is incorrect.']);
+        if (Hash::check($request->password, Auth::user()->password)) {
+            return back()->withErrors([
+                'password' => 'Your new password must be different from your current one.',
+            ]);
         }
 
-        Auth::user()->update([
-            'password' => Hash::make($request->password),
-        ]);
+        $user = Auth::user();
+        $user->update(['password' => $request->password]);
 
-        return back()->with('success', 'Password updated successfully.');
+        // Any other browser still holding this account is signed out. Needs
+        // AuthenticateSession in the web stack, which bootstrap/app.php appends.
+        Auth::logoutOtherDevices($request->password);
+
+        return back()->with('success', 'Password updated. Other devices have been signed out.');
     }
 }

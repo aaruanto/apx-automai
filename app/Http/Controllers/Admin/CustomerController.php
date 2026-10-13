@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Support\EmailRule;
+
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use Illuminate\Support\Str;
@@ -51,7 +53,7 @@ class CustomerController extends Controller
 
         $request->validate([
             'name'  => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
+            'email' => ['required', EmailRule::strict(), 'unique:users,email'],
             'phone' => 'required|string|max:20',
             'plate' => 'required|string|max:20',
         ]);

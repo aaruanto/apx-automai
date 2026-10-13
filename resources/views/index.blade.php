@@ -259,14 +259,51 @@
                 {{-- Login inside the collapsed menu. The desktop button below
                      is d-none d-lg-block, so below 992px it was hidden and
                      there was no other way in from the landing page.
-                     min-height keeps the tap target at 44px. --}}
+                     min-height keeps the tap target at 44px.
+
+                     Both this and the desktop button switch on auth state: the
+                     page used to show "Login" to everyone, so a signed-in
+                     customer arriving here looked logged out, and clicking
+                     Login bounced them straight back to their dashboard
+                     without asking for anything. Nothing was wrong with the
+                     session; the page simply never looked at it. --}}
+                @auth
+                <a href="{{ route(Auth::user()->dashboardRoute()) }}"
+                   class="btn btn-primary d-lg-none mt-3 d-flex align-items-center justify-content-center"
+                   style="min-height:48px;">
+                    <i class="fa fa-gauge me-2"></i> My Dashboard
+                </a>
+                <form method="POST" action="{{ route('logout') }}" class="d-lg-none mt-2">
+                    @csrf
+                    <button type="submit"
+                            class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center"
+                            style="min-height:48px;">
+                        <i class="fa fa-right-from-bracket me-2"></i> Log out
+                    </button>
+                </form>
+                @else
                 <a href="{{ route('login') }}"
                    class="btn btn-primary d-lg-none mt-3 d-flex align-items-center justify-content-center"
                    style="min-height:48px;">
                     <i class="fa fa-right-to-bracket me-2"></i> Login
                 </a>
+                @endauth
             </div>
+            @auth
+            <div class="d-none d-lg-flex align-items-center">
+                <a href="{{ route(Auth::user()->dashboardRoute()) }}" class="btn btn-primary py-4 px-lg-5">
+                    My Dashboard
+                </a>
+                <form method="POST" action="{{ route('logout') }}" class="m-0">
+                    @csrf
+                    <button type="submit" class="btn btn-light py-4 px-4" title="Log out">
+                        <i class="fa fa-right-from-bracket"></i>
+                    </button>
+                </form>
+            </div>
+            @else
             <a href="{{ route('login') }}" class="btn btn-primary py-4 px-lg-5 d-none d-lg-block">Login</a>
+            @endauth
         </div>
     </nav>
     <!-- Navbar End -->
