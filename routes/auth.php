@@ -12,10 +12,16 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
+    // Only customers register, so maintenance can close this outright. Login
+    // below is deliberately left open: the role is unknown until credentials
+    // are checked, and the admin has to be able to get in and switch
+    // maintenance back off.
     Route::get('register', [RegisteredUserController::class, 'create'])
+        ->middleware('maintenance')
         ->name('register');
 
-    Route::post('register', [RegisteredUserController::class, 'store']);
+    Route::post('register', [RegisteredUserController::class, 'store'])
+        ->middleware('maintenance');
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');

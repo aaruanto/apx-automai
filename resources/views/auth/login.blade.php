@@ -31,6 +31,16 @@
 
             <div class="auth-body">
 
+                {{-- Maintenance notice. The page stays reachable so an admin can
+                     sign in and switch maintenance off — the role is not known
+                     until credentials are checked — but customers are told up
+                     front rather than only after a failed attempt. --}}
+                @if (\App\Models\Setting::get('maintenance'))
+                <div style="display:flex;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);border-radius:7px;padding:10px 14px;margin-bottom:16px;font-size:0.83rem;color:#F59E0B;align-items:flex-start;gap:8px;">
+                    <i class="fas fa-screwdriver-wrench" style="margin-top:2px;"></i>
+                    <span>The booking portal is temporarily unavailable while we carry out maintenance. Customer sign-in is paused; please try again shortly.</span>
+                </div>
+                @endif
                 {{-- Success flash, e.g. after registering or resetting a password --}}
                 @if (session('status'))
                 <div style="display:flex;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.35);border-radius:7px;padding:10px 14px;margin-bottom:16px;font-size:0.83rem;color:#16A34A;align-items:center;gap:8px;">

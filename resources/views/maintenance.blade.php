@@ -21,6 +21,13 @@
         h1 { font-family: 'Barlow Condensed', sans-serif; font-size: 1.5rem; margin: 0 0 12px; }
         p  { color: #9aa0a6; font-size: .92rem; line-height: 1.6; margin: 0 0 20px; }
         a  { color: var(--red); text-decoration: none; font-weight: 600; font-size: .9rem; }
+        .actions { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
+        .btn-out {
+            font-family: inherit; font-size: .85rem; font-weight: 600; cursor: pointer;
+            padding: 11px 18px; border-radius: 8px; min-height: 44px;
+            background: transparent; color: #e8eaed; border: 1px solid rgba(255,255,255,.18);
+        }
+        .btn-out:hover { border-color: var(--red); color: var(--red); }
     </style>
 </head>
 <body>
@@ -29,6 +36,17 @@
         <h1>We'll be back shortly</h1>
         <p>{{ $message ?? 'The booking portal is temporarily unavailable while we carry out maintenance.' }}</p>
         <a href="tel:+639544888850">Call us: +63 9544 8888 50</a>
+
+        {{-- A signed-in customer lands here with every portal route closed to
+             them, so without this there is no way out of the page. --}}
+        @auth
+        <div class="actions">
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit" class="btn-out" style="width:100%;">Log out</button>
+            </form>
+        </div>
+        @endauth
     </div>
 </body>
 </html>

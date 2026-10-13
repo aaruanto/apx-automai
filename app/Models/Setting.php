@@ -46,6 +46,19 @@ class Setting extends Model
         static::deleted(fn () => static::$cache = null);
     }
 
+    /**
+     * Drop the in-process cache.
+     *
+     * Model events clear it on save, which is enough for a normal request.
+     * A long-lived process — a queue worker, Octane, or the test suite —
+     * outlives those events and would otherwise keep serving values from a
+     * database state that no longer exists.
+     */
+    public static function flushCache(): void
+    {
+        static::$cache = null;
+    }
+
     /** All stored values keyed by name, loaded once per request. */
     public static function allValues(): array
     {
