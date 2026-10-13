@@ -181,7 +181,7 @@
                     <h6 class="text-light">Monday - Friday:</h6>
                     <p class="mb-4">09.00 AM - 06.00 PM</p>
                     <h6 class="text-light">Saturday - Sunday:</h6>
-                    <p class="mb-0">Closed</p>
+                    <p class="mb-0">09.00 AM - 12.00 PM</p>
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <h4 class="text-light mb-4">Services</h4>

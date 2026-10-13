@@ -24,8 +24,8 @@ class Setting extends Model
         'contact_email'    => '',
         'open_time'          => '09:00',
         'close_time'         => '18:00',
-        'weekend_open_time'  => '',   // blank = closed at weekends
-        'weekend_close_time' => '',
+        'weekend_open_time'  => '09:00',
+        'weekend_close_time' => '12:00',
         'max_bookings'       => 20,
         'slot_duration'      => 30,
         'allow_walkin'     => true,

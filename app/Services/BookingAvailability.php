@@ -36,9 +36,9 @@ class BookingAvailability
     /**
      * Opening hours by ISO weekday. null means closed that day.
      *
-     * Monday to Friday, 9:00 AM to 6:00 PM; the shop does not take bookings at
-     * weekends. Admin Settings can still override the weekday times; a blank
-     * setting falls back to the value here.
+     * Monday to Friday, 9:00 AM to 6:00 PM; Saturday and Sunday, 9:00 AM to
+     * 12:00 NN. Admin Settings can override either; a blank setting falls
+     * back to the value here, and a day with no hours at all is closed.
      */
     private const HOURS = [
         1 => ['09:00', '18:00'],
@@ -46,8 +46,8 @@ class BookingAvailability
         3 => ['09:00', '18:00'],
         4 => ['09:00', '18:00'],
         5 => ['09:00', '18:00'],
-        6 => null,
-        7 => null,
+        6 => ['09:00', '12:00'],
+        7 => ['09:00', '12:00'],
     ];
 
     /**

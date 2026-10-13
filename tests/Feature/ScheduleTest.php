@@ -61,15 +61,21 @@ it('opens 9 to 6 on weekdays', function () {
     expect($hours[1]->format('H:i'))->toBe('18:00');
 });
 
-it('is closed at weekends', function (string $day) {
-    $date = Carbon::today()->next($day);
+it('keeps weekends at 9 to 12', function (string $day) {
+    // Unchanged by this phase: only the weekday closing time moved.
+    $hours = app(BookingAvailability::class)->hoursFor(Carbon::today()->next($day));
 
-    expect(app(BookingAvailability::class)->hoursFor($date))->toBeNull();
-    expect(app(BookingAvailability::class)->isOpenOn($date))->toBeFalse();
+    expect($hours)->not->toBeNull();
+    expect($hours[0]->format('H:i'))->toBe('09:00');
+    expect($hours[1]->format('H:i'))->toBe('12:00');
 })->with(['Saturday', 'Sunday']);
 
-it('offers no slots at all on a closed day', function () {
-    expect(app(BookingAvailability::class)->dayAvailability(nextSaturday(), 30))->toBe([]);
+it('still offers weekend slots, ending by noon', function () {
+    $slots = app(BookingAvailability::class)->dayAvailability(nextSaturday(), 30);
+    $last  = end($slots);
+
+    expect($slots)->not->toBe([]);
+    expect($last['start'])->toBe('11:30');
 });
 
 it('ends the last slot by 6 PM', function (int $duration, string $lastStart) {
@@ -90,8 +96,15 @@ it('ends the last slot by 6 PM', function (int $duration, string $lastStart) {
 
 // ── Enforced on the server, not just in the calendar ────────────────────
 
-it('refuses a booking on a closed day', function () {
+it('accepts a weekend booking inside weekend hours', function () {
     [$attrs] = schedBooking(nextSaturday(), '10:00');
+
+    expect(app(BookingAvailability::class)->reserve($attrs)->booking_time)->toBe('10:00');
+});
+
+it('refuses a weekend booking past noon', function () {
+    // Weekends close at 12:00, so the guard applies there too.
+    [$attrs] = schedBooking(nextSaturday(), '13:00');
 
     expect(fn () => app(BookingAvailability::class)->reserve($attrs))
         ->toThrow(SlotUnavailableException::class);
@@ -121,32 +134,32 @@ it('accepts a booking that finishes exactly at closing', function () {
 });
 
 it('blocks an out-of-hours booking through the customer endpoint', function () {
-    [$attrs, $customer] = schedBooking(nextSaturday(), '10:00');
+    [$attrs, $customer] = schedBooking(nextSaturday(), '13:00');
 
     $this->actingAs($customer)->postJson('/customer/bookings', [
         'service_ids'  => $attrs['service_ids'],
         'vehicle_id'   => $attrs['vehicle_id'],
         'booking_date' => nextSaturday(),
-        'booking_time' => '10:00',
+        'booking_time' => '13:00',
     ])->assertStatus(422);
 });
 
 it('says why, rather than blaming capacity', function () {
-    [$attrs] = schedBooking(nextSaturday(), '10:00');
+    [$attrs] = schedBooking(nextWeekday(), '03:00');
 
     try {
         app(BookingAvailability::class)->reserve($attrs);
         $this->fail('expected a SlotUnavailableException');
     } catch (SlotUnavailableException $e) {
-        expect($e->getMessage())->toContain('closed');
+        expect($e->getMessage())->toContain('opening hours');
     }
 });
 
 // ── Existing bookings outside the window are left alone ─────────────────
 
-it('leaves an existing weekend booking readable', function () {
-    // Production has two of these. They must keep working: the guard applies
-    // to new bookings and reschedules, not to rows already on file.
+it('leaves an existing out-of-hours booking readable', function () {
+    // Rows already on file must keep working: the guard applies to new
+    // bookings and reschedules, not to what is already stored.
     $unique   = substr(str_replace('.', '', uniqid('', true)), -6);
     $customer = User::factory()->create(['role' => 'customer']);
     $vehicle  = Vehicle::create([
@@ -157,7 +170,7 @@ it('leaves an existing weekend booking readable', function () {
 
     $booking = App\Models\Booking::create([
         'user_id' => $customer->id, 'vehicle_id' => $vehicle->id, 'service_id' => $service->id,
-        'booking_date' => nextSaturday(), 'booking_time' => '10:30',
+        'booking_date' => nextWeekday(), 'booking_time' => '19:30',
         'duration' => 30, 'status' => 'pending', 'reference_number' => 'OLD-'.$unique,
     ]);
 

@@ -110,7 +110,7 @@
                     <h4 class="mb-3">3. Booking a Service</h4>
                     <ul class="mb-4">
                         <li>Bookings are made for a specific date and arrival slot within our opening hours: Monday to
-                            Friday, 9:00&nbsp;AM to 9:00&nbsp;PM, and Saturday to Sunday, 9:00&nbsp;AM to
+                            Friday, 9:00&nbsp;AM to 6:00&nbsp;PM, and Saturday to Sunday, 9:00&nbsp;AM to
                             12:00&nbsp;NN.</li>
                         <li>Our capacity is limited by the number of service bays and mechanics available, so slots
                             are offered on a first-come basis and a daily limit applies. A slot is reserved for you
@@ -241,7 +241,7 @@
                     <h6 class="text-light">Monday - Friday:</h6>
                     <p class="mb-4">09:00 AM - 06:00 PM</p>
                     <h6 class="text-light">Saturday - Sunday:</h6>
-                    <p class="mb-0">Closed</p>
+                    <p class="mb-0">09:00 AM - 12:00 PM</p>
                 </div>
             </div>
         </div>
