@@ -1,59 +1,142 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# APX AutoMai
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Vehicle service booking system for APX Motors and Services, Quezon City.
+Laravel 12 + Blade + Bootstrap. SQLite locally, PostgreSQL on Render.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Local setup
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+```bash
+composer install
+npm install && npm run build
+cp .env.example .env          # then fill in the values below
+php artisan key:generate
+php artisan migrate
+php artisan db:seed --class=ServiceSeeder
+php artisan serve
+```
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+There is no public route to an admin account by design. Create the first one
+from the environment:
 
-## Learning Laravel
+```bash
+php artisan apx:ensure-admin --email=you@example.com --password='a-strong-password'
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+Run the test suite with `php artisan test`.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## The scheduler
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Three jobs run on a schedule (see `routes/console.php`):
 
-### Premium Partners
+| Job | Frequency | What it does |
+|---|---|---|
+| `reminders:send` | every minute | booking reminders at 7d / 3d / 1d / 2h |
+| `bookings:cancel-no-shows` | every minute | cancels bookings past their grace period |
+| `accounts:purge-expired` | daily, 03:00 | anonymises accounts past the 30-day deletion window |
+| heartbeat | every minute | records `scheduler_last_run` so the admin screen can report real status |
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+**Nothing works unless something runs the scheduler.** Laravel does not run it
+for you.
 
-## Contributing
+### Locally
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+php artisan schedule:work
+```
 
-## Code of Conduct
+Leave it running alongside `php artisan serve`.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### On a traditional server
 
-## Security Vulnerabilities
+```
+* * * * * cd /path/to/this/app && php artisan schedule:run >> /dev/null 2>&1
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### On Render
 
-## License
+Render does not run crontabs, so the line above does nothing there. Use a
+**Cron Job** service instead:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+1. Render dashboard → **New** → **Cron Job**.
+2. Point it at the same repository and `Dockerfile` as the web service.
+3. **Schedule:** `* * * * *` (every minute).
+4. **Command:** `php artisan schedule:run`
+5. Attach the **same environment variables and the same database** as the web
+   service, or it will run against nothing.
+
+Cost: Render's Cron Jobs are a paid feature and are not included in the free
+tier. If you would rather not pay, the alternatives are to run
+`php artisan schedule:run` from any machine that is already online — a free
+third-party cron pinger hitting a dedicated route, or a laptop running
+`schedule:work` during a demo.
+
+### Queue worker
+
+Not needed. No mailable or notification in this project implements
+`ShouldQueue`, so mail is sent during the request that triggers it. If anything
+is queued later, a Render **Background Worker** running `php artisan queue:work`
+would be required, and that is also a paid service.
+
+---
+
+## Email
+
+`MAIL_MAILER` defaults to `log`, which writes messages to
+`storage/logs/laravel.log` instead of sending them. That is useful in
+development and is why no mail arrives until it is changed.
+
+To send real email through Gmail, add these to `.env` locally and to the
+**Environment** tab on Render:
+
+```
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_ENCRYPTION=tls
+MAIL_USERNAME=your-address@gmail.com
+MAIL_PASSWORD=your-16-character-app-password
+MAIL_FROM_ADDRESS=your-address@gmail.com
+MAIL_FROM_NAME="APX AutoMai"
+```
+
+`MAIL_PASSWORD` must be a Google **App Password**, not the account password.
+Generate one at <https://myaccount.google.com/apppasswords>; it requires
+2-Step Verification to be on. Remove the spaces Google shows in it.
+
+Never commit these values. `.env` is gitignored, and Render's environment
+variables are set through the dashboard.
+
+To check it works without making a booking:
+
+```bash
+php artisan tinker
+>>> Mail::raw('test', fn ($m) => $m->to('you@example.com')->subject('APX test'));
+```
+
+### What sends mail
+
+| Trigger | Mailable |
+|---|---|
+| Guest booking submitted | `BookingReceived` |
+| New guest account created | `GuestAccountCreated` |
+| Admin confirms a booking | `BookingConfirmed` |
+| Scheduled reminders | `BookingReminder` |
+
+In-app notifications (the bell) are separate and work regardless of mail
+configuration.
+
+---
+
+## Deployment
+
+Render builds from the `Dockerfile`. `docker-entrypoint.sh` runs migrations,
+seeds the service catalogue, provisions the admin account from `ADMIN_EMAIL` /
+`ADMIN_PASSWORD` if those are set, and caches config, routes and views before
+starting Apache.
+
+`APP_DEBUG` is `false` in `render.yaml`, so production never shows stack traces
+or file paths. Keep it that way.

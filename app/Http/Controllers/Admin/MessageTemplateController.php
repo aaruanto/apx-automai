@@ -44,7 +44,10 @@ class MessageTemplateController extends Controller
         $template = $this->loadTemplate();
         $settings = $template; // pass everything to view
 
-        return view('admin.templates.index', compact('settings'));
+        // Real figures rather than the hard-coded "Running" the card used to show.
+        $scheduler = \App\Support\SchedulerStatus::summary();
+
+        return view('admin.templates.index', compact('settings', 'scheduler'));
     }
 
     // ── Save templates via AJAX ────────────────────────────────────────────

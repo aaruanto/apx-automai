@@ -329,27 +329,54 @@
                 </div>
             </div>
 
-            <!-- Cron Status -->
-            <div class="card" style="border-color:rgba(34,197,94,.2);">
+            {{-- Scheduler status.
+
+                 This card used to print the crontab line and the server path it
+                 would run from, which told anyone looking at the screen where
+                 the application lives on disk. It also asserted its own health:
+                 a hard-coded "Running" badge, a last run of now(), and a
+                 countdown to a fixed 8:00 AM unrelated to the schedule — which
+                 is why it could claim a per-minute scheduler and a ten-hour
+                 wait at the same time.
+
+                 The figures below come from a heartbeat the scheduler itself
+                 writes, so an idle scheduler reports as idle. Setup
+                 instructions live in the README, not on this page. --}}
+            <div class="card" style="border-color:{{ $scheduler['running'] ? 'rgba(34,197,94,.2)' : 'rgba(245,158,11,.25)' }};">
                 <div class="card-header">
-                    <div class="card-header-title"><i class="fas fa-terminal"></i> Cron Status</div>
-                    <span class="badge badge-active">Running</span>
+                    <div class="card-header-title"><i class="fas fa-clock-rotate-left"></i> Scheduler</div>
+                    @if($scheduler['running'])
+                        <span class="badge badge-active">Running</span>
+                    @else
+                        <span class="badge" style="background:rgba(245,158,11,.15);color:#F59E0B;">Not running</span>
+                    @endif
                 </div>
                 <div class="card-body" style="padding:14px;">
-                    <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:8px;">
-                        Add this to your server's crontab to enable automated reminders:
-                    </div>
-                    <div style="background:var(--surface-3);border-radius:6px;padding:10px 12px;font-family:monospace;font-size:.73rem;color:var(--text);word-break:break-all;">
-                        * * * * * cd /path/to/apx-automai && php artisan schedule:run >> /dev/null 2>&1
-                    </div>
-                    <div style="margin-top:10px;font-size:.75rem;color:var(--text-muted);">
-                        <i class="fas fa-circle" style="color:#22c55e;font-size:.5rem;margin-right:4px;"></i>
-                        Last run: <strong style="color:var(--text);">{{ now()->format('M d, Y g:i A') }}</strong>
-                    </div>
-                    <div style="margin-top:4px;font-size:.75rem;color:var(--text-muted);">
-                        <i class="fas fa-circle-info" style="font-size:.65rem;margin-right:4px;"></i>
-                        Next run in: <strong style="color:var(--text);" id="nextRunTimer">--:--</strong>
-                    </div>
+                    @if($scheduler['running'])
+                        <div style="font-size:.75rem;color:var(--text-muted);">
+                            <i class="fas fa-circle" style="color:#22c55e;font-size:.5rem;margin-right:4px;"></i>
+                            Last run: <strong style="color:var(--text);">{{ $scheduler['last_run'] }}</strong>
+                            <span style="opacity:.75;">({{ $scheduler['last_ago'] }})</span>
+                        </div>
+                        <div style="margin-top:4px;font-size:.75rem;color:var(--text-muted);">
+                            <i class="fas fa-circle-info" style="font-size:.65rem;margin-right:4px;"></i>
+                            Next run: <strong style="color:var(--text);">{{ $scheduler['next_run'] }}</strong>
+                        </div>
+                    @else
+                        <div style="font-size:.78rem;color:var(--text-muted);line-height:1.6;">
+                            Automated reminders and no-show cancellations are not running.
+                            @if($scheduler['last_run'])
+                                The scheduler was last seen on
+                                <strong style="color:var(--text);">{{ $scheduler['last_run'] }}</strong>
+                                ({{ $scheduler['last_ago'] }}).
+                            @else
+                                It has never reported in on this environment.
+                            @endif
+                        </div>
+                        <div style="margin-top:8px;font-size:.74rem;color:var(--text-muted);">
+                            Ask your developer to start the scheduler; the steps are in the project README.
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -593,20 +620,7 @@ function saveAllTemplates() {
     .catch(() => alert('Failed to save. Please try again.'));
 }
 
-function updateCronTimer() {
-    const now  = new Date();
-    const next = new Date();
-    next.setHours(8, 0, 0, 0);
-    if (now >= next) next.setDate(next.getDate() + 1);
-    const diff = next - now;
-    const h = Math.floor(diff / 3600000);
-    const m = Math.floor((diff % 3600000) / 60000);
-    const s = Math.floor((diff % 60000) / 1000);
-    document.getElementById('nextRunTimer').textContent =
-        `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-}
-updateCronTimer();
-setInterval(updateCronTimer, 1000);
+
 @endverbatim
 </script>
 @endpush

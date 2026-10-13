@@ -19,3 +19,12 @@ Schedule::command('bookings:cancel-no-shows')->everyMinute();
 
 // Anonymize accounts whose 30-day deletion grace period has run out.
 Schedule::command('accounts:purge-expired')->dailyAt('03:00');
+
+// Heartbeat. The admin Message Templates screen used to claim the scheduler
+// was "Running" from hard-coded markup, with a last-run time of now() and a
+// countdown to a fixed 8:00 AM, so it reported health whether or not anything
+// was actually running. This records a real timestamp each tick, and the
+// screen reads it instead.
+Schedule::call(function () {
+    \App\Models\Setting::set('scheduler_last_run', now()->toIso8601String());
+})->everyMinute()->name('scheduler-heartbeat')->withoutOverlapping();
