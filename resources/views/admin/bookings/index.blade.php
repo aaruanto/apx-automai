@@ -57,12 +57,14 @@
                 <i class="fas fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:.75rem;"></i>
                 <input class="filter-input" type="text" id="searchInput" placeholder="Search by customer or booking ID..." style="padding-left:32px;" />
             </div>
+            {{-- Preselected from ?status= so the dashboard cards can open
+                 this list already filtered, rather than showing everything. --}}
+            @php $preStatus = request('status'); @endphp
             <select class="filter-select" id="filterStatus">
                 <option value="">All Statuses</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="pending">Pending</option>
-                <option value="in_progress">In Progress</option>
-                <option value="cancelled">Cancelled</option>
+                @foreach (['confirmed'=>'Confirmed', 'pending'=>'Pending', 'in_progress'=>'In Progress', 'completed'=>'Completed', 'cancelled'=>'Cancelled'] as $v => $l)
+                <option value="{{ $v }}" @selected($preStatus === $v)>{{ $l }}</option>
+                @endforeach
             </select>
             <select class="filter-select" id="filterService">
                 <option value="">All Services</option>
@@ -415,5 +417,9 @@ function markArrived(id, btn) {
 }
 ['searchInput','filterStatus','filterService','filterStaff','filterDateFrom','filterDateTo']
     .forEach(id => document.getElementById(id).addEventListener('input', applyFilters));
+
+// A ?status= in the URL is already selected above; apply it so the list
+// opens filtered rather than showing everything.
+applyFilters();
 </script>
 @endpush

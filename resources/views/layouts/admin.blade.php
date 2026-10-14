@@ -1026,7 +1026,6 @@
                 <div class="dropdown-menu" id="userDropdown">
                     <a href="{{ route('admin.profile') }}"><i class="fas fa-user" style="width:16px;"></i> My Profile</a>
                     <a href="{{ route('admin.settings') }}"><i class="fas fa-gear" style="width:16px;"></i> Settings</a>
-                    <a href="#!"><i class="fas fa-clock-rotate-left" style="width:16px;"></i> Activity Log</a>
                     <hr />
                     <a href="{{ route('logout') }}" class="logout"
                         onclick="event.preventDefault();document.getElementById('logout-form').submit();">
@@ -1132,6 +1131,8 @@
 
     <!-- SCRIPTS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.8.0/Chart.min.js" crossorigin="anonymous"></script>
+    {{-- 0.7.0 is the last datalabels release for Chart.js 2.x. --}}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/0.7.0/chartjs-plugin-datalabels.min.js" crossorigin="anonymous"></script>
     <script src="{{ asset('assets/js/form-validate.js') }}"></script>
     <script src="{{ asset('assets/js/plate-mask.js') }}"></script>
     <script src="{{ asset('assets/js/alert-modal.js') }}"></script>

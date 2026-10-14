@@ -24,9 +24,8 @@ class ProfileController extends Controller
             'services_managed'  => Service::count(),
         ];
 
-        $activityLog = collect(); // Replace with ActivityLog::latest()->limit(10)->get() if you have the model
 
-        return view('admin.profile', compact('user', 'activityStats', 'activityLog'));
+        return view('admin.profile', compact('user', 'activityStats'));
     }
 
     public function update(Request $request)

@@ -50,11 +50,11 @@ it('returns the same stats the admin dashboard renders', function () {
     $page = $this->actingAs($admin)->get('/admin/dashboard')->assertOk();
     $live = $this->actingAs($admin)->getJson('/admin/dashboard/live')->assertOk();
 
-    // The poll must agree with the page, or the numbers would jump on first tick.
-    expect($live->json('stats.today'))->toBe($page->viewData('todayBookings'));
-    expect($live->json('stats.pending'))->toBe($page->viewData('pending'));
-    expect($live->json('stats.this_week'))->toBe($page->viewData('thisWeek'));
+    // The poll must agree with the page, or the numbers would jump on first
+    // tick. The cards became three in phase 7: total, completed, pending.
+    expect($live->json('stats.total'))->toBe($page->viewData('totalBookings'));
     expect($live->json('stats.completed'))->toBe($page->viewData('completed'));
+    expect($live->json('stats.pending'))->toBe($page->viewData('pending'));
 });
 
 it('returns recent bookings with every service named', function () {
@@ -144,6 +144,6 @@ it('works on an empty database', function () {
     $live = $this->actingAs(User::factory()->create(['role' => 'admin']))
         ->getJson('/admin/dashboard/live')->assertOk();
 
-    expect($live->json('stats.today'))->toBe(0);
+    expect($live->json('stats.total'))->toBe(0);
     expect($live->json('bookings'))->toBe([]);
 });

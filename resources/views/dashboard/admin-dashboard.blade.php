@@ -2,6 +2,12 @@
 
 @section('title', 'Dashboard')
 
+@push('styles')
+<style>
+    .dash-f-label { display:block; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:4px; }
+</style>
+@endpush
+
 @section('content')
 
     <!-- PAGE HEADER -->
@@ -19,88 +25,151 @@
         </div>
     </div>
 
-    <!-- STAT CARDS -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
-        <!-- Today's Bookings -->
-        <a href="{{ route('admin.bookings.schedule') }}" style="text-decoration:none;">
+    {{-- DASHBOARD FILTERS
+         One GET form driving the cards, both charts and the recent list
+         together, so everything on the page describes the same slice. The
+         live poll reads the same query string, so refreshing cannot quietly
+         replace a filtered view with unfiltered numbers. --}}
+    <form method="GET" action="{{ route('admin.dashboard') }}" id="dashFilters"
+          style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:20px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;">
+
+        <div>
+            <label class="dash-f-label">From</label>
+            <input class="filter-select" type="date" name="from"
+                   value="{{ $filters['from']->toDateString() }}" required />
+        </div>
+        <div>
+            <label class="dash-f-label">To</label>
+            <input class="filter-select" type="date" name="to"
+                   value="{{ $filters['to']->toDateString() }}" required />
+        </div>
+
+        <div>
+            <label class="dash-f-label">Status</label>
+            <select class="filter-select" name="status">
+                <option value="">All statuses</option>
+                @foreach (['pending'=>'Pending','confirmed'=>'Confirmed','in_progress'=>'In Progress','completed'=>'Completed','cancelled'=>'Cancelled'] as $v => $l)
+                <option value="{{ $v }}" @selected($filters['status'] === $v)>{{ $l }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        <div>
+            <label class="dash-f-label">Service</label>
+            <select class="filter-select" name="service">
+                <option value="">All services</option>
+                @foreach ($services as $svc)
+                <option value="{{ $svc->id }}" @selected($filters['service'] === $svc->id)>{{ $svc->name }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        <div>
+            <label class="dash-f-label">Customer <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+            <select class="filter-select" name="customer">
+                <option value="">All customers</option>
+                @foreach ($customers as $cust)
+                <option value="{{ $cust->id }}" @selected($filters['customer'] === $cust->id)>{{ $cust->name }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        <div>
+            <label class="dash-f-label">Group by</label>
+            <select class="filter-select" name="range">
+                @foreach ($ranges as $r)
+                <option value="{{ $r }}" @selected($filters['range'] === $r)>{{ ucfirst($r) }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        <div style="display:flex;gap:8px;">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Apply</button>
+            <a href="{{ route('admin.dashboard') }}" class="btn btn-ghost btn-sm">Clear</a>
+        </div>
+    </form>
+
+    {{-- STAT CARDS
+         Three, as asked: Total (completed + pending), Completed, Pending.
+         Today's Bookings and This Week are gone.
+
+         Each View link carries ?status=, which the bookings list now
+         preselects, so a card opens that list already filtered instead of
+         showing everything. The Completed card used to link to
+         status=confirmed, which is a different status entirely. --}}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
+        @php
+            $cards = [
+                [
+                    'label'  => 'Total Bookings',
+                    'note'   => 'Completed + Pending',
+                    'id'     => 'statTotal',
+                    'value'  => $totalBookings,
+                    'icon'   => 'fa-calendar-check',
+                    'colour' => 'var(--red)',
+                    'tint'   => 'var(--red-glow)',
+                    'link'   => route('admin.bookings.index'),
+                    'cta'    => 'View All',
+                ],
+                [
+                    'label'  => 'Completed',
+                    'note'   => 'Service finished',
+                    'id'     => 'statCompleted',
+                    'value'  => $completed,
+                    'icon'   => 'fa-circle-check',
+                    'colour' => '#22c55e',
+                    'tint'   => 'rgba(34,197,94,.12)',
+                    'link'   => route('admin.bookings.index', ['status' => 'completed']),
+                    'cta'    => 'View Completed',
+                ],
+                [
+                    'label'  => 'Pending',
+                    'note'   => 'Awaiting confirmation',
+                    'id'     => 'statPending',
+                    'value'  => $pending,
+                    'icon'   => 'fa-hourglass-half',
+                    'colour' => '#f59e0b',
+                    'tint'   => 'rgba(245,158,11,.12)',
+                    'link'   => route('admin.bookings.index', ['status' => 'pending']),
+                    'cta'    => 'Review Pending',
+                ],
+            ];
+        @endphp
+
+        @foreach ($cards as $card)
+        <a href="{{ $card['link'] }}" style="text-decoration:none;">
             <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;position:relative;overflow:hidden;cursor:pointer;transition:transform .15s,box-shadow .15s;"
                  onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.08)'"
                  onmouseout="this.style.transform='';this.style.boxShadow=''">
-                <div style="position:absolute;top:-8px;right:-8px;font-size:3.5rem;opacity:.05;color:var(--red);"><i class="fas fa-calendar-day"></i></div>
+                <div style="position:absolute;top:-8px;right:-8px;font-size:3.5rem;opacity:.05;color:{{ $card['colour'] }};">
+                    <i class="fas {{ $card['icon'] }}"></i>
+                </div>
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                    <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Today's Bookings</span>
-                    <div style="width:32px;height:32px;border-radius:8px;background:var(--red-glow);display:flex;align-items:center;justify-content:center;color:var(--red);font-size:.85rem;">
-                        <i class="fas fa-calendar-day"></i>
+                    <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">
+                        {{ $card['label'] }}
+                    </span>
+                    <div style="width:32px;height:32px;border-radius:8px;background:{{ $card['tint'] }};display:flex;align-items:center;justify-content:center;color:{{ $card['colour'] }};font-size:.85rem;">
+                        <i class="fas {{ $card['icon'] }}"></i>
                     </div>
                 </div>
-                <div id="statToday" style="font-family:'Barlow Condensed',sans-serif;font-size:2.4rem;font-weight:800;line-height:1;color:var(--text);">{{ $todayBookings }}</div>
-                <div style="margin-top:10px;font-size:.75rem;color:var(--red);font-weight:600;">
-                    View Schedule <i class="fas fa-arrow-right" style="font-size:.65rem;"></i>
+                <div id="{{ $card['id'] }}" style="font-family:'Barlow Condensed',sans-serif;font-size:2.4rem;font-weight:800;line-height:1;color:var(--text);">
+                    {{ $card['value'] }}
+                </div>
+                <div style="margin-top:4px;font-size:.72rem;color:var(--text-muted);">{{ $card['note'] }}</div>
+                <div style="margin-top:8px;font-size:.75rem;color:{{ $card['colour'] }};font-weight:600;">
+                    {{ $card['cta'] }} <i class="fas fa-arrow-right" style="font-size:.65rem;"></i>
                 </div>
             </div>
         </a>
-        <!-- Pending -->
-        <a href="{{ route('admin.bookings.index', ['status' => 'pending']) }}" style="text-decoration:none;">
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;position:relative;overflow:hidden;cursor:pointer;transition:transform .15s,box-shadow .15s;"
-                 onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.08)'"
-                 onmouseout="this.style.transform='';this.style.boxShadow=''">
-                <div style="position:absolute;top:-8px;right:-8px;font-size:3.5rem;opacity:.05;color:#f59e0b;"><i class="fas fa-hourglass-half"></i></div>
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                    <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Pending</span>
-                    <div style="width:32px;height:32px;border-radius:8px;background:rgba(245,158,11,.12);display:flex;align-items:center;justify-content:center;color:#f59e0b;font-size:.85rem;">
-                        <i class="fas fa-hourglass-half"></i>
-                    </div>
-                </div>
-                <div id="statPending" style="font-family:'Barlow Condensed',sans-serif;font-size:2.4rem;font-weight:800;line-height:1;color:var(--text);">{{ $pending }}</div>
-                <div style="margin-top:10px;font-size:.75rem;color:#f59e0b;font-weight:600;">
-                    Review Pending <i class="fas fa-arrow-right" style="font-size:.65rem;"></i>
-                </div>
-            </div>
-        </a>
-        <!-- This Week -->
-        <a href="{{ route('admin.bookings.index') }}" style="text-decoration:none;">
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;position:relative;overflow:hidden;cursor:pointer;transition:transform .15s,box-shadow .15s;"
-                 onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.08)'"
-                 onmouseout="this.style.transform='';this.style.boxShadow=''">
-                <div style="position:absolute;top:-8px;right:-8px;font-size:3.5rem;opacity:.05;color:#22c55e;"><i class="fas fa-chart-bar"></i></div>
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                    <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">This Week</span>
-                    <div style="width:32px;height:32px;border-radius:8px;background:rgba(34,197,94,.12);display:flex;align-items:center;justify-content:center;color:#22c55e;font-size:.85rem;">
-                        <i class="fas fa-chart-bar"></i>
-                    </div>
-                </div>
-                <div id="statWeek" style="font-family:'Barlow Condensed',sans-serif;font-size:2.4rem;font-weight:800;line-height:1;color:var(--text);">{{ $thisWeek }}</div>
-                <div style="margin-top:10px;font-size:.75rem;color:#22c55e;font-weight:600;">
-                    All Bookings <i class="fas fa-arrow-right" style="font-size:.65rem;"></i>
-                </div>
-            </div>
-        </a>
-        <!-- Completed -->
-        <a href="{{ route('admin.bookings.index', ['status' => 'confirmed']) }}" style="text-decoration:none;">
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;position:relative;overflow:hidden;cursor:pointer;transition:transform .15s,box-shadow .15s;"
-                 onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.08)'"
-                 onmouseout="this.style.transform='';this.style.boxShadow=''">
-                <div style="position:absolute;top:-8px;right:-8px;font-size:3.5rem;opacity:.05;color:#3b82f6;"><i class="fas fa-circle-check"></i></div>
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                    <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Completed</span>
-                    <div style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,.12);display:flex;align-items:center;justify-content:center;color:#3b82f6;font-size:.85rem;">
-                        <i class="fas fa-circle-check"></i>
-                    </div>
-                </div>
-                <div id="statCompleted" style="font-family:'Barlow Condensed',sans-serif;font-size:2.4rem;font-weight:800;line-height:1;color:var(--text);">{{ $completed }}</div>
-                <div style="margin-top:10px;font-size:.75rem;color:#3b82f6;font-weight:600;">
-                    View Completed <i class="fas fa-arrow-right" style="font-size:.65rem;"></i>
-                </div>
-            </div>
-        </a>
+        @endforeach
     </div>
 
-    <!-- CHARTS -->
+<!-- CHARTS -->
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-bottom:24px;">
         <div class="card">
             <div class="card-header">
                 <div class="card-header-title"><i class="fas fa-chart-area"></i> Bookings Over Time</div>
-                <span style="font-size:.75rem;color:var(--text-muted);background:var(--surface-2);padding:3px 8px;border-radius:4px;">Last 7 days</span>
+                <span style="font-size:.75rem;color:var(--text-muted);background:var(--surface-2);padding:3px 8px;border-radius:4px;">{{ ucfirst($filters['range']) }} &middot; {{ $filters['from']->format('M j') }} &ndash; {{ $filters['to']->format('M j, Y') }}</span>
             </div>
             <div class="card-body">
                 <canvas id="myAreaChart" width="100%" height="60"></canvas>
@@ -109,7 +178,7 @@
         <div class="card">
             <div class="card-header">
                 <div class="card-header-title"><i class="fas fa-chart-bar"></i> Revenue by Service</div>
-                <span style="font-size:.75rem;color:var(--text-muted);background:var(--surface-2);padding:3px 8px;border-radius:4px;">This month</span>
+                <span style="font-size:.75rem;color:var(--text-muted);background:var(--surface-2);padding:3px 8px;border-radius:4px;">{{ $filters['status'] ? ucfirst(str_replace('_',' ',$filters['status'])) : 'Completed' }} &middot; {{ $filters['from']->format('M j') }} &ndash; {{ $filters['to']->format('M j, Y') }}</span>
             </div>
             <div class="card-body">
                 <canvas id="myBarChart" width="100%" height="100"></canvas>
@@ -148,7 +217,10 @@
                 </thead>
                 <tbody id="recentBookingsBody">
                 @forelse($recentBookings as $booking)
-                <tr>
+                {{-- Clicking a row opens that booking, not the full list. --}}
+                <tr style="cursor:pointer;"
+                    onclick="window.location='{{ route('admin.bookings.edit', $booking->id) }}'"
+                    title="Open {{ $booking->reference_number }}">
                     <td style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--text);">
                         {{ $booking->reference_number }}
                     </td>
@@ -191,7 +263,11 @@ const areaCtx = document.getElementById('myAreaChart').getContext('2d');
 const areaGrad = areaCtx.createLinearGradient(0, 0, 0, 200);
 areaGrad.addColorStop(0, 'rgba(232,25,44,0.30)');
 areaGrad.addColorStop(1, 'rgba(232,25,44,0.0)');
+// Registered globally by the CDN script, so off everywhere unless asked for.
+if (window.ChartDataLabels) { Chart.plugins.unregister(ChartDataLabels); }
+
 new Chart(areaCtx, {
+    plugins: window.ChartDataLabels ? [ChartDataLabels] : [],
     type: 'line',
     data: {
         labels: {!! json_encode($chartLabels) !!},
@@ -210,9 +286,29 @@ new Chart(areaCtx, {
     },
     options: {
         responsive: true, legend: { display: false },
+        plugins: {
+            datalabels: {
+                align: 'top', offset: 4,
+                color: '#888', font: { size: 10, weight: 600 },
+                // Hide zeroes so quiet days do not litter the line with 0s.
+                display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
+                formatter: v => v,
+            }
+        },
         scales: {
             xAxes: [{ gridLines: { color: 'rgba(0,0,0,0.05)' }, ticks: { fontColor: '#888' } }],
-            yAxes: [{ gridLines: { color: 'rgba(0,0,0,0.05)' }, ticks: { fontColor: '#888', beginAtZero: true } }]
+            // Bookings are whole things. Without stepSize the axis split a
+            // range of 0-1 into 0.1, 0.2, ... The callback drops any
+            // fractional tick Chart.js still generates at larger ranges.
+            yAxes: [{
+                gridLines: { color: 'rgba(0,0,0,0.05)' },
+                ticks: {
+                    fontColor: '#888',
+                    beginAtZero: true,
+                    stepSize: 1,
+                    callback: v => (Number.isInteger(v) ? v : undefined),
+                }
+            }]
         }
     }
 });
@@ -226,7 +322,11 @@ new Chart(barCtx, {
         datasets: [{
             label: 'Revenue (₱)',
             data: {!! json_encode($revenueData) !!},
-            backgroundColor: ['#E8192C','#B5101E','#E8192C','#B5101E','#E8192C','#B5101E'],
+            // Six colours were listed for sixteen services, so every bar past
+            // the sixth fell through to Chart.js's default grey — the "black
+            // column". One colour for all of them instead.
+            backgroundColor: '#E8192C',
+            hoverBackgroundColor: '#B5101E',
             borderRadius: 4, borderWidth: 0,
         }]
     },
@@ -234,7 +334,19 @@ new Chart(barCtx, {
         responsive: true, legend: { display: false },
         scales: {
             xAxes: [{ gridLines: { display: false }, ticks: { fontColor: '#888' } }],
-            yAxes: [{ gridLines: { color: 'rgba(0,0,0,0.05)' }, ticks: { fontColor: '#888', beginAtZero: true, callback: v => '₱' + (v/1000).toFixed(0) + 'k' } }]
+            // Full peso values: the old callback rounded to thousands, so
+            // 1,000 and 1,050 both read "1k".
+            yAxes: [{
+                gridLines: { color: 'rgba(0,0,0,0.05)' },
+                ticks: {
+                    fontColor: '#888',
+                    beginAtZero: true,
+                    // Whole pesos only: with no revenue yet Chart.js falls back
+                    // to a 0-1 range, which rendered as ₱0.9, ₱0.8 and so on.
+                    stepSize: 1,
+                    callback: v => (Number.isInteger(v) ? '₱' + Number(v).toLocaleString('en-PH') : undefined),
+                }
+            }]
         }
     }
 });
@@ -261,14 +373,14 @@ new Chart(barCtx, {
     }
 
     ApxLiveRefresh.start({
-        url:    '{{ route('admin.dashboard.live') }}',
+        // Same query string as the page, so a refresh keeps the filter.
+        url:    '{{ route('admin.dashboard.live') }}' + window.location.search,
         stamp:  '#liveUpdated',
         button: '#liveRefreshBtn',
         apply(data) {
-            setStat('statToday',     data.stats.today);
-            setStat('statPending',   data.stats.pending);
-            setStat('statWeek',      data.stats.this_week);
+            setStat('statTotal',     data.stats.total);
             setStat('statCompleted', data.stats.completed);
+            setStat('statPending',   data.stats.pending);
 
             // One poll serves both: no second timer for the bell.
             if (window.ApxBell && typeof data.unread !== 'undefined') {
@@ -284,7 +396,7 @@ new Chart(barCtx, {
             }
 
             body.innerHTML = data.bookings.map(b => `
-                <tr>
+                <tr style="cursor:pointer;" onclick="window.location='/admin/bookings/${b.id}/edit'" title="Open ${esc(b.reference)}">
                     <td style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--text);">${esc(b.reference)}</td>
                     <td class="primary-col">${esc(b.customer)}</td>
                     <td>${esc(b.services)}</td>

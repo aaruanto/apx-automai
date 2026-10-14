@@ -145,39 +145,6 @@
                 </div>
             </div>
 
-            <!-- Recent Activity Log -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-header-title"><i class="fas fa-clock-rotate-left"></i> Recent Activity</div>
-                    <span style="font-size:.75rem;color:var(--text-muted);">Last 10 actions</span>
-                </div>
-                <div class="table-wrap">
-                    <table class="apx-table">
-                        <thead>
-                            <tr>
-                                <th>Action</th>
-                                <th>Description</th>
-                                <th>Date & Time</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        @forelse($activityLog ?? [] as $log)
-                        <tr>
-                            <td>
-                                <span class="badge badge-staff">{{ $log->action }}</span>
-                            </td>
-                            <td>{{ $log->description }}</td>
-                            <td style="white-space:nowrap;font-size:.78rem;">{{ $log->created_at->format('M d, Y g:i A') }}</td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="3" style="text-align:center;padding:20px;color:var(--text-muted);">No activity recorded yet.</td>
-                        </tr>
-                        @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
 
         </div>
     </div>
