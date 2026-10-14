@@ -82,26 +82,26 @@ it('skips email when the channel is switched off in the template', function () {
 });
 
 it('does not pretend an SMS went out while the gateway is unconfigured', function () {
-    config(['mail.default' => 'smtp', 'services.unisms.key' => null]);
+    config(['mail.default' => 'smtp', 'services.semaphore.key' => null]);
 
     $r = postTest(['test_phone' => '09171234567'])->assertOk();
 
     $sms = collect($r->json('results'))->firstWhere('channel', 'SMS');
     expect($sms['ok'])->toBeFalse();
     // Naming the variable is the point — "SMS is off" alone is not actionable.
-    expect($sms['message'])->toContain('UNISMS_KEY');
+    expect($sms['message'])->toContain('SEMAPHORE_KEY');
 });
 
 it('reports the segment count on a successful test SMS', function () {
     config([
-        'mail.default'              => 'smtp',
-        'services.unisms.key'       => 'test-secret-key',
-        'services.unisms.sender_id' => 'APXAUTO',
+        'mail.default'                   => 'smtp',
+        'services.semaphore.key'         => 'test-secret-key',
+        'services.semaphore.sender_name' => 'APXAUTO',
     ]);
 
     \Illuminate\Support\Facades\Http::fake([
-        'unismsapi.com/*' => \Illuminate\Support\Facades\Http::response(
-            ['message' => ['status' => 'pending', 'reference_id' => 'msg_1']], 201
+        'api.semaphore.co/*' => \Illuminate\Support\Facades\Http::response(
+            [['message_id' => 123456, 'status' => 'Queued', 'network' => 'Smart']], 200
         ),
     ]);
 

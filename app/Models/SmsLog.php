@@ -26,17 +26,20 @@ class SmsLog extends Model
     }
 
     /**
-     * Statuses that mean the gateway accepted the message. Everything else —
-     * our own pre-flight refusals included — counts as a failure.
+     * Statuses that mean the gateway accepted the message. Semaphore reports
+     * Queued, Pending, Sent, Failed and Refunded; we store them lowercased.
+     * Everything else — our own pre-flight refusals included — is a failure.
      */
+    public const ACCEPTED = ['queued', 'pending', 'sent', 'delivered'];
+
     public function succeeded(): bool
     {
-        return in_array($this->status, ['pending', 'sent', 'delivered'], true);
+        return in_array($this->status, self::ACCEPTED, true);
     }
 
     public function scopeFailed($query)
     {
-        return $query->whereNotIn('status', ['pending', 'sent', 'delivered']);
+        return $query->whereNotIn('status', self::ACCEPTED);
     }
 
     public function scopeRecentFirst($query)

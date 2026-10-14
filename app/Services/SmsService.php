@@ -8,12 +8,17 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * UniSMS gateway.
+ * Semaphore gateway.
  *
- * POST {base}/sms with HTTP Basic auth — the secret key as the username and an
- * empty password — and a body of recipient, content and sender_id. Success is
- * 201 with the created message under a "message" key; 401, 422 and 429 are the
- * documented failures.
+ * POST {base}/messages with the key as an ordinary form field — not a header,
+ * not basic auth — alongside number, message and an optional sendername. The
+ * reply is a JSON *array* of created messages, one per recipient.
+ *
+ * Replaced UniSMS, whose free sender ID stopped reaching Smart, TNT and Sun.
+ * Semaphore routes domestically and reaches every network on its default
+ * sender name with no registration. Everything above the HTTP call — number
+ * normalisation, segment counting, logging — is unchanged by that move, and
+ * the UniSMS implementation is in the git history if its coverage returns.
  *
  * Every attempt is written to sms_logs whatever the outcome, because the
  * question afterwards is always "did the customer actually get a text", and
@@ -22,8 +27,12 @@ use Illuminate\Support\Facades\Log;
  */
 class SmsService
 {
-    /** Longest message UniSMS accepts. */
-    public const MAX_LENGTH = 670;
+    /**
+     * Semaphore splits anything over 160 characters itself and bills per part,
+     * with no documented ceiling. This limit is ours: without it a runaway
+     * template could quietly cost dozens of credits per send.
+     */
+    public const MAX_LENGTH = 1600;
 
     /**
      * Characters representable in the GSM 03.38 7-bit alphabet. Anything
@@ -40,24 +49,21 @@ class SmsService
 
     // ── Configuration ──────────────────────────────────────────────────────
 
+    /**
+     * The key alone. Unlike UniSMS, the sender name is optional — Semaphore
+     * falls back to the one registered to the account.
+     */
     public function configured(): bool
     {
-        return filled(config('services.unisms.key'))
-            && filled(config('services.unisms.sender_id'));
+        return filled(config('services.semaphore.key'));
     }
 
     /** Why SMS is unavailable, phrased for an admin to act on. Null when fine. */
     public function unavailableReason(): ?string
     {
-        if (blank(config('services.unisms.key'))) {
-            return 'UNISMS_KEY is not set, so SMS is switched off.';
-        }
-
-        if (blank(config('services.unisms.sender_id'))) {
-            return 'UNISMS_SENDER_ID is not set. UniSMS requires a sender ID on every message.';
-        }
-
-        return null;
+        return blank(config('services.semaphore.key'))
+            ? 'SEMAPHORE_KEY is not set, so SMS is switched off.'
+            : null;
     }
 
     // ── Philippine number normalisation ────────────────────────────────────
@@ -190,23 +196,37 @@ class SmsService
 
         if (mb_strlen($content) > self::MAX_LENGTH) {
             return $this->fail(
-                'Message is '.mb_strlen($content).' characters; UniSMS accepts at most '.self::MAX_LENGTH.'.',
+                'Message is '.mb_strlen($content).' characters; this app refuses anything over '.self::MAX_LENGTH.'.',
                 $recipient, $content, $context, 'too_long'
             );
         }
 
+        // Semaphore silently discards any message beginning with "TEST": it
+        // returns a normal success and nothing is delivered. Catching it here
+        // turns an invisible non-delivery into a stated refusal.
+        if (preg_match('/^\s*TEST/i', $content) === 1) {
+            return $this->fail(
+                'Semaphore silently discards messages starting with "TEST" — it reports success and delivers nothing. Reword the template so it does not begin with that word.',
+                $recipient, $content, $context, 'test_prefix'
+            );
+        }
+
         try {
-            $response = Http::withBasicAuth((string) config('services.unisms.key'), '')
-                ->timeout((int) config('services.unisms.timeout'))
+            $response = Http::asForm()
+                ->timeout((int) config('services.semaphore.timeout'))
                 ->acceptJson()
-                ->post($this->endpoint('sms'), [
-                    'recipient' => $recipient,
-                    'content'   => $content,
-                    'sender_id' => (string) config('services.unisms.sender_id'),
-                ]);
+                ->post($this->endpoint('messages'), array_filter([
+                    // The key is an ordinary form field here, not a header.
+                    'apikey'     => (string) config('services.semaphore.key'),
+                    // Semaphore takes 09XXXXXXXXX or 639XXXXXXXXX, without a
+                    // leading plus; we keep E.164 for the log and strip it here.
+                    'number'     => ltrim($recipient, '+'),
+                    'message'    => $content,
+                    'sendername' => (string) config('services.semaphore.sender_name'),
+                ], fn ($value) => $value !== '' && $value !== null));
         } catch (\Throwable $e) {
             return $this->fail(
-                'Could not reach UniSMS: '.$e->getMessage(),
+                'Could not reach Semaphore: '.$e->getMessage(),
                 $recipient, $content, $context, 'transport_error'
             );
         }
@@ -218,43 +238,57 @@ class SmsService
             );
         }
 
-        $message   = $response->json('message') ?: [];
-        $reference = $message['reference_id'] ?? null;
+        // The reply is an array of created messages, one per recipient, even
+        // for a single send.
+        $body    = $response->json();
+        $message = is_array($body) ? ($body[0] ?? $body) : [];
+
+        $status    = strtolower((string) ($message['status'] ?? 'queued'));
+        $reference = $message['message_id'] ?? null;
+
+        // A message Semaphore itself marks Failed is not a success, however
+        // healthy the HTTP status was.
+        if ($status === 'failed') {
+            return $this->fail(
+                'Semaphore accepted the request but marked the message Failed'
+                    .(isset($message['network']) ? ' on '.$message['network'] : '').'.',
+                $recipient, $content, $context, 'failed'
+            );
+        }
 
         $log = $this->log($context + [
             'recipient'    => $recipient,
             'content'      => $content,
-            'status'       => $message['status'] ?? 'pending',
-            'reference_id' => $reference,
+            'status'       => $status,
+            'reference_id' => $reference ? (string) $reference : null,
             'segments'     => $this->segments($content)['segments'],
         ]);
 
         return [
             'ok'      => true,
-            'message' => 'Queued with UniSMS'.($reference ? ' (ref '.$reference.')' : '').'.',
+            'message' => 'Queued with Semaphore'.($reference ? ' (id '.$reference.')' : '').'.',
             'log'     => $log,
         ];
     }
 
     /**
-     * Turn a failed response into something an admin can act on. UniSMS
-     * returns a body on 422; the rest are better explained by what they mean
-     * for this app than by the bare status line.
+     * Turn a failed response into something an admin can act on. Where the
+     * gateway explains itself, quote it; where it does not, say what the
+     * status means for this app rather than restating the status line.
      */
     private function describeFailure(Response $response): string
     {
         $detail = $this->extractDetail($response);
 
         return match ($response->status()) {
-            401 => 'UniSMS rejected the API key (401). Check UNISMS_KEY.',
-            // Only guess at the cause when the gateway did not say. Appending
-            // the hint to a message that already explains itself reads as a
-            // contradiction and sends the reader after the wrong thing.
+            401, 403 => 'Semaphore rejected the API key ('.$response->status().'). Check SEMAPHORE_KEY.',
+            402 => 'Out of Semaphore credits. Top up the account to resume sending.',
+            // Only guess at a cause when the gateway did not give one.
             422 => $detail
-                ? 'UniSMS rejected the request (422): '.$detail
-                : 'UniSMS rejected the request (422). An unregistered sender ID is the usual cause.',
-            429 => 'Rate limited by UniSMS (429). Try again in a few seconds.',
-            default => 'UniSMS returned HTTP '.$response->status().($detail ? ': '.$detail : '.'),
+                ? 'Semaphore rejected the request (422): '.$detail
+                : 'Semaphore rejected the request (422). An unregistered sender name is the usual cause.',
+            429 => 'Rate limited by Semaphore (429). The limit is 120 sends a minute.',
+            default => 'Semaphore returned HTTP '.$response->status().($detail ? ': '.$detail : '.'),
         };
     }
 
@@ -305,14 +339,24 @@ class SmsService
         }
 
         try {
-            $response = Http::withBasicAuth((string) config('services.unisms.key'), '')
-                ->timeout((int) config('services.unisms.timeout'))
+            $response = Http::timeout((int) config('services.semaphore.timeout'))
                 ->acceptJson()
-                ->get($this->endpoint('account'));
+                ->get($this->endpoint('account'), [
+                    'apikey' => (string) config('services.semaphore.key'),
+                ]);
 
-            return $response->successful() ? (int) $response->json('sms_credits') : null;
+            if (! $response->successful()) {
+                return null;
+            }
+
+            // Documented as an object, but the messages endpoint returns an
+            // array for a single item, so tolerate either shape here too.
+            $body    = $response->json();
+            $account = is_array($body) && array_is_list($body) ? ($body[0] ?? []) : ($body ?? []);
+
+            return isset($account['credit_balance']) ? (int) $account['credit_balance'] : null;
         } catch (\Throwable $e) {
-            Log::warning('Could not read UniSMS balance: '.$e->getMessage());
+            Log::warning('Could not read Semaphore balance: '.$e->getMessage());
 
             return null;
         }
@@ -320,7 +364,7 @@ class SmsService
 
     private function endpoint(string $path): string
     {
-        return rtrim((string) config('services.unisms.base_url'), '/').'/'.$path;
+        return rtrim((string) config('services.semaphore.base_url'), '/').'/'.$path;
     }
 
     // ── Logging ────────────────────────────────────────────────────────────
