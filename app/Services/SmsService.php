@@ -247,8 +247,12 @@ class SmsService
 
         return match ($response->status()) {
             401 => 'UniSMS rejected the API key (401). Check UNISMS_KEY.',
-            422 => 'UniSMS rejected the request (422)'.($detail ? ': '.$detail : '.')
-                   .' An unregistered sender ID is the usual cause.',
+            // Only guess at the cause when the gateway did not say. Appending
+            // the hint to a message that already explains itself reads as a
+            // contradiction and sends the reader after the wrong thing.
+            422 => $detail
+                ? 'UniSMS rejected the request (422): '.$detail
+                : 'UniSMS rejected the request (422). An unregistered sender ID is the usual cause.',
             429 => 'Rate limited by UniSMS (429). Try again in a few seconds.',
             default => 'UniSMS returned HTTP '.$response->status().($detail ? ': '.$detail : '.'),
         };

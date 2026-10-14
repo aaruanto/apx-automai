@@ -155,7 +155,7 @@ it('explains each documented failure in terms an admin can act on', function (in
     expect(SmsLog::sole()->status)->toBe('http_'.$status);
 })->with([
     [401, 'UNISMS_KEY'],
-    [422, 'sender ID'],
+    [422, 'rejected the request'],
     [429, 'Rate limited'],
 ]);
 
