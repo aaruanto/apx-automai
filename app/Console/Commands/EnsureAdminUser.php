@@ -32,9 +32,11 @@ class EnsureAdminUser extends Command
 
     public function handle(): int
     {
-        $email    = $this->option('email')    ?: env('ADMIN_EMAIL');
-        $password = $this->option('password') ?: env('ADMIN_PASSWORD');
-        $name     = $this->option('name')     ?: env('ADMIN_NAME', 'Administrator');
+        // config(), not env() — env() returns null once config:cache has run,
+        // which is exactly the case in production.
+        $email    = $this->option('email')    ?: config('apx.admin.email');
+        $password = $this->option('password') ?: config('apx.admin.password');
+        $name     = $this->option('name')     ?: config('apx.admin.name');
         $role     = $this->option('role')     ?: 'admin';
 
         // Not configured is a normal state, not a failure — the entrypoint must

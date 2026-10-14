@@ -25,7 +25,10 @@
         </div>
         <div class="modal-body" style="display:flex;gap:14px;align-items:flex-start;">
             <div class="apx-alert-icon" aria-hidden="true"><i class="fas fa-circle-info"></i></div>
-            <p class="apx-alert-message" style="color:var(--text-muted);margin:0;flex:1;"></p>
+            {{-- pre-line so a multi-line message (e.g. one line per channel of
+                 a test send) keeps its breaks. The message is set with
+                 textContent, so markup is never interpreted. --}}
+            <p class="apx-alert-message" style="color:var(--text-muted);margin:0;flex:1;white-space:pre-line;"></p>
         </div>
         <div class="modal-footer apx-alert-footer"></div>
     </div>

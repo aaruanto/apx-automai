@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
@@ -70,6 +71,12 @@ class MessageTemplateController extends Controller
     }
 
     // ── Send test message ──────────────────────────────────────────────────
+    //
+    // The old version always flashed "Test message sent successfully", even
+    // when the mailer was the log driver, when no address was given, or when
+    // SMTP threw. A test button that cannot report failure is worse than no
+    // button, so this one reports exactly what happened per channel and never
+    // 500s the page.
     public function sendTest(Request $request)
     {
         $request->validate([
@@ -79,50 +86,96 @@ class MessageTemplateController extends Controller
         ]);
 
         $template = $this->loadTemplate();
+        $results  = [];
+        $ok       = true;
 
-        // Sample data for test send
-        $sample = [
-            '{name}'         => 'Juan dela Cruz',
-            '{first_name}'   => 'Juan',
-            '{service}'      => 'Full Car Wash',
-            '{date}'         => now()->addDays(3)->format('F j, Y'),
-            '{time}'         => '9:00 AM',
-            '{plate}'        => 'ABC 1234',
-            '{vehicle}'      => 'Toyota Vios 2021',
-            '{reference}'    => '#BK-0042',
-            '{branch}'       => 'APX Motors — Tandang Sora',
-            '{contact}'      => '(02) 8123-4567',
-            '{days_until}'   => '3',
-        ];
+        // ── Email ──────────────────────────────────────────────────────────
+        if (! $request->test_email) {
+            $results[] = ['channel' => 'Email', 'ok' => null, 'message' => 'No address given — skipped.'];
+        } elseif (empty($template['channels']['send_email'])) {
+            $results[] = ['channel' => 'Email', 'ok' => null, 'message' => 'The email channel is switched off in this template.'];
+        } elseif (config('mail.default') === 'log') {
+            // The single most common reason "nothing arrives": mail is being
+            // written to storage/logs instead of sent. Say so plainly.
+            $ok        = false;
+            $results[] = ['channel' => 'Email', 'ok' => false, 'message' => 'MAIL_MAILER is set to "log", so mail is written to the Laravel log instead of being sent. Set MAIL_MAILER=smtp to deliver for real.'];
+        } else {
+            try {
+                $sample  = $this->sampleData();
+                $subject = strtr($template['email_subject'], $sample);
+                $body    = strtr($template['email_body'], $sample);
 
-        $emailBody    = str_replace(array_keys($sample), array_values($sample), $template['email_body']);
-        $emailSubject = str_replace(array_keys($sample), array_values($sample), $template['email_subject']);
-        $smsBody      = str_replace(array_keys($sample), array_values($sample), $template['sms_body']);
+                Mail::html($body, function ($msg) use ($request, $subject, $template) {
+                    $msg->to($request->test_email)
+                        ->subject('[TEST] '.$subject)
+                        ->from(config('mail.from.address'), $template['sender_name'] ?? 'APX AutoMai');
 
-        // Send test email
-        if ($request->test_email && $template['channels']['send_email']) {
-            Mail::html($emailBody, function ($msg) use ($request, $emailSubject, $template) {
-                $msg->to($request->test_email)
-                    ->subject('[TEST] ' . $emailSubject)
-                    ->from(config('mail.from.address'), $template['sender_name'] ?? 'APX AutoMai');
-                if ($template['reply_to']) {
-                    $msg->replyTo($template['reply_to']);
-                }
-            });
+                    if (! empty($template['reply_to'])) {
+                        $msg->replyTo($template['reply_to']);
+                    }
+                });
+
+                $results[] = ['channel' => 'Email', 'ok' => true, 'message' => 'Sent to '.$request->test_email.' via '.config('mail.mailers.'.config('mail.default').'.host', config('mail.default')).'.'];
+            } catch (\Throwable $e) {
+                $ok        = false;
+                $reason    = $this->scrubSecrets($e->getMessage());
+                $results[] = ['channel' => 'Email', 'ok' => false, 'message' => $reason];
+                Log::error('Test email failed: '.$reason);
+            }
         }
 
-        // Send test SMS
-        // TODO: Integrate your SMS gateway here (e.g. Semaphore, Vonage, Twilio)
-        // Example with Semaphore:
-        // if ($request->test_phone && $template['channels']['send_sms']) {
-        //     Http::post('https://api.semaphore.co/api/v4/messages', [
-        //         'apikey'      => config('services.semaphore.key'),
-        //         'number'      => $request->test_phone,
-        //         'message'     => $smsBody,
-        //         'sendername'  => $template['sender_name'] ?? 'APX',
-        //     ]);
-        // }
+        // ── SMS ────────────────────────────────────────────────────────────
+        // No gateway is wired yet (phase 3). Report that honestly rather than
+        // letting the caller believe a text went out.
+        if ($request->test_phone) {
+            $results[] = ['channel' => 'SMS', 'ok' => null, 'message' => 'No SMS gateway is configured yet, so nothing was sent.'];
+        }
 
-        return back()->with('success', 'Test message sent successfully.');
+        if (! $results) {
+            $results[] = ['channel' => 'Nothing', 'ok' => null, 'message' => 'Enter an email address or phone number first.'];
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => $ok, 'results' => $results]);
+        }
+
+        return back()->with($ok ? 'success' : 'error', collect($results)->map(
+            fn ($r) => $r['channel'].': '.$r['message']
+        )->implode(' '));
+    }
+
+    // ── Placeholder values used for a test send ────────────────────────────
+    private function sampleData(): array
+    {
+        return [
+            '{name}'       => 'Juan dela Cruz',
+            '{first_name}' => 'Juan',
+            '{service}'    => 'Full Car Wash',
+            '{date}'       => now()->addDays(3)->format('F j, Y'),
+            '{time}'       => '9:00 AM',
+            '{plate}'      => 'ABC 1234',
+            '{vehicle}'    => 'Toyota Vios 2021',
+            '{reference}'  => '#BK-0042',
+            '{branch}'     => 'APX Motors — Tandang Sora',
+            '{contact}'    => '(02) 8123-4567',
+            '{days_until}' => '3',
+        ];
+    }
+
+    // ── Keep credentials out of anything we display or log ─────────────────
+    //
+    // SMTP transport exceptions quote the server conversation back at you. The
+    // password should never appear there, but a mailer error is exactly the
+    // wrong place to find out we were wrong about that.
+    private function scrubSecrets(string $message): string
+    {
+        foreach (['mail.mailers.smtp.password', 'mail.mailers.smtp.username'] as $key) {
+            $secret = (string) config($key);
+            if ($secret !== '') {
+                $message = str_replace($secret, '[redacted]', $message);
+            }
+        }
+
+        return $message;
     }
 }

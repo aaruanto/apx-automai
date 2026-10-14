@@ -96,19 +96,53 @@ To send real email through Gmail, add these to `.env` locally and to the
 MAIL_MAILER=smtp
 MAIL_HOST=smtp.gmail.com
 MAIL_PORT=587
-MAIL_ENCRYPTION=tls
+MAIL_SCHEME=null
 MAIL_USERNAME=your-address@gmail.com
 MAIL_PASSWORD=your-16-character-app-password
 MAIL_FROM_ADDRESS=your-address@gmail.com
 MAIL_FROM_NAME="APX AutoMai"
 ```
 
+This app reads **`MAIL_SCHEME`**, not `MAIL_ENCRYPTION` — see
+`config/mail.php`. On port 587 leave it `null` and STARTTLS is negotiated
+automatically; set it to `smtps` only if you switch to port 465. Setting
+`MAIL_ENCRYPTION` has no effect here.
+
 `MAIL_PASSWORD` must be a Google **App Password**, not the account password.
 Generate one at <https://myaccount.google.com/apppasswords>; it requires
 2-Step Verification to be on. Remove the spaces Google shows in it.
 
+Gmail allows roughly **500 messages per day** on a free account (2,000 on
+Workspace), counted per recipient. That is ample for a booking system of this
+size, but it is a hard ceiling: past it Gmail returns `550` and sends stop
+until the window rolls over. If volume ever approaches that, move to a
+transactional provider (Postmark, Resend, SES) — `config/mail.php` already
+has entries for all three, so it is an env-var change rather than a rewrite.
+
+### Checking it works
+
+Admin panel → **Message Templates** → **Send Test**. Enter an address and
+submit; the result dialog reports per channel what happened, including the
+mailer's own error text if the send failed. Common causes:
+
+| Message | Cause |
+|---|---|
+| `MAIL_MAILER is set to "log"` | Still on the log driver — nothing is being sent |
+| `Failed to authenticate` | Wrong App Password, or 2-Step Verification is off |
+| `Connection could not be established` | Wrong host/port, or outbound 587 is blocked |
+
 Never commit these values. `.env` is gitignored, and Render's environment
 variables are set through the dashboard.
+
+### Mail and request latency
+
+Mail is sent synchronously, inside the request. Every send site is wrapped in
+`try`/`catch` and logs on failure, so a dead SMTP server cannot fail a
+booking — but it does add the SMTP round trip (typically under two seconds)
+to that request. Moving mail onto the queue would remove that, and
+`QUEUE_CONNECTION` is already `database` with a `jobs` table in place, but it
+needs a worker process running `queue:work`. On Render that is a separate
+paid Background Worker, so it is deliberately not enabled.
 
 To check it works without making a booking:
 

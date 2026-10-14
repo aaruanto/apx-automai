@@ -4,6 +4,20 @@
 
 @push('styles')
 <style>
+/* Editor beside the live preview. The preview column is a fixed 320px, so
+   below roughly a tablet the pair cannot fit and the page used to scroll
+   sideways — min-width:0 lets the editor column shrink instead of being
+   held open by its own content. */
+.msg-editor-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 20px;
+    align-items: start;
+}
+.msg-editor-grid > * { min-width: 0; }
+@media (max-width: 900px) {
+    .msg-editor-grid { grid-template-columns: minmax(0, 1fr); }
+}
 .msg-tab {
     background: none; border: none; cursor: pointer;
     padding: 9px 16px; font-size: .84rem; font-weight: 600;
@@ -113,7 +127,7 @@
         </span>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start;">
+    <div class="msg-editor-grid">
 
         <!-- LEFT — EDITOR -->
         <div style="display:flex;flex-direction:column;gap:20px;">
@@ -392,7 +406,12 @@
             <div class="modal-title"><i class="fas fa-paper-plane" style="color:var(--red);margin-right:8px;"></i> Send Test Message</div>
             <button class="modal-close" onclick="closeModal('testSendModal')"><i class="fas fa-xmark"></i></button>
         </div>
-        <form method="POST" action="{{ route('admin.templates.test') }}">
+        {{-- Submits over fetch so the result is reported in the shared alert
+             modal. A plain POST redirected back to a page with no flash
+             renderer, so a failed test send looked identical to a successful
+             one. --}}
+        <form method="POST" action="{{ route('admin.templates.test') }}"
+              id="testSendForm" onsubmit="return sendTestMessage(event)">
             @csrf
             <div class="modal-body">
                 <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.8rem;color:var(--text-muted);">
@@ -620,6 +639,62 @@ function saveAllTemplates() {
     .catch(() => alert('Failed to save. Please try again.'));
 }
 
+/* Test send — reports per channel what actually happened.
+   The server answers with { ok, results: [{ channel, ok, message }] }, where
+   ok === null means "skipped, and here is why". Anything the mailer threw
+   comes back as the message, so a wrong port or a rejected App Password is
+   readable from the admin panel instead of only from the logs. */
+function sendTestMessage(e) {
+    e.preventDefault();
+
+    const form = document.getElementById('testSendForm');
+    const btn  = form.querySelector('button[type="submit"]');
+    const was  = btn.innerHTML;
+
+    btn.disabled  = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
+
+    fetch('/admin/templates/test', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': _csrfToken,
+            'Accept': 'application/json',
+        },
+        body: new FormData(form),
+    })
+    .then(r => r.json().catch(() => {
+        // An HTML error page rather than JSON — say that, rather than
+        // failing silently on r.json().
+        throw new Error('The server returned an unexpected response (HTTP ' + r.status + ').');
+    }))
+    .then(data => {
+        const icon  = { true: '✓', false: '✕', null: '—' };
+        const lines = (data.results || []).map(r =>
+            icon[String(r.ok)] + ' ' + r.channel + ' — ' + r.message
+        ).join('\n\n');
+
+        closeModal('testSendModal');
+        ApxAlertModal.show({
+            variant: data.ok ? 'success' : 'error',
+            title:   data.ok ? 'Test send finished' : 'Test send failed',
+            message: lines || 'Nothing to report.',
+        });
+    })
+    .catch(err => {
+        closeModal('testSendModal');
+        ApxAlertModal.show({
+            variant: 'error',
+            title:   'Test send failed',
+            message: err.message || 'Could not reach the server.',
+        });
+    })
+    .finally(() => {
+        btn.disabled  = false;
+        btn.innerHTML = was;
+    });
+
+    return false;
+}
 
 @endverbatim
 </script>

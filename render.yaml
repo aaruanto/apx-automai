@@ -34,6 +34,27 @@ services:
         value: database
       - key: QUEUE_CONNECTION
         value: database
+      # Mail. The non-secret settings are pinned here so the deployment is
+      # self-documenting; the two credentials are marked sync: false, which
+      # tells Render to prompt for them in the dashboard rather than keeping
+      # them in this file.
+      #
+      # Note this app reads MAIL_SCHEME, not MAIL_ENCRYPTION (Laravel 11+).
+      # On port 587, MAIL_SCHEME stays null and STARTTLS is negotiated.
+      - key: MAIL_MAILER
+        value: smtp
+      - key: MAIL_HOST
+        value: smtp.gmail.com
+      - key: MAIL_PORT
+        value: 587
+      - key: MAIL_FROM_NAME
+        value: APX AutoMai
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM_ADDRESS
+        sync: false
 
 databases:
   - name: apx-automai-db
