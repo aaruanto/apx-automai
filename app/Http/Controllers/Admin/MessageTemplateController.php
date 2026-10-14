@@ -167,15 +167,16 @@ class MessageTemplateController extends Controller
     // SMTP transport exceptions quote the server conversation back at you. The
     // password should never appear there, but a mailer error is exactly the
     // wrong place to find out we were wrong about that.
+    //
+    // Only the password. The username is not a secret, and a 535 is almost
+    // always caused by sending the wrong one — redacting it hides the one
+    // field that identifies the mistake.
     private function scrubSecrets(string $message): string
     {
-        foreach (['mail.mailers.smtp.password', 'mail.mailers.smtp.username'] as $key) {
-            $secret = (string) config($key);
-            if ($secret !== '') {
-                $message = str_replace($secret, '[redacted]', $message);
-            }
-        }
+        $password = (string) config('mail.mailers.smtp.password');
 
-        return $message;
+        return $password === ''
+            ? $message
+            : str_replace($password, '[redacted]', $message);
     }
 }

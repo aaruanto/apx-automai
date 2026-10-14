@@ -105,7 +105,7 @@ it('reports the mailers own error instead of throwing a 500', function () {
     expect($r->json('results.0.message'))->toContain('Failed to authenticate');
 });
 
-it('keeps the credentials out of the reported error', function () {
+it('keeps the password out of the reported error but keeps the username in', function () {
     config([
         'mail.default' => 'smtp',
         'mail.mailers.smtp.password' => 'super-secret-app-pw',
@@ -120,8 +120,9 @@ it('keeps the credentials out of the reported error', function () {
         ->assertOk()->json('results.0.message');
 
     expect($message)->not->toContain('super-secret-app-pw');
-    expect($message)->not->toContain('bot@example.com');
     expect($message)->toContain('[redacted]');
+    // A 535 is nearly always the wrong username, so it has to stay readable.
+    expect($message)->toContain('bot@example.com');
 });
 
 it('keeps the test endpoint away from customers', function () {
