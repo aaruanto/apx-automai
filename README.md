@@ -147,6 +147,15 @@ mailer's own error text if the send failed. Common causes:
 | `Sender not valid` / `unrecognised sender` | `MAIL_FROM_ADDRESS` has not been verified in Brevo |
 | Mail sends but the body is blank | The template was never saved — open Message Templates and press **Save Templates** once |
 
+The error names the username it authenticated with. If that is not the value
+you just set, **restart `php artisan serve`**: the command injects the `.env`
+values into the server process when it launches, and dotenv will not overwrite
+variables already present in the environment, so a server left running from
+before an edit keeps serving the old credentials indefinitely. Editing `.env`
+is not enough; the process has to be restarted. The same applies on Render,
+where saving an environment variable triggers a redeploy — wait for it to
+finish before retesting.
+
 Never commit these values. `.env` is gitignored, and Render's environment
 variables are set through the dashboard.
 
