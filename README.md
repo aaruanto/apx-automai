@@ -161,42 +161,23 @@ variables are set through the dashboard.
 
 ## SMS
 
-SMS goes through [Semaphore](https://semaphore.co/docs), a Philippine gateway
-routed domestically, reaching Globe, Smart, Sun and DITO.
+SMS goes through [UniSMS](https://unismsapi.com/docs/sms), a Philippine
+gateway covering Globe, Smart, DITO, Sun and TNT.
 
 ```
-SEMAPHORE_KEY=your-api-key
-SEMAPHORE_SENDER_NAME=
-SEMAPHORE_BASE_URL=https://api.semaphore.co/api/v4
+UNISMS_KEY=your-api-secret-key
+UNISMS_SENDER_ID=YOURSENDERID
+UNISMS_BASE_URL=https://unismsapi.com/api
 ```
 
-**Leaving `SEMAPHORE_KEY` blank switches SMS off.** The app skips the channel
-and says so; it does not fail, and no booking is affected.
+**Leaving `UNISMS_KEY` blank switches SMS off.** The app skips the channel and
+says so; it does not fail, and no booking is affected.
 
-`SEMAPHORE_KEY` is sent as an ordinary form field named `apikey` — not a
-header, not a bearer token. `SEMAPHORE_SENDER_NAME` is **optional**: left
-blank, Semaphore uses the sender name registered to the account, which reaches
-every network with no registration of your own. Setting it to an unregistered
-name is the usual cause of a 422.
-
-### Why not UniSMS
-
-The project was built against UniSMS first. Its free sender ID stopped
-reaching Smart, TNT and Sun — Philippine carriers require alphanumeric sender
-IDs to be registered per network, and registering one takes 2–4 weeks plus a
-letter of authorisation per carrier. Semaphore's default sender name is
-already registered across all of them.
-
-That swap touched only the HTTP call. Number normalisation, segment counting,
-`sms_logs` and the admin test send are provider-independent and were unchanged;
-the UniSMS implementation is in the git history if its coverage returns.
-
-### Messages beginning with "TEST"
-
-Semaphore **silently discards** any message whose body starts with `TEST`: the
-API returns an ordinary success and nothing is delivered. `SmsService` refuses
-such a message up front and says why, rather than letting it look sent. Keep
-it in mind when writing templates.
+`UNISMS_KEY` is sent as the HTTP Basic *username* with an empty password, not
+as a bearer token. `UNISMS_SENDER_ID` is required on every message — new
+accounts are issued a random one for testing, and a registered sender ID has
+to be applied for before production traffic. That is a Philippine telco rule
+rather than a UniSMS one, and an unregistered ID is the usual cause of a 422.
 
 ### Numbers
 
@@ -223,7 +204,7 @@ reminder you send.
 The test send reports the encoding and segment count for exactly this reason:
 
 ```
-✓ SMS — Queued with Semaphore (id 123456). 148 characters, GSM-7, 1 segment.
+✓ SMS — Queued with UniSMS (ref msg_84e8…). 148 characters, GSM-7, 1 segment.
 ```
 
 ### The log
@@ -231,7 +212,7 @@ The test send reports the encoding and segment count for exactly this reason:
 Every attempt writes a row to `sms_logs`, successes and failures alike, with
 the recipient, segment count, trigger and the gateway's reference. The failure
 rows are the valuable ones: when a customer says no reminder arrived, a row
-reading `invalid_number`, `test_prefix` or `http_402` answers it far faster than the gateway
+reading `invalid_number` or `http_401` answers it far faster than the gateway
 dashboard will.
 
 ### Mail and request latency

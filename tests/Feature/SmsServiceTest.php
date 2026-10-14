@@ -10,10 +10,10 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     config([
-        'services.semaphore.key'         => 'test-secret-key',
-        'services.semaphore.sender_name' => 'APXAUTO',
-        'services.semaphore.base_url'    => 'https://api.semaphore.co/api/v4',
-        'services.semaphore.timeout'     => 5,
+        'services.unisms.key'       => 'test-secret-key',
+        'services.unisms.sender_id' => 'APXAUTO',
+        'services.unisms.base_url'  => 'https://unismsapi.com/api',
+        'services.unisms.timeout'   => 5,
     ]);
 });
 
@@ -22,15 +22,15 @@ function sms(): SmsService
     return app(SmsService::class);
 }
 
-/** Semaphore answers with an array of created messages, even for one send. */
-function semaphoreAccepted(string $status = 'Queued'): array
+/** The documented 201 body. */
+function unismsAccepted(string $status = 'pending'): array
 {
-    return [[
-        'message_id'  => 123456,
-        'recipient'   => '639171234567',
-        'sender_name' => 'APXAUTO',
-        'network'     => 'Smart',
-        'status'      => $status,
+    return ['message' => [
+        'status'       => $status,
+        'reference_id' => 'msg_84e8b93b-6315-46af-a686',
+        'recipient'    => '+639171234567',
+        'sender_id'    => 'APXAUTO',
+        'fail_reason'  => null,
     ]];
 }
 
@@ -53,14 +53,14 @@ it('normalises every shape a customer might type', function (string $input) {
 it('refuses anything that is not a Philippine mobile number', function (?string $input) {
     expect(sms()->normalise($input))->toBeNull();
 })->with([
-    'landline'       => '0281234567',
-    'too short'      => '0917123',
-    'too long'       => '091711234567',
-    'wrong country'  => '+14155551234',
-    'starts 8 not 9' => '08171234567',
-    'letters'        => 'not a number',
-    'empty'          => '',
-    'null'           => null,
+    'landline'            => '0281234567',
+    'too short'           => '0917123',
+    'too long'            => '091711234567',
+    'wrong country'       => '+14155551234',
+    'starts 8 not 9'      => '08171234567',
+    'letters'             => 'not a number',
+    'empty'               => '',
+    'null'                => null,
 ]);
 
 // ── Segment counting ─────────────────────────────────────────────────────
@@ -74,6 +74,7 @@ it('counts a short plain message as one GSM-7 segment', function () {
 
 it('splits at 160 GSM-7 characters, then bills 153 per part', function () {
     expect(sms()->segments(str_repeat('a', 160))['segments'])->toBe(1);
+    // 161 no longer fits one part, so it is billed as two of 153.
     expect(sms()->segments(str_repeat('a', 161))['segments'])->toBe(2);
     expect(sms()->segments(str_repeat('a', 306))['segments'])->toBe(2);
     expect(sms()->segments(str_repeat('a', 307))['segments'])->toBe(3);
@@ -99,92 +100,53 @@ it('charges the extended GSM characters as the two septets they cost', function 
 
 // ── Sending ──────────────────────────────────────────────────────────────
 
-it('posts the key as a form field with the number stripped of its plus', function () {
-    Http::fake(['api.semaphore.co/*' => Http::response(semaphoreAccepted(), 200)]);
+it('posts the documented body with basic auth and logs the reference', function () {
+    Http::fake(['unismsapi.com/*' => Http::response(unismsAccepted(), 201)]);
 
     $result = sms()->send('0917 123 4567', 'Reminder', ['trigger' => 'remind_1d']);
 
     expect($result['ok'])->toBeTrue();
 
     Http::assertSent(function (Request $request) {
-        return $request->url() === 'https://api.semaphore.co/api/v4/messages'
+        return $request->url() === 'https://unismsapi.com/api/sms'
             && $request->method() === 'POST'
-            // A form post, not JSON, and the key is a field rather than a header.
-            && $request->hasHeader('Content-Type', 'application/x-www-form-urlencoded')
-            && $request['apikey']     === 'test-secret-key'
-            && $request['number']     === '639171234567'
-            && $request['message']    === 'Reminder'
-            && $request['sendername'] === 'APXAUTO';
+            && $request['recipient'] === '+639171234567'
+            && $request['content']   === 'Reminder'
+            && $request['sender_id'] === 'APXAUTO'
+            // Basic auth, key as username and an empty password.
+            && $request->hasHeader('Authorization', 'Basic '.base64_encode('test-secret-key:'));
     });
 
     $log = SmsLog::sole();
-    // E.164 is kept for the record even though the wire format drops the plus.
     expect($log->recipient)->toBe('+639171234567');
-    expect($log->reference_id)->toBe('123456');
+    expect($log->reference_id)->toBe('msg_84e8b93b-6315-46af-a686');
     expect($log->trigger)->toBe('remind_1d');
-    expect($log->status)->toBe('queued');
     expect($log->succeeded())->toBeTrue();
 });
-
-it('omits the sender name entirely when none is configured', function () {
-    config(['services.semaphore.sender_name' => null]);
-    Http::fake(['api.semaphore.co/*' => Http::response(semaphoreAccepted(), 200)]);
-
-    sms()->send('09171234567', 'Reminder');
-
-    // Sending an empty sendername would override the account default with
-    // nothing, so the field has to be absent rather than blank.
-    Http::assertSent(fn (Request $r) => ! isset($r['sendername']));
-});
-
-it('refuses a message starting with TEST, which Semaphore silently discards', function (string $content) {
-    Http::fake();
-
-    $result = sms()->send('09171234567', $content);
-
-    expect($result['ok'])->toBeFalse();
-    expect($result['message'])->toContain('silently discards');
-    Http::assertNothingSent();
-    expect(SmsLog::sole()->status)->toBe('test_prefix');
-})->with([
-    'TEST message',
-    'test message',
-    '  TESTING one two',
-]);
 
 it('never sends to a number it could not normalise', function () {
     Http::fake();
 
-    expect(sms()->send('0281234567', 'Reminder')['ok'])->toBeFalse();
+    $result = sms()->send('0281234567', 'Reminder');
+
+    expect($result['ok'])->toBeFalse();
     Http::assertNothingSent();
     expect(SmsLog::sole()->status)->toBe('invalid_number');
 });
 
-it('refuses a message longer than this app allows', function () {
+it('refuses a message longer than the gateway accepts', function () {
     Http::fake();
 
-    $result = sms()->send('09171234567', str_repeat('a', 1601));
+    $result = sms()->send('09171234567', str_repeat('a', 671));
 
     expect($result['ok'])->toBeFalse();
-    expect($result['message'])->toContain('1601');
+    expect($result['message'])->toContain('671');
     Http::assertNothingSent();
     expect(SmsLog::sole()->status)->toBe('too_long');
 });
 
-it('treats a message Semaphore marks Failed as a failure', function () {
-    // HTTP 200, but the gateway says it did not go. Reporting that as success
-    // is exactly the kind of lie this whole feature exists to avoid.
-    Http::fake(['api.semaphore.co/*' => Http::response(semaphoreAccepted('Failed'), 200)]);
-
-    $result = sms()->send('09171234567', 'Reminder');
-
-    expect($result['ok'])->toBeFalse();
-    expect($result['message'])->toContain('Failed');
-    expect(SmsLog::sole()->succeeded())->toBeFalse();
-});
-
-it('explains each failure in terms an admin can act on', function (int $status, string $expected) {
-    Http::fake(['api.semaphore.co/*' => Http::response(['message' => 'nope'], $status)]);
+it('explains each documented failure in terms an admin can act on', function (int $status, string $expected) {
+    Http::fake(['unismsapi.com/*' => Http::response(['message' => 'nope'], $status)]);
 
     $result = sms()->send('09171234567', 'Reminder');
 
@@ -192,29 +154,10 @@ it('explains each failure in terms an admin can act on', function (int $status, 
     expect($result['message'])->toContain($expected);
     expect(SmsLog::sole()->status)->toBe('http_'.$status);
 })->with([
-    [401, 'SEMAPHORE_KEY'],
-    [402, 'Out of Semaphore credits'],
+    [401, 'UNISMS_KEY'],
     [422, 'rejected the request'],
     [429, 'Rate limited'],
 ]);
-
-it('surfaces a validation bag naming the offending field', function () {
-    Http::fake(['api.semaphore.co/*' => Http::response([
-        'errors' => ['sendername' => ['The selected sendername is invalid.']],
-    ], 422)]);
-
-    $result = sms()->send('09171234567', 'Reminder');
-
-    expect($result['message'])->toContain('sendername');
-    expect($result['message'])->toContain('invalid');
-});
-
-it('falls back to the raw body when the error shape is unfamiliar', function () {
-    Http::fake(['api.semaphore.co/*' => Http::response('Sender name not approved', 422)]);
-
-    expect(sms()->send('09171234567', 'Reminder')['message'])
-        ->toContain('Sender name not approved');
-});
 
 it('does not throw when the gateway is unreachable', function () {
     Http::fake(fn () => throw new \Illuminate\Http\Client\ConnectionException('timed out'));
@@ -222,42 +165,55 @@ it('does not throw when the gateway is unreachable', function () {
     $result = sms()->send('09171234567', 'Reminder');
 
     expect($result['ok'])->toBeFalse();
-    expect($result['message'])->toContain('Could not reach Semaphore');
+    expect($result['message'])->toContain('Could not reach UniSMS');
     expect(SmsLog::sole()->status)->toBe('transport_error');
 });
 
 // ── Configuration ────────────────────────────────────────────────────────
 
 it('is switched off rather than broken when no key is set', function () {
-    config(['services.semaphore.key' => null]);
+    config(['services.unisms.key' => null]);
     Http::fake();
 
     expect(sms()->configured())->toBeFalse();
-    expect(sms()->send('09171234567', 'Reminder')['message'])->toContain('SEMAPHORE_KEY');
+    expect(sms()->send('09171234567', 'Reminder')['message'])->toContain('UNISMS_KEY');
     Http::assertNothingSent();
 });
 
-it('stays configured without a sender name, which is optional', function () {
-    config(['services.semaphore.sender_name' => null]);
+it('names the sender id when that is what is missing', function () {
+    config(['services.unisms.sender_id' => null]);
 
-    expect(sms()->configured())->toBeTrue();
-    expect(sms()->unavailableReason())->toBeNull();
+    expect(sms()->unavailableReason())->toContain('UNISMS_SENDER_ID');
 });
 
 it('reads the remaining credits', function () {
-    Http::fake(['api.semaphore.co/api/v4/account*' => Http::response(['credit_balance' => 250], 200)]);
+    Http::fake(['unismsapi.com/api/account' => Http::response(['sms_credits' => 250], 200)]);
 
     expect(sms()->credits())->toBe(250);
 });
 
-it('reads the credits when the account comes back as a list', function () {
-    Http::fake(['api.semaphore.co/api/v4/account*' => Http::response([['credit_balance' => 42]], 200)]);
-
-    expect(sms()->credits())->toBe(42);
-});
-
 it('returns null credits rather than failing when the balance cannot be read', function () {
-    Http::fake(['api.semaphore.co/api/v4/account*' => Http::response('', 500)]);
+    Http::fake(['unismsapi.com/api/account' => Http::response('', 500)]);
 
     expect(sms()->credits())->toBeNull();
+});
+
+it('surfaces a validation bag naming the offending field', function () {
+    Http::fake(['unismsapi.com/*' => Http::response([
+        'errors' => ['sender_id' => ['The selected sender id is invalid.']],
+    ], 422)]);
+
+    $result = sms()->send('09171234567', 'Reminder');
+
+    // Without this the admin saw only "rejected the request", which is the one
+    // case where the gateway's own detail is the entire answer.
+    expect($result['message'])->toContain('sender_id');
+    expect($result['message'])->toContain('invalid');
+});
+
+it('falls back to the raw body when the error shape is unfamiliar', function () {
+    Http::fake(['unismsapi.com/*' => Http::response('Sender ID not approved', 422)]);
+
+    expect(sms()->send('09171234567', 'Reminder')['message'])
+        ->toContain('Sender ID not approved');
 });

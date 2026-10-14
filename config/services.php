@@ -37,26 +37,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Semaphore
+    | UniSMS
     |--------------------------------------------------------------------------
     |
-    | Philippine SMS gateway, routed domestically, reaching Globe, Smart, Sun
-    | and DITO on the default sender name without any registration.
+    | Philippine SMS gateway (Globe, Smart, DITO, Sun, TNT). Authentication is
+    | HTTP Basic with the secret key as the username and an empty password.
     |
-    | This replaced UniSMS, whose free sender ID stopped reaching Smart, TNT
-    | and Sun — a carrier registration matter rather than anything in the API.
-    | The UniSMS implementation is in the git history if that coverage returns.
+    | The sender ID is required on every message. New accounts are issued a
+    | random one for testing; a registered sender ID has to be applied for
+    | before production traffic, which is a telco requirement here rather than
+    | a UniSMS one.
     |
-    | SEMAPHORE_SENDER_NAME is optional: left unset, Semaphore uses the sender
-    | name registered to the account. Leaving SEMAPHORE_KEY unset switches SMS
-    | off entirely — the app skips the channel and says so, rather than failing.
+    | Leaving UNISMS_KEY unset disables SMS entirely — the app skips the
+    | channel and says so, rather than failing.
     |
     */
-    'semaphore' => [
-        'key'         => env('SEMAPHORE_KEY'),
-        'sender_name' => env('SEMAPHORE_SENDER_NAME'),
-        'base_url'    => env('SEMAPHORE_BASE_URL', 'https://api.semaphore.co/api/v4'),
-        'timeout'     => (int) env('SEMAPHORE_TIMEOUT', 15),
+    'unisms' => [
+        'key'       => env('UNISMS_KEY'),
+        'sender_id' => env('UNISMS_SENDER_ID'),
+        'base_url'  => env('UNISMS_BASE_URL', 'https://unismsapi.com/api'),
+        'timeout'   => (int) env('UNISMS_TIMEOUT', 15),
     ],
 
 ];
