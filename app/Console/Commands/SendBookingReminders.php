@@ -4,34 +4,24 @@ namespace App\Console\Commands;
 
 use App\Models\Booking;
 use App\Models\User;
+use App\Services\SmsService;
+use App\Support\MessageTemplate;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 
 class SendBookingReminders extends Command
 {
     protected $signature   = 'reminders:send';
     protected $description = 'Send automated booking reminders to customers based on configured triggers';
 
+    // Shared with the admin editor through MessageTemplate, which owns the
+    // path. This command used to keep its own, pointing at a different file
+    // from the one the panel saved to.
     private function loadTemplate(): array
     {
-        $path = 'templates/reminder.json';
-
-        if (Storage::exists($path)) {
-            return json_decode(Storage::get($path), true);
-        }
-
-        return [
-            'email_subject'   => 'Reminder: Your {service} appointment is on {date}',
-            'email_body'      => '<p>Hi {name}, your {service} is on {date} at {time}.</p>',
-            'sms_body'        => 'Hi {name}! Reminder: {service} on {date} at {time}. Ref: {reference}.',
-            'triggers'        => ['remind_7d'=>true,'remind_3d'=>true,'remind_1d'=>true,'remind_2h'=>false],
-            'channels'        => ['send_email'=>true,'send_sms'=>true],
-            'sender_name'     => 'APX AutoMai',
-            'reply_to'        => '',
-        ];
+        return MessageTemplate::load();
     }
 
     private function fillPlaceholders(string $text, Booking $booking): string
@@ -56,7 +46,7 @@ class SendBookingReminders extends Command
         return str_replace(array_keys($map), array_values($map), $text);
     }
 
-    public function handle(): void
+    public function handle(SmsService $sms): void
     {
         $template = $this->loadTemplate();
         $triggers = $template['triggers'] ?? [];
@@ -119,26 +109,22 @@ class SendBookingReminders extends Command
                 }
 
                 // ── SMS ────────────────────────────────────────────────────
-                if (!empty($channels['send_sms'])) {
+                // A customer with no mobile number on file is skipped quietly:
+                // that is a normal state, not a fault worth logging on every
+                // run. SmsService never throws and writes its own sms_logs row
+                // either way, so there is nothing to catch here.
+                if (!empty($channels['send_sms']) && $sms->configured()) {
                     $phone = $user->phone ?? ($booking->user->customer->phone ?? null);
 
                     if ($phone) {
-                        try {
-                            $smsBody = $this->fillPlaceholders($template['sms_body'], $booking);
+                        $result = $sms->send(
+                            $phone,
+                            $this->fillPlaceholders($template['sms_body'], $booking),
+                            ['booking_id' => $booking->id, 'trigger' => $key]
+                        );
 
-                            // TODO: Replace with your SMS gateway call
-                            // Example (Semaphore):
-                            // \Http::post('https://api.semaphore.co/api/v4/messages', [
-                            //     'apikey'     => config('services.semaphore.key'),
-                            //     'number'     => $phone,
-                            //     'message'    => $smsBody,
-                            //     'sendername' => $template['sender_name'] ?? 'APX',
-                            // ]);
-
-                            Log::info("Reminder SMS [{$key}] queued to {$phone} for booking #{$booking->id}: {$smsBody}");
+                        if ($result['ok']) {
                             $sent++;
-                        } catch (\Exception $e) {
-                            Log::error("Failed to send reminder SMS to {$phone}: " . $e->getMessage());
                         }
                     }
                 }

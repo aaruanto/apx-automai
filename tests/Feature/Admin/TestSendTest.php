@@ -68,7 +68,7 @@ it('says why it skipped rather than reporting a failure', function () {
 it('skips email when the channel is switched off in the template', function () {
     config(['mail.default' => 'smtp']);
 
-    Storage::put('private/templates/reminder.json', json_encode([
+    Storage::put(\App\Support\MessageTemplate::PATH, json_encode([
         'email_subject' => 'S', 'email_preheader' => '', 'email_body' => 'B',
         'sms_body' => 'X',
         'triggers' => [], 'channels' => ['send_email' => false, 'send_sms' => true],
@@ -81,14 +81,38 @@ it('skips email when the channel is switched off in the template', function () {
     expect($r->json('results.0.message'))->toContain('switched off');
 });
 
-it('does not pretend an SMS went out while no gateway exists', function () {
-    config(['mail.default' => 'smtp']);
+it('does not pretend an SMS went out while the gateway is unconfigured', function () {
+    config(['mail.default' => 'smtp', 'services.unisms.key' => null]);
 
     $r = postTest(['test_phone' => '09171234567'])->assertOk();
 
     $sms = collect($r->json('results'))->firstWhere('channel', 'SMS');
-    expect($sms['ok'])->toBeNull();
-    expect($sms['message'])->toContain('No SMS gateway');
+    expect($sms['ok'])->toBeFalse();
+    // Naming the variable is the point — "SMS is off" alone is not actionable.
+    expect($sms['message'])->toContain('UNISMS_KEY');
+});
+
+it('reports the segment count on a successful test SMS', function () {
+    config([
+        'mail.default'              => 'smtp',
+        'services.unisms.key'       => 'test-secret-key',
+        'services.unisms.sender_id' => 'APXAUTO',
+    ]);
+
+    \Illuminate\Support\Facades\Http::fake([
+        'unismsapi.com/*' => \Illuminate\Support\Facades\Http::response(
+            ['message' => ['status' => 'pending', 'reference_id' => 'msg_1']], 201
+        ),
+    ]);
+
+    $sms = collect(postTest(['test_phone' => '09171234567'])->assertOk()->json('results'))
+        ->firstWhere('channel', 'SMS');
+
+    expect($sms['ok'])->toBeTrue();
+    // A template that quietly grew to three segments triples the cost of every
+    // reminder, and nothing else in the app would show that.
+    expect($sms['message'])->toContain('segment');
+    expect($sms['message'])->toContain('GSM-7');
 });
 
 it('reports the mailers own error instead of throwing a 500', function () {

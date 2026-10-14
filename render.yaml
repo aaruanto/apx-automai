@@ -62,6 +62,14 @@ services:
         sync: false
       - key: MAIL_FROM_ADDRESS
         sync: false
+      # UniSMS. The key and sender ID are prompted for in the dashboard; with
+      # UNISMS_KEY unset the app simply skips the SMS channel.
+      - key: UNISMS_BASE_URL
+        value: https://unismsapi.com/api
+      - key: UNISMS_KEY
+        sync: false
+      - key: UNISMS_SENDER_ID
+        sync: false
 
 databases:
   - name: apx-automai-db

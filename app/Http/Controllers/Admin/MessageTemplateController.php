@@ -3,40 +3,23 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\SmsService;
+use App\Support\MessageTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 
 class MessageTemplateController extends Controller
 {
-    private string $templatePath = 'private/templates/reminder.json';
-
     // ── Load saved template or defaults ────────────────────────────────────
+    //
+    // Both this and the reminders command go through MessageTemplate, which
+    // owns the path. They used to each hold their own, and the two did not
+    // match, so saving a template here changed nothing about the reminders
+    // that actually went out.
     private function loadTemplate(): array
     {
-        if (Storage::exists($this->templatePath)) {
-            return json_decode(Storage::get($this->templatePath), true);
-        }
-
-        return [
-            'email_subject'   => 'Reminder: Your {service} appointment is on {date}',
-            'email_preheader' => 'Hi {name}, just a reminder about your upcoming {service}.',
-            'email_body'      => '',
-            'sms_body'        => 'Hi {name}! Reminder from APX AutoMai. Your {service} is on {date} at {time}. Ref: {reference}.',
-            'triggers' => [
-                'remind_7d' => true,
-                'remind_3d' => true,
-                'remind_1d' => true,
-                'remind_2h' => false,
-            ],
-            'channels' => [
-                'send_email' => true,
-                'send_sms'   => true,
-            ],
-            'sender_name' => 'APX AutoMai',
-            'reply_to'    => '',
-        ];
+        return MessageTemplate::load();
     }
 
     // ── Show template editor ───────────────────────────────────────────────
@@ -65,7 +48,7 @@ class MessageTemplateController extends Controller
             'reply_to'        => 'nullable|email',
         ]);
 
-        Storage::put($this->templatePath, json_encode($data, JSON_PRETTY_PRINT));
+        MessageTemplate::save($data);
 
         return response()->json(['status' => 'saved']);
     }
@@ -77,7 +60,7 @@ class MessageTemplateController extends Controller
     // SMTP threw. A test button that cannot report failure is worse than no
     // button, so this one reports exactly what happened per channel and never
     // 500s the page.
-    public function sendTest(Request $request)
+    public function sendTest(Request $request, SmsService $sms)
     {
         $request->validate([
             'test_email'    => 'nullable|email',
@@ -125,10 +108,34 @@ class MessageTemplateController extends Controller
         }
 
         // ── SMS ────────────────────────────────────────────────────────────
-        // No gateway is wired yet (phase 3). Report that honestly rather than
-        // letting the caller believe a text went out.
-        if ($request->test_phone) {
-            $results[] = ['channel' => 'SMS', 'ok' => null, 'message' => 'No SMS gateway is configured yet, so nothing was sent.'];
+        if (! $request->test_phone) {
+            $results[] = ['channel' => 'SMS', 'ok' => null, 'message' => 'No number given — skipped.'];
+        } elseif (empty($template['channels']['send_sms'])) {
+            $results[] = ['channel' => 'SMS', 'ok' => null, 'message' => 'The SMS channel is switched off in this template.'];
+        } elseif ($reason = $sms->unavailableReason()) {
+            $ok        = false;
+            $results[] = ['channel' => 'SMS', 'ok' => false, 'message' => $reason];
+        } else {
+            $body  = strtr($template['sms_body'], $this->sampleData());
+            $parts = $sms->segments($body);
+            $sent  = $sms->send($request->test_phone, $body, ['trigger' => 'test']);
+
+            // Always report the segment count: a template that quietly became
+            // three segments costs three times as much on every reminder, and
+            // nothing else in the app would reveal that.
+            $cost = sprintf(
+                ' %d character%s, %s, %d segment%s.',
+                $parts['length'], $parts['length'] === 1 ? '' : 's',
+                $parts['encoding'],
+                $parts['segments'], $parts['segments'] === 1 ? '' : 's'
+            );
+
+            $ok        = $ok && $sent['ok'];
+            $results[] = [
+                'channel' => 'SMS',
+                'ok'      => $sent['ok'],
+                'message' => $sent['message'].$cost,
+            ];
         }
 
         if (! $results) {

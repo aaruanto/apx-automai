@@ -159,6 +159,62 @@ finish before retesting.
 Never commit these values. `.env` is gitignored, and Render's environment
 variables are set through the dashboard.
 
+## SMS
+
+SMS goes through [UniSMS](https://unismsapi.com/docs/sms), a Philippine
+gateway covering Globe, Smart, DITO, Sun and TNT.
+
+```
+UNISMS_KEY=your-api-secret-key
+UNISMS_SENDER_ID=YOURSENDERID
+UNISMS_BASE_URL=https://unismsapi.com/api
+```
+
+**Leaving `UNISMS_KEY` blank switches SMS off.** The app skips the channel and
+says so; it does not fail, and no booking is affected.
+
+`UNISMS_KEY` is sent as the HTTP Basic *username* with an empty password, not
+as a bearer token. `UNISMS_SENDER_ID` is required on every message — new
+accounts are issued a random one for testing, and a registered sender ID has
+to be applied for before production traffic. That is a Philippine telco rule
+rather than a UniSMS one, and an unregistered ID is the usual cause of a 422.
+
+### Numbers
+
+Any of these are accepted and normalised to `+639171234567`, with spaces,
+dashes and brackets ignored:
+
+```
+09171234567    9171234567    639171234567    +639171234567
+```
+
+Anything that is not a Philippine mobile number — a landline, a foreign
+number, a typo — is **skipped rather than sent**, so it cannot be silently
+billed. The skip is recorded in `sms_logs` with the reason.
+
+### Cost
+
+SMS bills per 160-character segment, but a message that splits is billed at
+**153** characters per part, because the concatenation header takes the rest.
+A single non-GSM character — a smart quote pasted in from Word is the usual
+culprit — drops the whole message to UCS-2, where the allowance is **70**, or
+67 once split. One such character can therefore triple the cost of every
+reminder you send.
+
+The test send reports the encoding and segment count for exactly this reason:
+
+```
+✓ SMS — Queued with UniSMS (ref msg_84e8…). 148 characters, GSM-7, 1 segment.
+```
+
+### The log
+
+Every attempt writes a row to `sms_logs`, successes and failures alike, with
+the recipient, segment count, trigger and the gateway's reference. The failure
+rows are the valuable ones: when a customer says no reminder arrived, a row
+reading `invalid_number` or `http_401` answers it far faster than the gateway
+dashboard will.
+
 ### Mail and request latency
 
 Mail is sent synchronously, inside the request. Every send site is wrapped in

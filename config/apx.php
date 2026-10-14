@@ -25,4 +25,17 @@ return [
         'name'     => env('ADMIN_NAME', 'Administrator'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Shop details
+    |--------------------------------------------------------------------------
+    |
+    | Substituted into the {branch} and {contact} message placeholders. The
+    | reminders command already read these two keys before this file existed,
+    | so both resolved to null and every reminder carried an empty branch name.
+    |
+    */
+    'branch_name'    => env('APX_BRANCH_NAME', 'APX Motors — Tandang Sora'),
+    'contact_number' => env('APX_CONTACT_NUMBER', ''),
+
 ];
