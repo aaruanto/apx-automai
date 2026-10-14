@@ -197,3 +197,23 @@ it('returns null credits rather than failing when the balance cannot be read', f
 
     expect(sms()->credits())->toBeNull();
 });
+
+it('surfaces a validation bag naming the offending field', function () {
+    Http::fake(['unismsapi.com/*' => Http::response([
+        'errors' => ['sender_id' => ['The selected sender id is invalid.']],
+    ], 422)]);
+
+    $result = sms()->send('09171234567', 'Reminder');
+
+    // Without this the admin saw only "rejected the request", which is the one
+    // case where the gateway's own detail is the entire answer.
+    expect($result['message'])->toContain('sender_id');
+    expect($result['message'])->toContain('invalid');
+});
+
+it('falls back to the raw body when the error shape is unfamiliar', function () {
+    Http::fake(['unismsapi.com/*' => Http::response('Sender ID not approved', 422)]);
+
+    expect(sms()->send('09171234567', 'Reminder')['message'])
+        ->toContain('Sender ID not approved');
+});

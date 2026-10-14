@@ -243,9 +243,7 @@ class SmsService
      */
     private function describeFailure(Response $response): string
     {
-        $detail = $response->json('message') ?? $response->json('error');
-        $detail = is_array($detail) ? json_encode($detail) : $detail;
-        $detail = is_string($detail) ? trim($detail) : null;
+        $detail = $this->extractDetail($response);
 
         return match ($response->status()) {
             401 => 'UniSMS rejected the API key (401). Check UNISMS_KEY.',
@@ -254,6 +252,43 @@ class SmsService
             429 => 'Rate limited by UniSMS (429). Try again in a few seconds.',
             default => 'UniSMS returned HTTP '.$response->status().($detail ? ': '.$detail : '.'),
         };
+    }
+
+    /**
+     * Whatever the gateway said about the failure.
+     *
+     * Checking only two known keys meant a 422 naming the offending field came
+     * back as a bare "rejected the request", which is the one case where the
+     * detail is the whole answer. So: try the documented keys, then the common
+     * validation-bag shapes, and failing both fall back to the raw body rather
+     * than discarding it.
+     */
+    private function extractDetail(Response $response): ?string
+    {
+        foreach (['message', 'error', 'detail', 'errors'] as $key) {
+            $value = $response->json($key);
+
+            if (is_string($value) && trim($value) !== '') {
+                return trim($value);
+            }
+
+            // A validation bag: {"errors": {"sender_id": ["is not registered"]}}
+            if (is_array($value) && $value !== []) {
+                $parts = [];
+
+                foreach ($value as $field => $messages) {
+                    $messages = is_array($messages) ? $messages : [$messages];
+                    $parts[]  = (is_string($field) ? $field.': ' : '')
+                        .implode(' ', array_filter($messages, 'is_string'));
+                }
+
+                return \Illuminate\Support\Str::limit(implode('; ', array_filter($parts)), 300);
+            }
+        }
+
+        $body = trim((string) $response->body());
+
+        return $body === '' ? null : \Illuminate\Support\Str::limit($body, 300);
     }
 
     // ── Credits ────────────────────────────────────────────────────────────
