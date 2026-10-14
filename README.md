@@ -89,35 +89,49 @@ would be required, and that is also a paid service.
 `storage/logs/laravel.log` instead of sending them. That is useful in
 development and is why no mail arrives until it is changed.
 
-To send real email through Gmail, add these to `.env` locally and to the
-**Environment** tab on Render:
+### Why not Gmail
+
+Render's free instances **drop outbound traffic to ports 25, 465 and 587** at
+the firewall (since 26 September 2025). Gmail's SMTP only listens on 465 and
+587, so it cannot be reached from a free instance no matter how it is
+configured. The packets are dropped rather than refused, so the failure
+arrives as a *connection timeout* — which reads like a network fault and is
+easily mistaken for wrong credentials.
+
+Port **2525** is not blocked. Brevo serves SMTP there, so that is what this
+project uses. Gmail still works fine for local development and on any host
+that permits 587; only the deployed environment is constrained.
+
+### Settings
+
+Add these to `.env` locally and to the **Environment** tab on Render:
 
 ```
 MAIL_MAILER=smtp
-MAIL_HOST=smtp.gmail.com
-MAIL_PORT=587
+MAIL_HOST=smtp-relay.brevo.com
+MAIL_PORT=2525
 MAIL_SCHEME=null
-MAIL_USERNAME=your-address@gmail.com
-MAIL_PASSWORD=your-16-character-app-password
-MAIL_FROM_ADDRESS=your-address@gmail.com
+MAIL_USERNAME=your-brevo-login@example.com
+MAIL_PASSWORD=your-brevo-smtp-key
+MAIL_FROM_ADDRESS=your-verified-sender@example.com
 MAIL_FROM_NAME="APX AutoMai"
 ```
 
+`MAIL_USERNAME` is the Brevo **login email**. `MAIL_PASSWORD` is an **SMTP
+key** generated under *SMTP & API → SMTP keys* — not the account password.
+`MAIL_FROM_ADDRESS` must be verified under *Senders, Domains & Dedicated
+IPs*; verifying a single address is enough, no domain purchase required.
+
 This app reads **`MAIL_SCHEME`**, not `MAIL_ENCRYPTION` — see
-`config/mail.php`. On port 587 leave it `null` and STARTTLS is negotiated
-automatically; set it to `smtps` only if you switch to port 465. Setting
-`MAIL_ENCRYPTION` has no effect here.
+`config/mail.php`. Leave it `null` on 2525 and 587, where STARTTLS is
+negotiated on the wire; set it to `smtps` only for an implicit-TLS port such
+as 465 or 2465. Setting `MAIL_ENCRYPTION` has no effect here.
 
-`MAIL_PASSWORD` must be a Google **App Password**, not the account password.
-Generate one at <https://myaccount.google.com/apppasswords>; it requires
-2-Step Verification to be on. Remove the spaces Google shows in it.
-
-Gmail allows roughly **500 messages per day** on a free account (2,000 on
-Workspace), counted per recipient. That is ample for a booking system of this
-size, but it is a hard ceiling: past it Gmail returns `550` and sends stop
-until the window rolls over. If volume ever approaches that, move to a
-transactional provider (Postmark, Resend, SES) — `config/mail.php` already
-has entries for all three, so it is an env-var change rather than a rewrite.
+Brevo's free tier allows **300 messages per day** with no expiry. Past that,
+sends are rejected until the window rolls over. For comparison, a free Gmail
+account allows roughly 500/day. If volume ever outgrows either, `config/mail.php`
+already has entries for Postmark, Resend and SES, so it stays an env-var
+change rather than a rewrite.
 
 ### Checking it works
 
@@ -128,8 +142,10 @@ mailer's own error text if the send failed. Common causes:
 | Message | Cause |
 |---|---|
 | `MAIL_MAILER is set to "log"` | Still on the log driver — nothing is being sent |
-| `Failed to authenticate` | Wrong App Password, or 2-Step Verification is off |
-| `Connection could not be established` | Wrong host/port, or outbound 587 is blocked |
+| `Connection timed out` | The host is blocking that port. On Render, 25/465/587 are dropped — use 2525 |
+| `Failed to authenticate` | `MAIL_PASSWORD` is not a valid SMTP key, or `MAIL_USERNAME` is not the Brevo login email |
+| `Sender not valid` / `unrecognised sender` | `MAIL_FROM_ADDRESS` has not been verified in Brevo |
+| Mail sends but the body is blank | The template was never saved — open Message Templates and press **Save Templates** once |
 
 Never commit these values. `.env` is gitignored, and Render's environment
 variables are set through the dashboard.

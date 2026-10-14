@@ -35,18 +35,25 @@ services:
       - key: QUEUE_CONNECTION
         value: database
       # Mail. The non-secret settings are pinned here so the deployment is
-      # self-documenting; the two credentials are marked sync: false, which
-      # tells Render to prompt for them in the dashboard rather than keeping
-      # them in this file.
+      # self-documenting; the credentials are marked sync: false, which tells
+      # Render to prompt for them in the dashboard rather than keeping them
+      # in this file.
+      #
+      # Brevo on port 2525, deliberately NOT Gmail: since 2025-09-26 Render's
+      # free instances drop outbound traffic to ports 25, 465 and 587 at the
+      # firewall, so every SMTP provider that only listens on those ports is
+      # unreachable here. The failure looks like a connection timeout rather
+      # than a rejected login, which makes it easy to misread as bad
+      # credentials. Port 2525 is not blocked.
       #
       # Note this app reads MAIL_SCHEME, not MAIL_ENCRYPTION (Laravel 11+).
-      # On port 587, MAIL_SCHEME stays null and STARTTLS is negotiated.
+      # On 2525 it stays unset and STARTTLS is negotiated automatically.
       - key: MAIL_MAILER
         value: smtp
       - key: MAIL_HOST
-        value: smtp.gmail.com
+        value: smtp-relay.brevo.com
       - key: MAIL_PORT
-        value: 587
+        value: 2525
       - key: MAIL_FROM_NAME
         value: APX AutoMai
       - key: MAIL_USERNAME
