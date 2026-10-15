@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\Mechanic;
 use App\Models\User;
 use App\Notifications\BookingNotification;
 use App\Models\Service;
@@ -21,7 +22,7 @@ class BookingController extends Controller
 {
     public function index()
     {
-        $bookings = Booking::with(['user', 'service', 'vehicle', 'staff', 'cancelledBy', 'services'])
+        $bookings = Booking::with(['user', 'service', 'vehicle', 'mechanic', 'cancelledBy', 'services'])
                         ->latest()
                         ->get();
 
@@ -34,17 +35,17 @@ class BookingController extends Controller
 
         $services = Service::orderBy('name')->get();
 
-        $staffMembers = User::staffMembers()->get();
+        $mechanics = Mechanic::active()->get();
 
-        return view('admin.bookings.index', compact('bookings', 'counts', 'services', 'staffMembers'));
+        return view('admin.bookings.index', compact('bookings', 'counts', 'services', 'mechanics'));
     }
 
     public function create()
     {
         $services  = Service::orderBy('name')->get();
-        $employees = User::staffMembers()->get();
+        $mechanics = Mechanic::active()->get();
 
-        return view('admin.bookings.create', compact('services', 'employees'));
+        return view('admin.bookings.create', compact('services', 'mechanics'));
     }
 
     // ── FIX #2: real validation + one shared availability gate ───────────────
@@ -64,7 +65,7 @@ class BookingController extends Controller
             'service_ids.*'  => 'integer|exists:services,id',
             'booking_date'   => 'required|date|after_or_equal:today', // no past dates
             'booking_time'   => 'required',
-            'staff_id'       => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'staff')],
+            'mechanic_id'       => ['nullable', 'integer', Rule::exists('mechanics', 'id')->where('status', 'active')],
         ]);
 
         $user = \App\Models\User::firstOrCreate(
@@ -98,7 +99,7 @@ class BookingController extends Controller
                 'user_id'      => $user->id,
                 'vehicle_id'   => $vehicle->id,
                 'service_ids'  => $request->service_ids,
-                'staff_id'     => $request->staff_id ?? null,
+                'mechanic_id'     => $request->mechanic_id ?? null,
                 'booking_date' => $request->booking_date,
                 'booking_time' => $request->booking_time,
                 'status'       => 'pending',
@@ -116,11 +117,11 @@ class BookingController extends Controller
 
     public function edit($id)
     {
-        $booking   = Booking::with(['user', 'vehicle', 'service', 'staff', 'services'])->findOrFail($id);
+        $booking   = Booking::with(['user', 'vehicle', 'service', 'mechanic', 'services'])->findOrFail($id);
         $services  = Service::orderBy('name')->get();
-        $employees = User::staffMembers()->get();
+        $mechanics = Mechanic::active()->get();
 
-        return view('admin.bookings.create', compact('booking', 'services', 'employees'));
+        return view('admin.bookings.create', compact('booking', 'services', 'mechanics'));
     }
 
     public function update(Request $request, $id)
@@ -143,7 +144,7 @@ class BookingController extends Controller
             // dropdown skipped the required-reason flow entirely, which is the
             // whole point of the cancel action. Use that instead.
             'status'       => 'required|in:pending,confirmed,in_progress,completed',
-            'staff_id'     => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'staff')],
+            'mechanic_id'     => ['nullable', 'integer', Rule::exists('mechanics', 'id')->where('status', 'active')],
         ]);
 
         // Only re-run the capacity check when the slot this booking occupies
@@ -181,20 +182,20 @@ class BookingController extends Controller
         // Same overlap rule as capacity: one mechanic cannot be in two bays at
         // once. Blocked here rather than warned, because the edit form is the
         // deliberate path; the quick Assign control offers an override.
-        $newStaffId = $request->staff_id ?? $booking->staff_id;
+        $newMechanicId = $request->mechanic_id ?? $booking->mechanic_id;
 
-        if ($newStaffId) {
+        if ($newMechanicId) {
             [$winStart, $winEnd] = $availability->windowFor(
                 $request->booking_date, $request->booking_time, $duration
             );
 
-            $clash = $availability->staffConflict(
-                $newStaffId, $request->booking_date, $winStart, $winEnd, $booking->id
+            $clash = $availability->mechanicConflict(
+                $newMechanicId, $request->booking_date, $winStart, $winEnd, $booking->id
             );
 
             if ($clash) {
                 return back()->withInput()->withErrors([
-                    'staff_id' => 'That mechanic is already on '.$clash->reference_number
+                    'mechanic_id' => 'That mechanic is already on '.$clash->reference_number
                                   .' at '.Carbon::parse($clash->booking_time)->format('g:i A')
                                   .' that day. Choose another, or change the time.',
                 ]);
@@ -204,7 +205,7 @@ class BookingController extends Controller
             // Kept pointing at the first selection for screens still reading
             // a single service.
             'service_id'   => $serviceIds[0],
-            'staff_id'     => $request->staff_id ?? $booking->staff_id,
+            'mechanic_id'     => $request->mechanic_id ?? $booking->mechanic_id,
             'booking_date' => $request->booking_date,
             'booking_time' => $request->booking_time,
             'duration'     => $duration,
@@ -292,13 +293,13 @@ class BookingController extends Controller
 
     public function rebook($id)
     {
-        $original  = Booking::with(['user', 'vehicle', 'service', 'staff', 'services'])->findOrFail($id);
+        $original  = Booking::with(['user', 'vehicle', 'service', 'mechanic', 'services'])->findOrFail($id);
         $services  = Service::orderBy('name')->get();
-        $employees = User::staffMembers()->get();
+        $mechanics = Mechanic::active()->get();
 
         return view('admin.bookings.create', [
             'services'  => $services,
-            'employees' => $employees,
+            'mechanics' => $mechanics,
             'prefill'   => $original,
         ]);
     }
@@ -317,19 +318,19 @@ class BookingController extends Controller
      * named, and the caller may repeat the request with force to accept it.
      * Double-booking is sometimes deliberate, but it should never be silent.
      */
-    public function assignStaff(Request $request, $id)
+    public function assignMechanic(Request $request, $id)
     {
         $data = $request->validate([
-            'staff_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'staff')],
+            'mechanic_id' => ['nullable', 'integer', Rule::exists('mechanics', 'id')->where('status', 'active')],
             'force'    => ['nullable', 'boolean'],
         ], [
-            'staff_id.exists' => 'That staff member no longer exists.',
+            'mechanic_id.exists' => 'That mechanic is no longer on the active list.',
         ]);
 
         $booking  = Booking::findOrFail($id);
-        $staffId  = $data['staff_id'] ?? null;
+        $mechanicId  = $data['mechanic_id'] ?? null;
 
-        if ($staffId && empty($data['force'])) {
+        if ($mechanicId && empty($data['force'])) {
             $availability = app(BookingAvailability::class);
             [$start, $end] = $availability->windowFor(
                 $booking->booking_date,
@@ -337,8 +338,8 @@ class BookingController extends Controller
                 $booking->duration ?? $availability->gridMinutes()
             );
 
-            $clash = $availability->staffConflict(
-                $staffId, $booking->booking_date, $start, $end, $booking->id
+            $clash = $availability->mechanicConflict(
+                $mechanicId, $booking->booking_date, $start, $end, $booking->id
             );
 
             if ($clash) {
@@ -352,15 +353,15 @@ class BookingController extends Controller
             }
         }
 
-        $booking->update(['staff_id' => $staffId]);
-        $booking->load('staff');
+        $booking->update(['mechanic_id' => $mechanicId]);
+        $booking->load('mechanic');
 
         return response()->json([
             'success'     => true,
-            'staff_id'    => $staffId,
-            'staff_name'  => $booking->staff->name ?? 'Unassigned',
-            'message'     => $staffId
-                ? $booking->staff->name.' is now assigned to '.$booking->reference_number.'.'
+            'mechanic_id'    => $mechanicId,
+            'mechanic_name'  => $booking->mechanic->name ?? 'Unassigned',
+            'message'     => $mechanicId
+                ? $booking->mechanic->name.' is now assigned to '.$booking->reference_number.'.'
                 : 'Mechanic cleared from '.$booking->reference_number.'.',
         ]);
     }
@@ -421,7 +422,7 @@ class BookingController extends Controller
      * This previously gated status with whereIn(...)->findOrFail(), which did
      * block invalid transitions but surfaced them as a 404 with an HTML body.
      * The caller's r.json() then threw on that HTML and the rejection was only
-     * console.error'd, so staff saw nothing at all and the button looked dead.
+     * console.error'd, so nothing appeared at all and the button looked dead.
      * Refused transitions now return 422 with a message the UI can display.
      */
     public function arrive($id)
@@ -437,7 +438,7 @@ class BookingController extends Controller
         }
 
 
-        // Re-check the status inside the write so two quick clicks (or two staff
+        // Re-check the status inside the write so two quick clicks (or two tabs
         // on the same booking) can't both pass the guard above and double-stamp
         // arrived_at. 0 rows means someone else got there first.
         $started = Booking::where('id', $booking->id)
@@ -512,7 +513,7 @@ class BookingController extends Controller
     /**
      * Alert every admin that a booking has come in.
      *
-     * Staff are left out on purpose: the shop's admins triage requests, and
+     * Only the admin is notified: mechanics have no login to be notified in, and
      * notifying every mechanic for every booking would be noise.
      */
     private function notifyAdminsOfBooking(\App\Models\Booking $booking): void

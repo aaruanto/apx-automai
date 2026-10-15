@@ -18,7 +18,7 @@ class SettingsController extends Controller
     {
         $settings = Setting::withDefaults();
 
-        $staffAccounts = User::whereIn('role', ['admin', 'staff'])->latest()->get();
+
         $services      = Service::orderBy('name')->get();
 
         // Base categories plus anything already in use, so the dropdown never
@@ -32,7 +32,7 @@ class SettingsController extends Controller
         // Passive record only — nothing here needs an admin to act on it.
         $accountDeletions = AccountDeletion::latest()->limit(25)->get();
 
-        return view('admin.settings', compact('settings', 'staffAccounts', 'services', 'categories', 'accountDeletions'));
+        return view('admin.settings', compact('settings', 'services', 'categories', 'accountDeletions'));
     }
 
     // ── General settings ───────────────────────────────────────────────────
@@ -85,51 +85,6 @@ class SettingsController extends Controller
         Setting::setMany($data);
 
         return back()->with('success', 'System preferences saved.');
-    }
-    // ── Staff CRUD ─────────────────────────────────────────────────────────
-    public function storeStaff(Request $request)
-    {
-        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
-
-        $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => ['required', EmailRule::strict(), 'unique:users,email'],
-            'role'     => 'required|in:admin,staff',
-            'password' => 'required|min:8|confirmed',
-        ]);
-
-        User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
-            'role'     => $request->role,
-            'password' => Hash::make($request->password),
-        ]);
-
-        return back()->with('success', 'Staff account created.');
-    }
-
-    public function updateStaff(Request $request, $id)
-    {
-        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
-
-        $request->validate([
-            'name'  => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $id,
-            'role'  => 'required|in:admin,staff',
-        ]);
-
-        // Constrained to staff/admin so the staff screen can't silently
-        // overwrite (or promote) a customer account by id.
-        User::whereIn('role', ['admin', 'staff'])->findOrFail($id)
-            ->update($request->only('name', 'email', 'role'));
-
-        return back()->with('success', 'Staff account updated.');
-    }
-
-    public function destroyStaff($id)
-    {
-        User::whereIn('role', ['admin', 'staff'])->findOrFail($id)->delete();
-        return back()->with('success', 'Staff account removed.');
     }
 
     // ── Services CRUD ──────────────────────────────────────────────────────

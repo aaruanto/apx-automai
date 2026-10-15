@@ -135,13 +135,18 @@ it('lets the admin switch maintenance back off', function () {
     ])->assertRedirect(route('customer.dashboard', absolute: false));
 });
 
-it('lets staff through too, so the back office keeps running', function () {
-    $staff = User::factory()->create(['role' => 'staff', 'password' => 'GoodPass!2345']);
+it('turns away an account left on the removed staff role', function () {
+    // The staff role and its portal are gone. A row still carrying that value
+    // must be treated as an ordinary customer — turned away by maintenance,
+    // and never redirected to a route that no longer exists.
+    $stale = User::factory()->create(['role' => 'staff', 'password' => 'GoodPass!2345']);
     maintenanceOn();
 
     $this->post('/login', [
-        'email' => $staff->email, 'password' => 'GoodPass!2345',
-    ])->assertRedirect(route('staff.dashboard', absolute: false));
+        'email' => $stale->email, 'password' => 'GoodPass!2345',
+    ])->assertSessionHasErrors('email');
+
+    $this->assertGuest();
 });
 
 // ── Off is off ───────────────────────────────────────────────────────────

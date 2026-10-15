@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 
 /**
- * In-app notifications, shared by admins, staff and customers.
+ * In-app notifications, shared by the admin and customers.
  *
  * Every action reads from $request->user()->notifications, so a notification
  * can only ever be read or marked by the person it belongs to — there is no

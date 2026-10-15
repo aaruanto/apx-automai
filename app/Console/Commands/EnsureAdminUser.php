@@ -26,7 +26,7 @@ class EnsureAdminUser extends Command
         {--email=    : Defaults to the ADMIN_EMAIL env var}
         {--password= : Defaults to the ADMIN_PASSWORD env var}
         {--name=     : Defaults to the ADMIN_NAME env var, else "Administrator"}
-        {--role=admin : admin or staff}';
+        {--role=admin : only admin is supported; mechanics are records, not accounts}';
 
     protected $description = 'Create or promote the admin account defined by ADMIN_EMAIL / ADMIN_PASSWORD';
 
@@ -47,8 +47,8 @@ class EnsureAdminUser extends Command
             return self::SUCCESS;
         }
 
-        if (! in_array($role, ['admin', 'staff'], true)) {
-            $this->components->error("Invalid role [{$role}]. Use admin or staff.");
+        if ($role !== 'admin') {
+            $this->components->error("Invalid role [{$role}]. Only admin accounts exist; mechanics are records with no login.");
 
             return self::FAILURE;
         }

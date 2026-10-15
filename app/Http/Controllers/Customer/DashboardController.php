@@ -25,7 +25,7 @@ class DashboardController extends Controller
             ['phone' => $user->phone ?? null]
         );
 
-        $bookings = Booking::with(['service', 'vehicle', 'staff', 'services'])
+        $bookings = Booking::with(['service', 'vehicle', 'mechanic', 'services'])
                         ->where('user_id', $user->id)
                         ->latest()
                         ->get();
@@ -50,7 +50,7 @@ class DashboardController extends Controller
                 'mon'       => date('M', strtotime($b->booking_date)),
                 'yr'        => date('Y', strtotime($b->booking_date)),
                 'time'      => date('g:i A', strtotime($b->booking_time)),
-                'staff'     => $b->staff->name ?? 'TBA',
+                'mechanic'  => $b->mechanic->name ?? 'TBA',
                 'vehicle'   => ($b->vehicle->make ?? '') . ' (' . ($b->vehicle?->display_plate ?? 'Not provided') . ')',
                 'vehicle_id'=> $b->vehicle_id,
                 'amount'    => 'TBA',
@@ -93,7 +93,7 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        $bookings = Booking::with(['service', 'vehicle', 'staff', 'services'])
+        $bookings = Booking::with(['service', 'vehicle', 'mechanic', 'services'])
             ->where('user_id', $user->id)
             ->latest()
             ->get();
@@ -110,7 +110,7 @@ class DashboardController extends Controller
                 'services'  => $b->service_list,
                 'date'      => $b->booking_date,
                 'time'      => $b->booking_time,
-                'staff'     => $b->staff->name ?? 'TBA',
+                'mechanic'  => $b->mechanic->name ?? 'TBA',
                 'status'    => $b->status,
             ])->values(),
             'unread'     => $user->unreadNotifications()->count(),
@@ -506,7 +506,7 @@ class DashboardController extends Controller
     /**
      * Alert every admin that a booking has come in.
      *
-     * Staff are left out on purpose: the shop's admins triage requests, and
+     * Only the admin is notified: mechanics have no login to be notified in, and
      * notifying every mechanic for every booking would be noise.
      */
     private function notifyAdminsOfBooking(\App\Models\Booking $booking): void

@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
  * Closes the customer-facing side of the site while the shop works on it.
  * Toggled from Settings -> System Preferences -> Maintenance Mode.
  *
- * Admin and staff are deliberately exempt so the back office stays usable,
+ * The admin is deliberately exempt so the back office stays usable,
  * and so whoever switched it on isn't locked out.
  */
 class MaintenanceMode
@@ -24,7 +24,9 @@ class MaintenanceMode
 
         $user = $request->user();
 
-        if ($user && in_array($user->role, ['admin', 'staff'], true)) {
+        // Only the admin works through maintenance. Mechanics have no login
+        // to bypass it with, and customers are the people it is for.
+        if ($user && $user->role === 'admin') {
             return $next($request);
         }
 

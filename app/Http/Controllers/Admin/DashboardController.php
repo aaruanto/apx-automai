@@ -64,7 +64,7 @@ class DashboardController extends Controller
                 'customer'  => $b->customer->name ?? 'N/A',
                 'services'  => $b->service_list,
                 'date'      => $b->booking_date,
-                'staff'     => $b->staff->name ?? 'Unassigned',
+                'mechanic'  => $b->mechanic->name ?? 'Unassigned',
                 'status'    => $b->status,
                 'label'     => ucfirst(str_replace('_', ' ', $b->status)),
             ])->values(),
@@ -184,7 +184,7 @@ class DashboardController extends Controller
         // customer and mechanic on every row.
         return $this->base($filters)
             ->when($filters['status'], fn ($q, $s) => $q->where('status', $s))
-            ->with(['customer', 'service', 'staff', 'services'])
+            ->with(['customer', 'service', 'mechanic', 'services'])
             ->latest()
             ->take(self::RECENT_LIMIT)
             ->get();

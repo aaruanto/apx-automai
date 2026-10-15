@@ -395,8 +395,8 @@ class BookingAvailability
      * Returns the clashing booking rather than a boolean so the caller can say
      * which one it is.
      */
-    public function staffConflict(
-        int $staffId,
+    public function mechanicConflict(
+        int $mechanicId,
         string $date,
         Carbon $start,
         Carbon $end,
@@ -404,7 +404,7 @@ class BookingAvailability
     ): ?Booking {
         return Booking::with('service:id,duration')
             ->where('booking_date', $date)
-            ->where('staff_id', $staffId)
+            ->where('mechanic_id', $mechanicId)
             ->whereIn('status', self::ACTIVE_STATUSES)
             ->when($excludeBookingId, fn ($q) => $q->where('id', '!=', $excludeBookingId))
             ->get()

@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Customer\DashboardController as CustomerDashboard;
+use App\Http\Controllers\Admin\MechanicController;
 use App\Http\Controllers\Admin\MessageTemplateController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\GuestBookingController;
@@ -36,7 +37,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-// ── Notifications (any signed-in user: admin, staff or customer) ──────────
+// ── Notifications (any signed-in user: admin or customer) ────────────────
 Route::middleware('auth')->group(function () {
     Route::get('/notifications',                [\App\Http\Controllers\NotificationController::class, 'index'])  ->name('notifications.index');
     Route::get('/notifications/feed',           [\App\Http\Controllers\NotificationController::class, 'feed'])   ->name('notifications.feed');
@@ -69,7 +70,7 @@ Route::middleware(['auth', 'role:admin'])
     Route::delete('/bookings/{id}',           [BookingController::class, 'destroy'])  ->name('bookings.destroy');
     Route::patch('/bookings/{id}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
     Route::patch('/bookings/{id}/arrive', [BookingController::class, 'arrive'])->name('bookings.arrive');
-    Route::patch('/bookings/{id}/staff',  [BookingController::class, 'assignStaff'])->name('bookings.staff');
+    Route::patch('/bookings/{id}/mechanic', [BookingController::class, 'assignMechanic'])->name('bookings.mechanic');
     // ── Customers ──────────────────────────────────────────────────────────
     Route::get('/customers/export',           [CustomerController::class, 'export'])  ->name('customers.export');
     Route::get('/customers/create',           [CustomerController::class, 'create'])  ->name('customers.create');
@@ -92,9 +93,6 @@ Route::middleware(['auth', 'role:admin'])
     Route::put('/settings/general',           [SettingsController::class, 'updateGeneral'])  ->name('settings.general');
     Route::put('/settings/booking',           [SettingsController::class, 'updateBooking'])  ->name('settings.booking');
     Route::put('/settings/system',            [SettingsController::class, 'updateSystem'])   ->name('settings.system');
-    Route::post('/settings/staff',            [SettingsController::class, 'storeStaff'])     ->name('settings.staff.store');
-    Route::put('/settings/staff/{id}',        [SettingsController::class, 'updateStaff'])    ->name('settings.staff.update');
-    Route::delete('/settings/staff/{id}',     [SettingsController::class, 'destroyStaff'])   ->name('settings.staff.destroy');
     Route::post('/settings/services',         [SettingsController::class, 'storeService'])   ->name('settings.services.store');
     Route::put('/settings/services/{id}',     [SettingsController::class, 'updateService'])  ->name('settings.services.update');
     Route::delete('/settings/services/{id}',  [SettingsController::class, 'destroyService']) ->name('settings.services.destroy');
@@ -104,14 +102,15 @@ Route::middleware(['auth', 'role:admin'])
     Route::post('/templates/save', [MessageTemplateController::class, 'save'])    ->name('templates.save');
     Route::post('/templates/test', [MessageTemplateController::class, 'sendTest'])->name('templates.test');
 
-});
+    // ── Mechanics ───────────────────────────────────────────────────────────
+    // Records, not accounts: a name and a contact number so work can be
+    // assigned and someone can be rung about it. There is no mechanic login
+    // and no staff portal; the only roles are admin and customer.
+    Route::get('/mechanics',                 [MechanicController::class, 'index'])  ->name('mechanics.index');
+    Route::post('/mechanics',                [MechanicController::class, 'store'])  ->name('mechanics.store');
+    Route::put('/mechanics/{id}',            [MechanicController::class, 'update']) ->name('mechanics.update');
+    Route::patch('/mechanics/{id}/toggle',   [MechanicController::class, 'toggle']) ->name('mechanics.toggle');
 
-// ── Staff ──────────────────────────────────────────────────────────────────
-// Staff shares the admin dashboard view, so it needs the same data — reuse the
-// controller instead of rendering the view bare (that left every stat/chart
-// variable undefined).
-Route::middleware(['auth', 'role:staff'])->group(function () {
-    Route::get('/staff/dashboard', [DashboardController::class, 'index'])->name('staff.dashboard');
 });
 
 // ── Customer ───────────────────────────────────────────────────────────────

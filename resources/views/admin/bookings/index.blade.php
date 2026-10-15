@@ -72,10 +72,10 @@
                 <option value="{{ $service->name }}">{{ $service->name }}</option>
                 @endforeach
             </select>
-            <select class="filter-select" id="filterStaff">
+            <select class="filter-select" id="filterMechanic">
                 <option value="">All Mechanics</option>
                 <option value="__unassigned">Unassigned</option>
-                @foreach($staffMembers as $sm)
+                @foreach($mechanics as $sm)
                 <option value="{{ $sm->id }}">{{ $sm->name }}</option>
                 @endforeach
             </select>
@@ -101,7 +101,7 @@
                 </thead>
                 <tbody id="tableBody">
                 @forelse($bookings as $b)
-                <tr data-staff="{{ $b->staff_id ?? '__unassigned' }}" data-status="{{ $b->status }}" data-service="{{ $b->services->pluck('name')->implode('|') }}" data-search="{{ strtolower(($b->customer->name ?? '').' '.$b->reference_number) }}">
+                <tr data-mechanic="{{ $b->mechanic_id ?? '__unassigned' }}" data-status="{{ $b->status }}" data-service="{{ $b->services->pluck('name')->implode('|') }}" data-search="{{ strtolower(($b->customer->name ?? '').' '.$b->reference_number) }}">
                     <td>
                         <div class="primary-col">{{ $b->customer->name ?? 'N/A' }}</div>
                         <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;">{{ $b->reference_number }}</div>
@@ -113,11 +113,11 @@
                     <td>
                         {{-- Assignable in place; opening the full edit form just
                              to put a mechanic on a job is more than it needs. --}}
-                        <select class="filter-select staff-assign" style="min-width:150px;font-size:.78rem;"
-                                data-booking="{{ $b->id }}" onchange="assignStaff(this)">
-                            <option value="" {{ $b->staff_id ? '' : 'selected' }}>— Unassigned —</option>
-                            @foreach($staffMembers as $sm)
-                            <option value="{{ $sm->id }}" {{ $b->staff_id == $sm->id ? 'selected' : '' }}>{{ $sm->name }}</option>
+                        <select class="filter-select mechanic-assign" style="min-width:150px;font-size:.78rem;"
+                                data-booking="{{ $b->id }}" onchange="assignMechanic(this)">
+                            <option value="" {{ $b->mechanic_id ? '' : 'selected' }}>— Unassigned —</option>
+                            @foreach($mechanics as $sm)
+                            <option value="{{ $sm->id }}" {{ $b->mechanic_id == $sm->id ? 'selected' : '' }}>{{ $sm->name }}</option>
                             @endforeach
                         </select>
                     </td>
@@ -279,7 +279,7 @@ function applyFilters() {
     const search  = document.getElementById('searchInput').value.toLowerCase();
     const status  = document.getElementById('filterStatus').value;
     const service = document.getElementById('filterService').value;
-    const staff   = document.getElementById('filterStaff').value;
+    const mechanic = document.getElementById('filterMechanic').value;
     const rows    = document.querySelectorAll('#tableBody tr');
     let visible   = 0;
     rows.forEach(row => {
@@ -287,15 +287,15 @@ function applyFilters() {
         const matchStatus  = !status  || row.dataset.status  === status;
         // A booking can carry several services; match if any of them is the one picked.
         const matchService = !service || (row.dataset.service || '').split('|').includes(service);
-        const matchStaff   = !staff || row.dataset.staff === staff;
-        const show = matchSearch && matchStatus && matchService && matchStaff;
+        const matchMechanic = !mechanic || row.dataset.mechanic === mechanic;
+        const show = matchSearch && matchStatus && matchService && matchMechanic;
         row.style.display = show ? '' : 'none';
         if(show) visible++;
     });
     document.getElementById('rowCount').textContent = `Showing ${visible} bookings`;
 }
 function clearFilters() {
-    ['searchInput','filterStatus','filterService','filterStaff','filterDateFrom','filterDateTo']
+    ['searchInput','filterStatus','filterService','filterMechanic','filterDateFrom','filterDateTo']
         .forEach(id => document.getElementById(id).value = '');
     applyFilters();
 }
@@ -329,9 +329,9 @@ function cancelBooking(id, btn) {
 }
 
 
-function assignStaff(select) {
+function assignMechanic(select) {
     const bookingId = select.dataset.booking;
-    const staffId   = select.value || null;
+    const mechanicId   = select.value || null;
     // What the dropdown showed before this change, so a refusal or a failure
     // can put it back rather than leaving the UI claiming something untrue.
     const before    = select.dataset.initial || '';
@@ -341,7 +341,7 @@ function assignStaff(select) {
     function send(force) {
         select.disabled = true;
 
-        fetch(`/admin/bookings/${bookingId}/staff`, {
+        fetch(`/admin/bookings/${bookingId}/mechanic`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -349,7 +349,7 @@ function assignStaff(select) {
                 'X-Requested-With': 'XMLHttpRequest',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
             },
-            body: JSON.stringify({ staff_id: staffId, force: force })
+            body: JSON.stringify({ mechanic_id: mechanicId, force: force })
         })
         .then(r => r.text().then(t => {
             let d = null; try { d = JSON.parse(t); } catch (e) {}
@@ -384,10 +384,10 @@ function assignStaff(select) {
                 return;
             }
 
-            select.dataset.initial = staffId || '';
+            select.dataset.initial = mechanicId || '';
             if (window.ApxLiveRefresh) window.ApxLiveRefresh.refreshNow();
             const row = select.closest('tr');
-            if (row) row.dataset.staff = staffId || '__unassigned';
+            if (row) row.dataset.mechanic = mechanicId || '__unassigned';
             applyFilters();
         })
         .catch(() => {
@@ -415,7 +415,7 @@ function markArrived(id, btn) {
         applyFilters();
     });
 }
-['searchInput','filterStatus','filterService','filterStaff','filterDateFrom','filterDateTo']
+['searchInput','filterStatus','filterService','filterMechanic','filterDateFrom','filterDateTo']
     .forEach(id => document.getElementById(id).addEventListener('input', applyFilters));
 
 // A ?status= in the URL is already selected above; apply it so the list

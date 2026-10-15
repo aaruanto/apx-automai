@@ -17,7 +17,7 @@ class Booking extends Model
     public const CANCELLABLE_STATUSES = ['pending', 'confirmed', 'in_progress'];
 
     protected $fillable = [
-        'user_id', 'vehicle_id', 'service_id', 'staff_id',
+        'user_id', 'vehicle_id', 'service_id', 'mechanic_id',
         'booking_date', 'booking_time', 'duration', 'status', 'notes', 'reference_number',
         'cancel_reason', 'cancelled_by', 'cancelled_at', 'arrived_at',
     ];
@@ -36,7 +36,7 @@ class Booking extends Model
      *
      * Status is the only condition: bookings are made ahead of time, so the
      * appointment date says nothing about whether the customer is standing at
-     * the counter now. Staff decide that, not the calendar.
+     * the counter now. The shop decides that, not the calendar.
      */
     public function canStart(): bool
     {
@@ -65,7 +65,7 @@ class Booking extends Model
             return false;
         }
 
-        // Only these four fields change. Customer, vehicle, service, staff,
+        // Only these four fields change. Customer, vehicle, service, mechanic,
         // notes and the original date and time are all left untouched, so the
         // record stays complete for history and reporting.
         $this->forceFill([
@@ -156,15 +156,13 @@ class Booking extends Model
     /**
      * The mechanic this booking is assigned to.
      *
-     * staff_id is a foreign key to users, and staff are users with
-     * role = 'staff' — that is what admin settings creates and what the
-     * role:staff middleware serves. This relation previously resolved
-     * against the Employee model instead, a different table the foreign key
-     * does not reference, so an assignment would have violated the key on
-     * PostgreSQL. It never fired only because nothing had ever been assigned.
+     * This used to be a foreign key to users, where a mechanic was an account
+     * with role = 'staff' that could sign in to a portal of its own. Mechanics
+     * are plain records now, so the key points at the mechanics table and no
+     * login is involved. Nullable: a booking need not be assigned to anyone.
      */
-    public function staff()
+    public function mechanic()
     {
-        return $this->belongsTo(User::class, 'staff_id');
+        return $this->belongsTo(Mechanic::class, 'mechanic_id');
     }
 }

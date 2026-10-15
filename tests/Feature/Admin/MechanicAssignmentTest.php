@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Booking;
+use App\Models\Mechanic;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -10,13 +11,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 /**
- * Staff assignment.
+ * Mechanic assignment.
  *
- * bookings.staff_id is a foreign key to users, and staff are users with
- * role = 'staff'. The Booking relation previously resolved it against the
- * Employee model — a different table the key does not reference — so an
- * assignment would have violated the foreign key on PostgreSQL. Nothing had
- * ever been assigned, so it never fired.
+ * bookings.mechanic_id points at the mechanics table. It used to point at
+ * users, where a mechanic was an account with role = staff and a portal of
+ * its own; mechanics are plain records now and nobody signs in as one.
  */
 
 function assignAdmin(): User
@@ -24,12 +23,12 @@ function assignAdmin(): User
     return User::factory()->create(['role' => 'admin']);
 }
 
-function mechanic(string $name): User
+function mechanic(string $name): Mechanic
 {
-    return User::factory()->create(['role' => 'staff', 'name' => $name, 'is_active' => true]);
+    return Mechanic::create(['name' => $name, 'contact_number' => '09171234567', 'status' => 'active']);
 }
 
-function jobAt(string $time, int $minutes = 60, ?int $staffId = null, ?string $date = null): Booking
+function jobAt(string $time, int $minutes = 60, ?int $mechanicId = null, ?string $date = null): Booking
 {
     $unique   = substr(str_replace('.', '', uniqid('', true)), -6);
     $customer = User::factory()->create(['role' => 'customer']);
@@ -43,20 +42,20 @@ function jobAt(string $time, int $minutes = 60, ?int $staffId = null, ?string $d
 
     return Booking::create([
         'user_id' => $customer->id, 'vehicle_id' => $vehicle->id, 'service_id' => $service->id,
-        'staff_id' => $staffId,
+        'mechanic_id' => $mechanicId,
         'booking_date' => $date ?? today()->addDay()->toDateString(),
         'booking_time' => $time, 'duration' => $minutes, 'status' => 'confirmed',
         'reference_number' => 'APX-'.$unique,
     ]);
 }
 
-it('resolves the assigned mechanic from the users table', function () {
+it('resolves the assigned mechanic from the mechanics table', function () {
     $mech    = mechanic('Mang Kardo');
     $booking = jobAt('09:00', 60, $mech->id);
 
-    expect($booking->staff)->not->toBeNull();
-    expect($booking->staff->id)->toBe($mech->id);
-    expect($booking->staff->name)->toBe('Mang Kardo');
+    expect($booking->mechanic)->not->toBeNull();
+    expect($booking->mechanic->id)->toBe($mech->id);
+    expect($booking->mechanic->name)->toBe('Mang Kardo');
 });
 
 it('assigns a mechanic from the list', function () {
@@ -64,11 +63,11 @@ it('assigns a mechanic from the list', function () {
     $booking = jobAt('09:00');
 
     $this->actingAs(assignAdmin())
-        ->patchJson("/admin/bookings/{$booking->id}/staff", ['staff_id' => $mech->id])
+        ->patchJson("/admin/bookings/{$booking->id}/mechanic", ['mechanic_id' => $mech->id])
         ->assertOk()
-        ->assertJson(['success' => true, 'staff_name' => 'Mang Kardo']);
+        ->assertJson(['success' => true, 'mechanic_name' => 'Mang Kardo']);
 
-    expect($booking->refresh()->staff_id)->toBe($mech->id);
+    expect($booking->refresh()->mechanic_id)->toBe($mech->id);
 });
 
 it('clears an assignment', function () {
@@ -76,22 +75,47 @@ it('clears an assignment', function () {
     $booking = jobAt('09:00', 60, $mech->id);
 
     $this->actingAs(assignAdmin())
-        ->patchJson("/admin/bookings/{$booking->id}/staff", ['staff_id' => null])
+        ->patchJson("/admin/bookings/{$booking->id}/mechanic", ['mechanic_id' => null])
         ->assertOk();
 
-    expect($booking->refresh()->staff_id)->toBeNull();
+    expect($booking->refresh()->mechanic_id)->toBeNull();
 });
 
-it('refuses a staff_id that is not a staff user', function (string $role) {
-    $notStaff = User::factory()->create(['role' => $role]);
-    $booking  = jobAt('09:00');
+it('refuses a mechanic_id that does not exist', function () {
+    $booking = jobAt('09:00');
 
     $this->actingAs(assignAdmin())
-        ->patchJson("/admin/bookings/{$booking->id}/staff", ['staff_id' => $notStaff->id])
+        ->patchJson("/admin/bookings/{$booking->id}/mechanic", ['mechanic_id' => 999999])
         ->assertStatus(422);
 
-    expect($booking->refresh()->staff_id)->toBeNull();
-})->with(['customer', 'admin']);
+    expect($booking->refresh()->mechanic_id)->toBeNull();
+});
+
+it('refuses an inactive mechanic', function () {
+    // Someone who has left keeps their history but must not get new work.
+    $gone = mechanic('Departed Mech');
+    $gone->update(['status' => 'inactive']);
+    $booking = jobAt('09:00');
+
+    $this->actingAs(assignAdmin())
+        ->patchJson("/admin/bookings/{$booking->id}/mechanic", ['mechanic_id' => $gone->id])
+        ->assertStatus(422);
+
+    expect($booking->refresh()->mechanic_id)->toBeNull();
+});
+
+it('does not accept a user id where a mechanic id belongs', function () {
+    // The two used to be the same table. A user id must not resolve now,
+    // or an assignment could silently point at the wrong person.
+    $admin   = assignAdmin();
+    $booking = jobAt('09:00');
+
+    $this->actingAs($admin)
+        ->patchJson("/admin/bookings/{$booking->id}/mechanic", ['mechanic_id' => $admin->id])
+        ->assertStatus(422);
+
+    expect($booking->refresh()->mechanic_id)->toBeNull();
+});
 
 it('warns when the mechanic already has an overlapping booking', function () {
     $mech = mechanic('Mang Kardo');
@@ -101,11 +125,11 @@ it('warns when the mechanic already has an overlapping booking', function () {
     $second = jobAt('10:00', 60, null, $date);      // 10:00–11:00, overlaps
 
     $this->actingAs(assignAdmin())
-        ->patchJson("/admin/bookings/{$second->id}/staff", ['staff_id' => $mech->id])
+        ->patchJson("/admin/bookings/{$second->id}/mechanic", ['mechanic_id' => $mech->id])
         ->assertStatus(409)
         ->assertJson(['conflict' => true]);
 
-    expect($second->refresh()->staff_id)->toBeNull();
+    expect($second->refresh()->mechanic_id)->toBeNull();
 });
 
 it('allows the double-booking when it is explicitly forced', function () {
@@ -116,10 +140,10 @@ it('allows the double-booking when it is explicitly forced', function () {
     $second = jobAt('10:00', 60, null, $date);
 
     $this->actingAs(assignAdmin())
-        ->patchJson("/admin/bookings/{$second->id}/staff", ['staff_id' => $mech->id, 'force' => true])
+        ->patchJson("/admin/bookings/{$second->id}/mechanic", ['mechanic_id' => $mech->id, 'force' => true])
         ->assertOk();
 
-    expect($second->refresh()->staff_id)->toBe($mech->id);
+    expect($second->refresh()->mechanic_id)->toBe($mech->id);
 });
 
 it('does not call back-to-back bookings a conflict', function () {
@@ -130,10 +154,10 @@ it('does not call back-to-back bookings a conflict', function () {
     $second = jobAt('10:00', 60, null, $date);      // starts 10:00 — touching, not overlapping
 
     $this->actingAs(assignAdmin())
-        ->patchJson("/admin/bookings/{$second->id}/staff", ['staff_id' => $mech->id])
+        ->patchJson("/admin/bookings/{$second->id}/mechanic", ['mechanic_id' => $mech->id])
         ->assertOk();
 
-    expect($second->refresh()->staff_id)->toBe($mech->id);
+    expect($second->refresh()->mechanic_id)->toBe($mech->id);
 });
 
 it('does not treat a booking as clashing with itself', function () {
@@ -141,7 +165,7 @@ it('does not treat a booking as clashing with itself', function () {
     $booking = jobAt('09:00', 60, $mech->id);
 
     $this->actingAs(assignAdmin())
-        ->patchJson("/admin/bookings/{$booking->id}/staff", ['staff_id' => $mech->id])
+        ->patchJson("/admin/bookings/{$booking->id}/mechanic", ['mechanic_id' => $mech->id])
         ->assertOk();
 });
 
@@ -155,7 +179,7 @@ it('ignores a cancelled booking when checking for clashes', function () {
     $second = jobAt('10:00', 60, null, $date);
 
     $this->actingAs(assignAdmin())
-        ->patchJson("/admin/bookings/{$second->id}/staff", ['staff_id' => $mech->id])
+        ->patchJson("/admin/bookings/{$second->id}/mechanic", ['mechanic_id' => $mech->id])
         ->assertOk();
 });
 
@@ -172,24 +196,22 @@ it('blocks an overlapping assignment made through the edit form', function () {
             'booking_date' => $date,
             'booking_time' => '10:00',
             'status'       => 'confirmed',
-            'staff_id'     => $mech->id,
+            'mechanic_id'     => $mech->id,
         ])
-        ->assertSessionHasErrors('staff_id');
+        ->assertSessionHasErrors('mechanic_id');
 
-    expect($second->refresh()->staff_id)->toBeNull();
+    expect($second->refresh()->mechanic_id)->toBeNull();
 });
 
-it('offers only active staff for assignment', function () {
+it('offers only active mechanics for assignment', function () {
     mechanic('Active Mech');
     $gone = mechanic('Departed Mech');
-    $gone->update(['is_active' => false]);
-    User::factory()->create(['role' => 'customer', 'name' => 'Not A Mech']);
+    $gone->update(['status' => 'inactive']);
 
-    $names = User::staffMembers()->pluck('name')->all();
+    $names = Mechanic::active()->pluck('name')->all();
 
     expect($names)->toContain('Active Mech');
     expect($names)->not->toContain('Departed Mech');
-    expect($names)->not->toContain('Not A Mech');
 });
 
 it('shows the mechanic and lets the list filter by them', function () {
@@ -199,7 +221,7 @@ it('shows the mechanic and lets the list filter by them', function () {
     $this->actingAs(assignAdmin())->get('/admin/bookings')->assertOk()
         ->assertSee('Mechanic')
         ->assertSee('Mang Kardo')
-        ->assertSee('filterStaff', false);
+        ->assertSee('filterMechanic', false);
 });
 
 it('is closed to customers', function () {
@@ -207,10 +229,10 @@ it('is closed to customers', function () {
     $mech    = mechanic('Mang Kardo');
 
     $this->actingAs(User::factory()->create(['role' => 'customer']))
-        ->patchJson("/admin/bookings/{$booking->id}/staff", ['staff_id' => $mech->id])
+        ->patchJson("/admin/bookings/{$booking->id}/mechanic", ['mechanic_id' => $mech->id])
         ->assertStatus(403);
 
-    expect($booking->refresh()->staff_id)->toBeNull();
+    expect($booking->refresh()->mechanic_id)->toBeNull();
 });
 
 it('reuses the same overlap rule as capacity', function () {
@@ -222,8 +244,8 @@ it('reuses the same overlap rule as capacity', function () {
     $availability = app(BookingAvailability::class);
 
     [$s1, $e1] = $availability->windowFor($date, '10:00', 30);
-    expect($availability->staffConflict($mech->id, $date, $s1, $e1))->toBeNull();
+    expect($availability->mechanicConflict($mech->id, $date, $s1, $e1))->toBeNull();
 
     [$s2, $e2] = $availability->windowFor($date, '09:30', 30);
-    expect($availability->staffConflict($mech->id, $date, $s2, $e2))->not->toBeNull();
+    expect($availability->mechanicConflict($mech->id, $date, $s2, $e2))->not->toBeNull();
 });

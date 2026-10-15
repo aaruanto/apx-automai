@@ -132,7 +132,7 @@ class GuestBookingController extends Controller
                 'vehicle_id'   => $vehicle->id,
                 'service_id'   => $firstService->id,
                 'service_ids'  => $request->service_ids,
-                'staff_id'     => null,
+                'mechanic_id'  => null,
                 'booking_date' => $request->booking_date,
                 'booking_time' => $request->booking_time,
                 'status'       => 'pending',
@@ -184,7 +184,7 @@ class GuestBookingController extends Controller
     /**
      * Alert every admin that a booking has come in.
      *
-     * Staff are left out on purpose: the shop's admins triage requests, and
+     * Only the admin is notified: mechanics have no login to be notified in, and
      * notifying every mechanic for every booking would be noise.
      */
     private function notifyAdminsOfBooking(\App\Models\Booking $booking): void

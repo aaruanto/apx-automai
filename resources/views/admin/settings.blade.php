@@ -21,9 +21,6 @@
         <button class="settings-tab active" data-tab="general" onclick="switchTab('general', this)">
             <i class="fas fa-sliders"></i> General
         </button>
-        <button class="settings-tab" data-tab="staff" onclick="switchTab('staff', this)">
-            <i class="fas fa-users-gear"></i> Staff Accounts
-        </button>
         <button class="settings-tab" data-tab="services" onclick="switchTab('services', this)">
             <i class="fas fa-wrench"></i> Services &amp; Pricing
         </button>
@@ -281,77 +278,6 @@
         </div>
     </div>
 
-    <!-- ════════════════════ TAB: STAFF ACCOUNTS ════════════════════ -->
-    <div class="tab-panel" id="tab-staff">
-        <div class="card" style="margin-bottom:20px;">
-            <div class="card-header">
-                <div class="card-header-title"><i class="fas fa-users-gear"></i> Staff Accounts</div>
-                <button class="btn btn-primary btn-sm" onclick="openModal('addStaffModal')">
-                    <i class="fas fa-plus"></i> Add Staff
-                </button>
-            </div>
-            <div class="table-wrap">
-                <table class="apx-table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th style="text-align:center;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @forelse($staffAccounts ?? [] as $staff)
-                    <tr>
-                        <td>
-                            <div style="display:flex;align-items:center;gap:10px;">
-                                <div style="width:32px;height:32px;border-radius:8px;background:var(--red-glow);color:var(--red);
-                                            display:flex;align-items:center;justify-content:center;
-                                            font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:.8rem;flex-shrink:0;">
-                                    {{ strtoupper(substr($staff->name, 0, 2)) }}
-                                </div>
-                                <div class="primary-col">{{ $staff->name }}</div>
-                            </div>
-                        </td>
-                        <td>{{ $staff->email }}</td>
-                        <td>
-                            <span class="badge {{ $staff->role === 'admin' ? 'badge-admin' : 'badge-staff' }}">
-                                {{ ucfirst($staff->role) }}
-                            </span>
-                        </td>
-                        <td>
-                            <span class="badge {{ $staff->is_active ? 'badge-active' : 'badge-inactive' }}">
-                                {{ $staff->is_active ? 'Active' : 'Inactive' }}
-                            </span>
-                        </td>
-                        <td style="font-size:.78rem;">{{ $staff->created_at->format('M d, Y') }}</td>
-                        <td style="text-align:center;">
-                            <div style="display:flex;gap:6px;justify-content:center;">
-                                <button class="btn btn-ghost btn-sm btn-icon" title="Edit"
-                                    onclick="openEditStaff(this)"
-                                    data-action="{{ route('admin.settings.staff.update', $staff->id) }}"
-                                    data-name="{{ $staff->name }}"
-                                    data-email="{{ $staff->email }}"
-                                    data-role="{{ $staff->role }}"><i class="fas fa-pen"></i></button>
-                                <button class="btn btn-danger btn-sm btn-icon" title="Delete"
-                                    onclick="openDeleteStaff(this)"
-                                    data-action="{{ route('admin.settings.staff.destroy', $staff->id) }}"
-                                    data-name="{{ $staff->name }}"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">No staff accounts yet.</td>
-                    </tr>
-                    @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
 
     <!-- ════════════════════ TAB: SERVICES & PRICING ════════════════════ -->
     <div class="tab-panel" id="tab-services">
@@ -420,51 +346,6 @@
 
 @section('modals')
 
-<!-- ADD STAFF MODAL -->
-<div class="modal-overlay" id="addStaffModal">
-    <div class="modal" style="max-width:480px;">
-        <div class="modal-header">
-            <div class="modal-title"><i class="fas fa-user-plus" style="color:var(--red);margin-right:8px;"></i> Add Staff Account</div>
-            <button class="modal-close" onclick="closeModal('addStaffModal')"><i class="fas fa-xmark"></i></button>
-        </div>
-        <form method="POST" action="{{ route('admin.settings.staff.store') }}">
-            @csrf
-            <div class="modal-body">
-                <div class="form-row cols-2">
-                    <div class="form-group">
-                        <label class="form-label">Full Name <span style="color:var(--red)">*</span></label>
-                        <input class="form-control" type="text" name="name" placeholder="e.g. Jose Santos" required />
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Role <span style="color:var(--red)">*</span></label>
-                        <select class="form-control" name="role" required>
-                            <option value="staff">Staff</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Email Address <span style="color:var(--red)">*</span></label>
-                    <input class="form-control" type="email" name="email" placeholder="staff@apxmotors.com" required />
-                </div>
-                <div class="form-row cols-2">
-                    <div class="form-group">
-                        <label class="form-label">Password <span style="color:var(--red)">*</span></label>
-                        <input class="form-control" type="password" name="password" required />
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Confirm Password <span style="color:var(--red)">*</span></label>
-                        <input class="form-control" type="password" name="password_confirmation" required />
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-ghost" onclick="closeModal('addStaffModal')">Cancel</button>
-                <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Create Account</button>
-            </div>
-        </form>
-    </div>
-</div>
 
 <!-- ADD SERVICE MODAL -->
 <div class="modal-overlay" id="addServiceModal">
@@ -511,42 +392,6 @@
     </div>
 </div>
 
-<!-- EDIT STAFF MODAL -->
-<div class="modal-overlay" id="editStaffModal">
-    <div class="modal" style="max-width:480px;">
-        <div class="modal-header">
-            <div class="modal-title"><i class="fas fa-user-pen" style="color:var(--red);margin-right:8px;"></i> Edit Staff Account</div>
-            <button class="modal-close" onclick="closeModal('editStaffModal')"><i class="fas fa-xmark"></i></button>
-        </div>
-        <form id="editStaffForm" method="POST" action="">
-            @csrf
-            @method('PUT')
-            <div class="modal-body">
-                <div class="form-row cols-2">
-                    <div class="form-group">
-                        <label class="form-label">Full Name <span style="color:var(--red)">*</span></label>
-                        <input class="form-control" type="text" name="name" id="editStaffName" required />
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Role <span style="color:var(--red)">*</span></label>
-                        <select class="form-control" name="role" id="editStaffRole" required>
-                            <option value="staff">Staff</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group" style="margin-bottom:0;">
-                    <label class="form-label">Email Address <span style="color:var(--red)">*</span></label>
-                    <input class="form-control" type="email" name="email" id="editStaffEmail" required />
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-ghost" onclick="closeModal('editStaffModal')">Cancel</button>
-                <button type="submit" class="btn btn-primary"><i class="fas fa-floppy-disk"></i> Save Changes</button>
-            </div>
-        </form>
-    </div>
-</div>
 
 <!-- EDIT SERVICE MODAL -->
 <div class="modal-overlay" id="editServiceModal">
@@ -595,25 +440,6 @@
 </div>
 
 <!-- DELETE CONFIRM MODALS -->
-<div class="modal-overlay" id="deleteStaffModal">
-    <div class="modal" style="max-width:380px;">
-        <div class="modal-header">
-            <div class="modal-title" style="color:var(--red);"><i class="fas fa-trash" style="margin-right:8px;"></i>Remove Staff?</div>
-            <button class="modal-close" onclick="closeModal('deleteStaffModal')"><i class="fas fa-xmark"></i></button>
-        </div>
-        <div class="modal-body">
-            <p style="color:var(--text-muted);font-size:.9rem;line-height:1.6;">This will permanently remove <strong id="deleteStaffName">this staff account</strong>. The account will lose all portal access immediately.</p>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="closeModal('deleteStaffModal')">Cancel</button>
-            <form id="deleteStaffForm" method="POST" action="">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Remove Account</button>
-            </form>
-        </div>
-    </div>
-</div>
 <div class="modal-overlay" id="deleteServiceModal">
     <div class="modal" style="max-width:380px;">
         <div class="modal-header">
@@ -646,23 +472,8 @@ function switchTab(tab, btn) {
 
 // Open tab from URL hash on load
 const hash = window.location.hash.replace('#','');
-if (['general','staff','services'].includes(hash)) {
+if (['general','services'].includes(hash)) {
     switchTab(hash, document.querySelector('[data-tab="'+hash+'"]'));
-}
-
-// ── Edit / Delete staff ──────────────────────────────────────────────────
-function openEditStaff(btn) {
-    document.getElementById('editStaffForm').action = btn.dataset.action;
-    document.getElementById('editStaffName').value  = btn.dataset.name;
-    document.getElementById('editStaffEmail').value = btn.dataset.email;
-    document.getElementById('editStaffRole').value  = btn.dataset.role;
-    openModal('editStaffModal');
-}
-
-function openDeleteStaff(btn) {
-    document.getElementById('deleteStaffForm').action  = btn.dataset.action;
-    document.getElementById('deleteStaffName').textContent = btn.dataset.name;
-    openModal('deleteStaffModal');
 }
 
 // ── Edit / Delete service ────────────────────────────────────────────────

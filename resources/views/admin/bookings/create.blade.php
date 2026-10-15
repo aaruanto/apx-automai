@@ -145,12 +145,12 @@
                             <div class="fv-error" id="serviceError">Please choose at least one service.</div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Assigned Staff</label>
-                            <select class="form-control" name="staff_id">
+                            <label class="form-label">Assigned Mechanic</label>
+                            <select class="form-control" name="mechanic_id">
                                 <option value="">— Unassigned —</option>
-                                @foreach($employees ?? [] as $emp)
+                                @foreach($mechanics ?? [] as $emp)
                                 <option value="{{ $emp->id }}"
-                                    {{ isset($src) && $src->staff_id == $emp->id ? 'selected' : '' }}>
+                                    {{ isset($src) && $src->mechanic_id == $emp->id ? 'selected' : '' }}>
                                     {{ $emp->name }} ({{ $emp->specialty ?? 'General' }})
                                 </option>
                                 @endforeach

@@ -36,9 +36,9 @@ class AuthenticatedSessionController extends Controller
     // The login page itself stays reachable during maintenance because the
     // role is not known until the credentials are checked — closing it would
     // lock the admin out of the switch that turns maintenance off. So the
-    // check happens here instead: staff and admins continue, a customer is
-    // signed straight back out and told why.
-    if (Setting::get('maintenance') && ! in_array($user->role, ['admin', 'staff'], true)) {
+    // check happens here instead: an admin continues, a customer is signed
+    // straight back out and told why.
+    if (Setting::get('maintenance') && $user->role !== 'admin') {
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -48,13 +48,9 @@ class AuthenticatedSessionController extends Controller
         ]);
     }
 
-    if ($user->role === 'admin') {
-        return redirect()->route('admin.dashboard');
-    } elseif ($user->role === 'staff') {
-        return redirect()->route('staff.dashboard');
-    } else {
-        return redirect()->route('customer.dashboard');
-    }
+    // One source of truth for where a role lands, shared with email
+    // verification and password confirmation.
+    return redirect()->route($user->dashboardRoute());
 }
 
     /**

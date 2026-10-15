@@ -24,7 +24,7 @@ class User extends Authenticatable
     'phone',
     'role',
     'password',
-    // Admins deactivate staff rather than deleting them. It was missing
+    // Accounts are deactivated rather than deleted. It was missing
     // here, so update() silently dropped it and both callers that needed
     // it had to reach past mass assignment with forceFill.
     'is_active',
@@ -56,31 +56,19 @@ class User extends Authenticatable
         ];
     }
    /**
-    * Mechanics available to assign to a booking.
-    *
-    * Staff are users with role = staff: that is what bookings.staff_id
-    * references and what admin settings creates. Inactive accounts are
-    * excluded so someone who has left cannot be given new work.
-    */
-   public function scopeStaffMembers($query)
-   {
-       return $query->where('role', 'staff')->where('is_active', true)->orderBy('name');
-   }
-
-   /**
     * Where this user belongs after signing in or verifying their email.
     *
     * Breeze ships redirects to a single route('dashboard'), but this app has a
     * dashboard per role and no route by that name — those redirects threw a
     * RouteNotFoundException (500) on email verification and password confirmation.
+    *
+    * There are only two roles. A 'staff' value surviving in an old row falls
+    * through to the customer dashboard rather than a route that no longer
+    * exists, so a stale account cannot produce a 500.
     */
    public function dashboardRoute(): string
    {
-       return match ($this->role) {
-           'admin' => 'admin.dashboard',
-           'staff' => 'staff.dashboard',
-           default => 'customer.dashboard',
-       };
+       return $this->role === 'admin' ? 'admin.dashboard' : 'customer.dashboard';
    }
    public function vehicles()
 {
