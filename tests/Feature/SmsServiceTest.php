@@ -193,6 +193,7 @@ it('explains each failure in terms an admin can act on', function (int $status, 
     expect(SmsLog::sole()->status)->toBe('http_'.$status);
 })->with([
     [401, 'SEMAPHORE_KEY'],
+    [403, 'account-level block'],
     [402, 'Out of Semaphore credits'],
     [422, 'rejected the request'],
     [429, 'Rate limited'],

@@ -281,7 +281,15 @@ class SmsService
         $detail = $this->extractDetail($response);
 
         return match ($response->status()) {
-            401, 403 => 'Semaphore rejected the API key ('.$response->status().'). Check SEMAPHORE_KEY.',
+            401 => 'Semaphore rejected the API key (401). Check SEMAPHORE_KEY.',
+            // 403 is "authenticated but not permitted", which is a different
+            // problem from a wrong key: an account awaiting approval, or one
+            // with no credit to spend. Saying "check your key" here sends the
+            // reader to the one thing that is probably fine.
+            403 => 'Semaphore refused the request (403)'.($detail ? ': '.$detail : '.')
+                   .' The key reached them, so this is an account-level block —'
+                   .' usually an account not yet approved for sending, or one with no credits.'
+                   .' Check the balance and account status in the Semaphore dashboard.',
             402 => 'Out of Semaphore credits. Top up the account to resume sending.',
             // Only guess at a cause when the gateway did not give one.
             422 => $detail
