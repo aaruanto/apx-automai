@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Booking;
 use App\Models\Mechanic;
 use App\Models\User;
@@ -60,7 +61,11 @@ class BookingController extends Controller
         $request->validate([
             'customer_name'  => 'required|string|max:255',
             'customer_phone' => 'required|string|max:20',
-            'plate'          => 'required|string|max:20',
+            // The same rule the customer's own vehicle form and the guest
+            // booking use. This path accepted anything up to 20 characters,
+            // so the admin could create a vehicle the customer could never
+            // then edit, because their form would reject its plate.
+            'plate'          => ['required', 'string', 'max:20', 'regex:/^[A-Z]{3} \d{3,4}$/i'],
             'service_ids'    => 'required|array|min:1',
             'service_ids.*'  => 'integer|exists:services,id',
             'booking_date'   => 'required|date|after_or_equal:today', // no past dates
@@ -121,7 +126,14 @@ class BookingController extends Controller
         $services  = Service::orderBy('name')->get();
         $mechanics = Mechanic::active()->get();
 
-        return view('admin.bookings.create', compact('booking', 'services', 'mechanics'));
+        // The trail for this booking. Shown on the page it describes, because
+        // "who changed this, and when" is asked while looking at the booking,
+        // not while hunting through a separate log.
+        $history = AuditLog::where('auditable_type', Booking::class)
+            ->where('auditable_id', $booking->id)
+            ->recentFirst()->limit(20)->get();
+
+        return view('admin.bookings.create', compact('booking', 'services', 'mechanics', 'history'));
     }
 
     public function update(Request $request, $id)
@@ -145,7 +157,33 @@ class BookingController extends Controller
             // whole point of the cancel action. Use that instead.
             'status'       => 'required|in:pending,confirmed,in_progress,completed',
             'mechanic_id'     => ['nullable', 'integer', Rule::exists('mechanics', 'id')->where('status', 'active')],
+            'notes'        => 'nullable|string|max:2000',
         ]);
+
+        // A completed booking is a record of work done. Its status, services
+        // and slot are frozen; only the notes stay open, because an admin
+        // still needs somewhere to write what happened afterwards. Without
+        // this, saving the form re-priced finished work at today's rates and
+        // the revenue reports moved underneath you.
+        if ($booking->isLocked()) {
+            $booking->update(['notes' => $request->notes]);
+
+            return redirect()->route('admin.bookings.index')->with(
+                'success',
+                'Notes saved. '.$booking->reference_number.' is completed, so its status, '
+                .'services and schedule are locked to keep the record and the revenue figures intact.'
+            );
+        }
+
+        // Forward only. Cancelling is the one way out and has its own action,
+        // because it requires a reason.
+        if ($request->status !== $oldStatus && ! $booking->canMoveTo($request->status)) {
+            return back()->withInput()->withErrors([
+                'status' => 'A booking cannot move from '.(self::STATUS_LABELS[$oldStatus] ?? $oldStatus)
+                            .' back to '.(self::STATUS_LABELS[$request->status] ?? $request->status)
+                            .'. Cancel it instead if the work is not going ahead.',
+            ]);
+        }
 
         // Only re-run the capacity check when the slot this booking occupies
         // actually changes — a pure status/notes edit shouldn't get blocked
@@ -213,7 +251,35 @@ class BookingController extends Controller
             'notes'        => $request->notes,
         ]);
 
-        $availability->attachServices($booking, $serviceIds);
+        // Keep the price each service already carried on this booking; only a
+        // newly added service is quoted at today's rate.
+        $availability->attachServices($booking, $serviceIds, preserveExisting: true);
+
+        // ── Audit: the changes that move money ─────────────────────────────
+        if ($request->status !== $oldStatus) {
+            AuditLog::record(
+                'booking.status_changed', $booking,
+                ['status' => $oldStatus], ['status' => $request->status],
+                label: $booking->reference_number,
+            );
+        }
+
+        if ($servicesMoved) {
+            AuditLog::record(
+                'booking.services_changed', $booking,
+                ['service_ids' => $sortedOld], ['service_ids' => $sortedNew],
+                label: $booking->reference_number,
+            );
+        }
+
+        if ($oldDate !== $booking->booking_date || $oldTime !== $booking->booking_time) {
+            AuditLog::record(
+                'booking.rescheduled', $booking,
+                ['booking_date' => $oldDate, 'booking_time' => $oldTime],
+                ['booking_date' => $booking->booking_date, 'booking_time' => $booking->booking_time],
+                label: $booking->reference_number,
+            );
+        }
 
         // Tell the customer what changed. Only on a real transition: saving
         // the form without touching the status or the slot should not notify.
@@ -233,12 +299,12 @@ class BookingController extends Controller
             }
         }
 
-        if ($request->plate && $booking->vehicle) {
-            $booking->vehicle->update([
-                'plate_number' => strtoupper($request->plate),
-                'model'        => $request->car_model ?? $booking->vehicle->model,
-            ]);
-        }
+        // The plate is deliberately not editable here. This form used to write
+        // $request->plate straight onto the Vehicle with no validation at all,
+        // while the customer's own vehicle form enforces the LTO format and
+        // uniqueness — so "nonsense!!!" was accepted. It also wrote to the
+        // shared Vehicle row, changing the plate on every other booking for
+        // that car. A plate belongs to the vehicle, not to one booking.
 
         // Send confirmation email when status changes to 'confirmed'
         if ($oldStatus !== 'confirmed' && $request->status === 'confirmed') {
@@ -304,10 +370,46 @@ class BookingController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    /**
+     * Delete a booking.
+     *
+     * Used to be a bare delete() with no reason, no status guard and no
+     * record of who did it — the soft underbelly next to cancel, which has
+     * demanded a reason all along. Deleting a completed booking removed its
+     * revenue from every report with nothing left to explain the gap.
+     */
+    public function destroy(Request $request, $id)
     {
-        Booking::findOrFail($id)->delete();
-        return response()->json(['success' => true]);
+        $booking = Booking::findOrFail($id);
+
+        if ($booking->isLocked()) {
+            return response()->json([
+                'success' => false,
+                'message' => $booking->reference_number.' is completed and cannot be deleted. '
+                             .'Its revenue is part of your reports.',
+            ], 422);
+        }
+
+        $data = $request->validate([
+            'reason' => 'required|string|min:5|max:500',
+        ], [
+            'reason.required' => 'Give a reason for deleting this booking.',
+            'reason.min'      => 'Give a little more detail than that.',
+        ]);
+
+        AuditLog::record(
+            'booking.deleted', $booking,
+            ['status' => $booking->status, 'booking_date' => $booking->booking_date],
+            [], $data['reason'],
+            label: $booking->reference_number,
+        );
+
+        $booking->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => $booking->reference_number.' deleted.',
+        ]);
     }
 
     /**
@@ -391,6 +493,15 @@ class BookingController extends Controller
                              .' and can no longer be cancelled.',
             ], 422);
         }
+
+        // Cancellation already stamped who and why on the booking itself; it
+        // joins the audit trail too so one page shows every change that moved
+        // money, rather than this one living somewhere of its own.
+        AuditLog::record(
+            'booking.cancelled', $booking,
+            ['status' => 'cancelled'], [], $validated['reason'],
+            label: $booking->reference_number,
+        );
 
         if ($booking->user) {
             $booking->user->notify(BookingNotification::cancelled($booking->fresh()));

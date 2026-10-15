@@ -207,15 +207,35 @@ class BookingAvailability
      * Attach services, snapshotting price and duration as they are now so a
      * later price change cannot rewrite what this booking cost.
      */
-    public function attachServices(Booking $booking, array $serviceIds): void
+    /**
+     * Put this set of services on the booking, snapshotting price and duration.
+     *
+     * $preserveExisting keeps the price a service was already carrying on this
+     * booking, and quotes only newly added ones at today's rate. Without it,
+     * every edit re-read the current price list and silently re-priced work
+     * that was already done: raise Oil Change from 1500 to 2000, then change
+     * the notes on a booking completed last month, and that booking's revenue
+     * became 2000. Reports read these pivot prices, so history moved.
+     *
+     * Creation passes false — there is nothing to preserve, and today's price
+     * is the right one.
+     */
+    public function attachServices(Booking $booking, array $serviceIds, bool $preserveExisting = false): void
     {
         if ($serviceIds === []) {
             return;
         }
 
+        $existing = $preserveExisting
+            ? $booking->services()->pluck('booking_service.price', 'services.id')
+            : collect();
+
         $pivot = Service::whereIn('id', $serviceIds)->get()
             ->mapWithKeys(fn (Service $s) => [
-                $s->id => ['price' => $s->price, 'duration' => $s->duration],
+                $s->id => [
+                    'price'    => $existing[$s->id] ?? $s->price,
+                    'duration' => $s->duration,
+                ],
             ])
             ->all();
 

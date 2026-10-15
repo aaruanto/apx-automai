@@ -6,6 +6,7 @@ use App\Support\EmailRule;
 
 use App\Http\Controllers\Controller;
 use App\Models\AccountDeletion;
+use App\Models\AuditLog;
 use App\Models\Service;
 use App\Models\Setting;
 use App\Models\User;
@@ -116,16 +117,39 @@ class SettingsController extends Controller
             'duration' => 'required|integer|min:1',
         ]);
 
-        Service::findOrFail($id)->update($request->only(
+        $service  = Service::findOrFail($id);
+        $oldPrice = (float) $service->price;
+
+        $service->update($request->only(
             'name', 'category', 'price', 'duration', 'description'
         ));
+
+        // Only the price is logged. Renaming or re-describing a service
+        // changes nothing about what anything earned; re-pricing it sets the
+        // rate every future booking is quoted at, so it belongs in the trail.
+        if ($oldPrice !== (float) $service->price) {
+            AuditLog::record(
+                'service.price_changed', $service,
+                ['price' => $oldPrice], ['price' => (float) $service->price],
+                label: $service->name,
+            );
+        }
 
         return back()->with('success', 'Service updated.');
     }
 
     public function destroyService($id)
     {
-        Service::findOrFail($id)->delete();
+        $service = Service::findOrFail($id);
+
+        AuditLog::record(
+            'service.deleted', $service,
+            ['name' => $service->name, 'price' => (float) $service->price], [],
+            label: $service->name,
+        );
+
+        $service->delete();
+
         return back()->with('success', 'Service deleted.');
     }
 }

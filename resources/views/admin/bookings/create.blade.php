@@ -11,6 +11,22 @@
 
 @push('styles')
 <link href="{{ asset('assets/css/availability-picker.css') }}" rel="stylesheet" />
+<style>
+/* Form beside the summary sidebar. The sidebar is a fixed 360px, so below
+   roughly a tablet the pair cannot fit and the page scrolled sideways —
+   279px of it at phone width. min-width:0 lets the form column shrink
+   instead of being held open by its own content. */
+.booking-form-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 20px;
+    align-items: start;
+}
+.booking-form-grid > * { min-width: 0; }
+@media (max-width: 900px) {
+    .booking-form-grid { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
 @endpush
 
 @section('content')
@@ -47,7 +63,7 @@
         @csrf
         @if($isEdit) @method('PUT') @endif
 
-        <div style="display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start;">
+        <div class="booking-form-grid">
 
             <!-- LEFT COLUMN -->
             <div style="display:flex;flex-direction:column;gap:20px;">
@@ -59,17 +75,32 @@
                     </div>
                     <div class="card-body">
                         <div class="form-row cols-2">
+                            {{-- Read-only on edit. These were editable here but
+                                 update() never read them, so typing a new name
+                                 and saving appeared to work and changed
+                                 nothing. Customers own their own details. --}}
                             <div class="form-group">
-                                <label class="form-label">Full Name <span style="color:var(--red)">*</span></label>
-                                <input class="form-control" type="text" name="customer_name" id="adminCustomerName"
+                                <label class="form-label">
+                                    Full Name @unless ($isEdit)<span style="color:var(--red)">*</span>@endunless
+                                </label>
+                                <input class="form-control" type="text"
+                                       @if ($isEdit) disabled @else name="customer_name" id="adminCustomerName" required @endif
                                        value="{{ $src->user->name ?? '' }}"
-                                       placeholder="e.g. Juan dela Cruz" required />
+                                       placeholder="e.g. Juan dela Cruz"
+                                       style="{{ $isEdit ? 'opacity:.65;cursor:not-allowed;' : '' }}" />
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Phone Number <span style="color:var(--red)">*</span></label>
-                                <input class="form-control" type="tel" name="customer_phone" id="adminCustomerPhone"
+                                <label class="form-label">
+                                    Phone Number @unless ($isEdit)<span style="color:var(--red)">*</span>@endunless
+                                </label>
+                                <input class="form-control" type="tel"
+                                       @if ($isEdit) disabled @else name="customer_phone" id="adminCustomerPhone" required @endif
                                        value="{{ $src->user->phone ?? '' }}"
-                                       placeholder="09XXXXXXXXX" required />
+                                       placeholder="09XXXXXXXXX"
+                                       style="{{ $isEdit ? 'opacity:.65;cursor:not-allowed;' : '' }}" />
+                                @if ($isEdit)
+                                <div class="form-hint">The customer changes their own details from their account.</div>
+                                @endif
                             </div>
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
@@ -88,18 +119,33 @@
                     </div>
                     <div class="card-body">
                         <div class="form-row cols-2">
+                            {{-- On edit the vehicle is shown, not edited. This
+                                 form used to write the plate straight onto the
+                                 Vehicle row with no validation, which changed
+                                 it on every other booking for that car too. A
+                                 plate belongs to the vehicle; the customer
+                                 edits it from their own garage. --}}
                             <div class="form-group">
-                                <label class="form-label">Plate Number <span style="color:var(--red)">*</span></label>
-                                <input class="form-control" type="text" name="plate" id="adminPlateInput"
+                                <label class="form-label">
+                                    Plate Number
+                                    @unless ($isEdit)<span style="color:var(--red)">*</span>@endunless
+                                </label>
+                                <input class="form-control" type="text"
+                                       @if ($isEdit) disabled @else name="plate" id="adminPlateInput" required @endif
                                        value="{{ $src->vehicle->plate_number ?? '' }}"
-                                       placeholder="e.g. ABC 1234" required
-                                       style="letter-spacing:.08em;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;" />
+                                       placeholder="e.g. ABC 1234"
+                                       style="letter-spacing:.08em;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;{{ $isEdit ? 'opacity:.65;cursor:not-allowed;' : '' }}" />
+                                @if ($isEdit)
+                                <div class="form-hint">The customer changes this from their own vehicles.</div>
+                                @endif
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Car Model</label>
-                                <input class="form-control" type="text" name="car_model"
+                                <input class="form-control" type="text"
+                                       @if ($isEdit) disabled @else name="car_model" @endif
                                        value="{{ $src->vehicle->model ?? '' }}"
-                                       placeholder="e.g. Toyota Vios 2021" />
+                                       placeholder="e.g. Toyota Vios 2021"
+                                       style="{{ $isEdit ? 'opacity:.65;cursor:not-allowed;' : '' }}" />
                             </div>
                         </div>
                     </div>
@@ -250,6 +296,37 @@
                     </div>
                 </div>
 
+                {{-- CHANGE HISTORY
+                     Only the changes that move money are recorded — status,
+                     services, reschedules, cancellation, deletion — so this
+                     list stays short enough to actually read. Informational,
+                     so blue rather than red. --}}
+                @if ($isEdit && $history->isNotEmpty())
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-header-title"><i class="fas fa-clock-rotate-left"></i> Change History</div>
+                    </div>
+                    <div class="card-body" style="padding:0;">
+                        <ul style="list-style:none;margin:0;padding:0;">
+                            @foreach ($history as $entry)
+                            <li style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:.82rem;line-height:1.5;">
+                                <div style="color:var(--text);">{{ $entry->describe() }}</div>
+                                <div style="color:var(--text-muted);font-size:.76rem;margin-top:2px;">
+                                    {{ $entry->actor_name ?? 'Unknown' }} ·
+                                    {{ $entry->created_at->format('M j, Y g:i A') }}
+                                </div>
+                                @if ($entry->reason)
+                                <div style="color:var(--text-muted);font-size:.78rem;margin-top:4px;font-style:italic;">
+                                    “{{ $entry->reason }}”
+                                </div>
+                                @endif
+                            </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+                @endif
+
             </div>
         </div>
     </form>
@@ -298,10 +375,23 @@ const serviceData = {
 };
 
 // ── Plate mask + validation ─────────────────────────────────────────────
-PlateMask.attach(document.getElementById('adminPlateInput'));
-FormValidate.register(document.getElementById('adminCustomerName'), { rules: [FormValidate.rules.required('Full name is required.')] });
-FormValidate.register(document.getElementById('adminCustomerPhone'), { rules: [FormValidate.rules.required('Phone number is required.'), FormValidate.rules.phonePH()] });
-FormValidate.register(document.getElementById('adminPlateInput'), { rules: [FormValidate.rules.required('Plate number is required.'), FormValidate.rules.plate()] });
+// The plate input only exists when creating; on edit the vehicle is shown
+// read-only, so guard rather than attaching to null.
+const adminPlate = document.getElementById('adminPlateInput');
+if (adminPlate) {
+    PlateMask.attach(adminPlate);
+    FormValidate.register(adminPlate, { rules: [FormValidate.rules.required('Plate number is required.'), FormValidate.rules.plate()] });
+}
+// Customer and vehicle fields exist only when creating; on edit they are
+// shown read-only, so each is guarded rather than registered against null.
+const adminName = document.getElementById('adminCustomerName');
+if (adminName) {
+    FormValidate.register(adminName, { rules: [FormValidate.rules.required('Full name is required.')] });
+}
+const adminPhone = document.getElementById('adminCustomerPhone');
+if (adminPhone) {
+    FormValidate.register(adminPhone, { rules: [FormValidate.rules.required('Phone number is required.'), FormValidate.rules.phonePH()] });
+}
 FormValidate.bindSubmit(document.getElementById('bookingForm'), document.getElementById('bookingSubmitBtn'));
 
 // ── Availability picker ──────────────────────────────────────────────────

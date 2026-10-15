@@ -16,6 +16,37 @@ class Booking extends Model
     /** Statuses a booking may still be cancelled from. */
     public const CANCELLABLE_STATUSES = ['pending', 'confirmed', 'in_progress'];
 
+    /**
+     * The order work actually happens in.
+     *
+     * A booking moves forward through these and never back: a completed job
+     * returning to pending re-enters the active pipeline and quietly leaves
+     * the revenue figures. Cancelling is the one way out, and it has its own
+     * action because it demands a reason. Skipping ahead is allowed — a
+     * walk-in can go straight from pending to completed.
+     */
+    public const STATUS_ORDER = ['pending', 'confirmed', 'in_progress', 'completed'];
+
+    /** Whether this booking is finished and its record should stand. */
+    public function isLocked(): bool
+    {
+        return $this->status === 'completed';
+    }
+
+    /** Whether the status may move from where it is now to $target. */
+    public function canMoveTo(string $target): bool
+    {
+        $from = array_search($this->status, self::STATUS_ORDER, true);
+        $to   = array_search($target, self::STATUS_ORDER, true);
+
+        // A status outside the ladder (cancelled) is not reachable this way.
+        if ($from === false || $to === false) {
+            return false;
+        }
+
+        return $to >= $from;
+    }
+
     protected $fillable = [
         'user_id', 'vehicle_id', 'service_id', 'mechanic_id',
         'booking_date', 'booking_time', 'duration', 'status', 'notes', 'reference_number',

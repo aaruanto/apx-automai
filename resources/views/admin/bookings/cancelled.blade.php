@@ -123,13 +123,25 @@
             <button class="modal-close" onclick="closeModal('deleteModal')"><i class="fas fa-xmark"></i></button>
         </div>
         <div class="modal-body">
+            {{-- It said "permanently delete ... cannot be recovered", which
+                 was not true: this is a soft delete and the row stays. Saying
+                 so plainly matters, because the old wording made a reversible
+                 action sound final and a final one sound routine. --}}
             <p style="color:var(--text-muted);font-size:.9rem;line-height:1.6;">
-                This will <strong style="color:var(--red);">permanently delete</strong> booking <strong id="deleteRefNo" style="color:var(--text);"></strong>. It cannot be recovered. Are you absolutely sure?
+                Booking <strong id="deleteRefNo" style="color:var(--text);"></strong> will be removed
+                from the list. The record is kept so reports stay accurate, and the deletion is
+                logged against your account.
             </p>
+            <div class="form-group" style="margin-top:14px;margin-bottom:0;">
+                <label class="form-label">Reason <span style="color:var(--red);">*</span></label>
+                <textarea class="form-control" id="deleteReason" rows="2"
+                          placeholder="e.g. duplicate of APX-0042"></textarea>
+                <div class="fv-error" id="deleteReasonError"></div>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-ghost" onclick="closeModal('deleteModal')">Go Back</button>
-            <button class="btn btn-danger" onclick="confirmDelete()"><i class="fas fa-trash"></i> Delete Permanently</button>
+            <button class="btn btn-danger" id="deleteConfirmBtn" onclick="confirmDelete()"><i class="fas fa-trash"></i> Delete Booking</button>
         </div>
     </div>
 </div>
@@ -142,28 +154,55 @@ let deleteTargetId = null;
 function openDeleteModal(id, refNo) {
     deleteTargetId = id;
     document.getElementById('deleteRefNo').textContent = refNo;
+    document.getElementById('deleteReason').value = '';
+    showDeleteError('');
     openModal('deleteModal');
 }
 
+function showDeleteError(message) {
+    const el = document.getElementById('deleteReasonError');
+    el.textContent = message;
+    el.classList.toggle('show', !!message);
+    document.getElementById('deleteReason').classList.toggle('fv-invalid', !!message);
+}
+
+/* The old version checked only data.success and sent every other outcome to
+   console.error, so a refused delete looked like a dead button. The server
+   now refuses completed bookings and requires a reason; both have to be
+   readable without opening devtools. */
 function confirmDelete() {
     if (!deleteTargetId) return;
+
+    const reason = document.getElementById('deleteReason').value.trim();
+    if (reason.length < 5) {
+        showDeleteError('Give a reason for deleting this booking.');
+        return;
+    }
+
+    const btn = document.getElementById('deleteConfirmBtn');
+    btn.disabled = true;
+
     fetch(`/admin/bookings/${deleteTargetId}`, {
         method: 'DELETE',
         headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
             'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        }
+        },
+        body: JSON.stringify({ reason: reason })
     })
-    .then(r => r.json())
+    .then(r => r.json().catch(() => { throw new Error('The server returned an unexpected response (HTTP ' + r.status + ').'); }))
     .then(data => {
-        if (data.success) {
-            closeModal('deleteModal');
-            const row = document.getElementById('row-' + deleteTargetId);
-            if (row) row.remove();
-            deleteTargetId = null;
+        if (!data.success) {
+            throw new Error(data.message || (data.errors && data.errors.reason && data.errors.reason[0]) || 'Could not delete this booking.');
         }
+        closeModal('deleteModal');
+        const row = document.getElementById('row-' + deleteTargetId);
+        if (row) row.remove();
+        deleteTargetId = null;
     })
-    .catch(err => console.error('Delete failed:', err));
+    .catch(err => showDeleteError(err.message))
+    .finally(() => { btn.disabled = false; });
 }
 
 function applyFilters() {
