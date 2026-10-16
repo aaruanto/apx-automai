@@ -24,7 +24,10 @@ Route::get('/', function () {
 
     // Only bundles a visitor could actually book today — switched on and
     // inside their run dates.
-    $bundles = \App\Models\Bundle::with('services')->bookable()->orderBy('name')->get();
+    // Cheapest first, so the packages read as a ladder — Basic, Standard,
+    // Major. Alphabetical put Major in the middle, which tells a customer
+    // nothing about how the three relate to each other.
+    $bundles = \App\Models\Bundle::with('services')->bookable()->orderBy('price')->get();
 
     return view('index', compact('services', 'bundles'));
 });

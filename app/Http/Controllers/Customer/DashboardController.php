@@ -81,7 +81,7 @@ class DashboardController extends Controller
         // Replaces the four hardcoded "promos" this panel used to show, which
         // were invented placeholders with 2025 expiry dates and discount
         // codes that nothing in the app would ever honour.
-        $bundlesJs = Bundle::with('services')->bookable()->orderBy('name')->get()
+        $bundlesJs = Bundle::with('services')->bookable()->orderBy('price')->get()
             ->map(fn ($b) => [
                 'id'          => $b->id,
                 'name'        => $b->name,
