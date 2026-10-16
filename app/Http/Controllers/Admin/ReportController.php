@@ -184,8 +184,10 @@ class ReportController extends Controller
             $cursor->subMonth();
         }
 
+        $discounts = $this->discountStats($from, $to);
+
         return compact(
-            'totalBookings', 'totalRevenue', 'avgBookingValue',
+            'totalBookings', 'totalRevenue', 'avgBookingValue', 'discounts',
             'totalCustomers', 'newCustomers', 'cancellationRate', 'cancelledCount',
             'bookingsGrowth', 'revenueGrowth',
             'statusCounts',
@@ -195,7 +197,7 @@ class ReportController extends Controller
         );
     }
 
-    /** Confirmed-booking revenue in a window, summed from service prices. */
+    
     /**
      * What the shop actually earned between these dates.
      *
@@ -233,6 +235,36 @@ class ReportController extends Controller
             ->where('status', 'completed')->count();
     }
 
+    /**
+     * What discounts cost, and what loyalty owes.
+     *
+     * Revenue above is already net of every discount, because they are spread
+     * across the price snapshots it sums. These figures say how much was given
+     * away to get it, which revenue alone cannot show.
+     *
+     * Outstanding points are a real liability: every unspent point is a
+     * promise of money off future work. A shop that never looks at that number
+     * finds out what the programme costs only when customers start redeeming.
+     */
+    private function discountStats(Carbon $from, Carbon $to): array
+    {
+        $bookings = Booking::whereBetween('booking_date', [$from, $to])
+            ->where('status', 'completed');
+
+        $pointValue = (float) \App\Models\Setting::get('loyalty_point_value');
+
+        return [
+            'account_discount' => (float) (clone $bookings)->sum('discount_amount'),
+            'points_discount'  => (float) (clone $bookings)->sum('points_discount'),
+            'points_redeemed'  => (int) (clone $bookings)->sum('points_spent'),
+            'points_issued'    => (int) (clone $bookings)->sum('points_earned'),
+            // Across every customer, not just this window: a liability does
+            // not expire because the report's date range moved.
+            'points_outstanding' => (int) \App\Models\LoyaltyLedger::sum('points'),
+            'liability'          => round((int) \App\Models\LoyaltyLedger::sum('points') * $pointValue, 2),
+        ];
+    }
+
     /** The shape the view expects, with nothing in it, for the failure path. */
     private function blank(): array
     {
@@ -251,6 +283,7 @@ class ReportController extends Controller
             'revenueChartData'   => [],
             'serviceStats'       => [],
             'bookingSummary'     => [],
+            'discounts'          => ['account_discount' => 0, 'points_discount' => 0, 'points_redeemed' => 0, 'points_issued' => 0, 'points_outstanding' => 0, 'liability' => 0],
         ];
     }
     /**

@@ -38,11 +38,15 @@ class Setting extends Model
         // commercial decision the shop will want to change without a deploy.
         'account_discount_enabled' => false,
         'account_discount_percent' => 5,
-        // Loyalty. Off by default; the rates are the shop's to set.
+        // Loyalty. On by default: every customer with an account is in the
+        // programme, with no sign-up or opt-in. The switch stays only as a
+        // way to stop the programme immediately if a rate is misconfigured —
+        // a fire extinguisher, not a feature flag.
+        //
         // 1 point per ₱50 spent, each worth ₱0.50 back — so ₱50 spent
         // returns ₱0.50, a 1% return. 100 points minimum to redeem, and
         // points may cover at most half of any one booking.
-        'loyalty_enabled'            => false,
+        'loyalty_enabled'            => true,
         'loyalty_pesos_per_point'    => 50,
         'loyalty_point_value'        => 0.50,
         'loyalty_min_redeem'         => 100,

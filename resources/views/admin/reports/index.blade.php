@@ -103,6 +103,45 @@
         @endforeach
     </div>
 
+    {{-- DISCOUNTS AND LOYALTY
+         Revenue above is already net of every discount, because they are
+         spread across the price snapshots it sums. These say what was given
+         away to earn it, which revenue alone cannot show.
+
+         Outstanding points are a liability, not a statistic: every unspent
+         point is a promise of money off future work. --}}
+    <div class="card" style="margin-bottom:20px;">
+        <div class="card-header">
+            <div class="card-header-title"><i class="fas fa-tags"></i> Discounts &amp; Loyalty</div>
+            <span style="font-size:.74rem;color:var(--text-muted);">Completed bookings in this period</span>
+        </div>
+        <div class="card-body">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:18px;">
+                @php
+                    $d = $discounts ?? [];
+                    $tiles = [
+                        ['Account Discount', '₱'.number_format($d['account_discount'] ?? 0, 2), 'Given for booking signed in'],
+                        ['Points Discount',  '₱'.number_format($d['points_discount'] ?? 0, 2),  number_format($d['points_redeemed'] ?? 0).' points redeemed'],
+                        ['Points Issued',    number_format($d['points_issued'] ?? 0),           'Earned on completed work'],
+                        ['Points Outstanding', number_format($d['points_outstanding'] ?? 0),    'Unspent across all customers'],
+                        ['Loyalty Liability', '₱'.number_format($d['liability'] ?? 0, 2),       'What outstanding points are worth'],
+                    ];
+                @endphp
+                @foreach ($tiles as [$label, $value, $hint])
+                <div>
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.6rem;font-weight:800;line-height:1;color:var(--text);font-variant-numeric:tabular-nums;">
+                        {{ $value }}
+                    </div>
+                    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--text-muted);margin-top:5px;">
+                        {{ $label }}
+                    </div>
+                    <div style="font-size:.72rem;color:var(--text-muted);margin-top:3px;">{{ $hint }}</div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+
     <!-- CHARTS ROW 1 -->
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-bottom:20px;">
 

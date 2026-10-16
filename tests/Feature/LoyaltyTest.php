@@ -462,3 +462,109 @@ it('hides the points panel entirely while loyalty is off', function () {
     $this->actingAs(loyaltyCustomer())->get('/customer/dashboard')->assertOk()
         ->assertDontSee('My Points');
 });
+
+// ── Always on, with a kill switch ────────────────────────────────────────
+
+it('is on for every account holder without any opt-in', function () {
+    // No setting saved at all: a fresh install has the programme running.
+    Setting::query()->where('key', 'loyalty_enabled')->delete();
+    Setting::flushCache();
+
+    expect(loyalty()->enabled())->toBeTrue();
+});
+
+it('still has a switch to stop it in an emergency', function () {
+    Setting::setMany(['loyalty_enabled' => false]);
+    Setting::flushCache();
+
+    $user = loyaltyCustomer();
+    loyalty()->earnFor(loyaltyBooking($user, 1000, 'completed', 'KIL 1111'));
+
+    expect(loyalty()->balanceFor($user))->toBe(0);
+});
+
+// ── Idempotency enforced by the database ─────────────────────────────────
+
+it('refuses a second earn row for the same booking at the database', function () {
+    $user    = loyaltyCustomer();
+    $booking = loyaltyBooking($user, 1000, 'completed', 'IDM 1111');
+    loyalty()->earnFor($booking);
+
+    // Bypassing the service entirely — the constraint is the last line of
+    // defence against a future code path that forgets to check.
+    expect(fn () => LoyaltyLedger::create([
+        'user_id' => $user->id, 'booking_id' => $booking->id,
+        'points' => 999, 'remaining' => 999, 'balance_after' => 9999,
+        'reason' => LoyaltyLedger::EARNED,
+    ]))->toThrow(Illuminate\Database\UniqueConstraintViolationException::class);
+
+    expect(loyalty()->balanceFor($user))->toBe(20);
+});
+
+it('still allows each different kind of entry on one booking', function () {
+    $user    = loyaltyCustomer();
+    loyalty()->adjust($user, 500, 'seed');
+    $booking = loyaltyBooking($user, 2000, 'confirmed', 'IDM 2222');
+
+    // redeemed, then refunded, then the booking earns later — three
+    // different reasons against one booking, all legitimate.
+    loyalty()->redeemFor($booking, $user->fresh(), 100);
+    loyalty()->refundSpentFor($booking->fresh());
+
+    expect(LoyaltyLedger::where('booking_id', $booking->id)->count())->toBe(2);
+    assertLedgerConsistent($user);
+});
+
+// ── Verification command ─────────────────────────────────────────────────
+
+it('verifies a healthy ledger', function () {
+    $user = loyaltyCustomer();
+    loyalty()->adjust($user, 300, 'seed');
+
+    $this->artisan('loyalty:verify')->assertSuccessful();
+});
+
+it('catches a balance that disagrees with its history', function () {
+    $user = loyaltyCustomer();
+    loyalty()->adjust($user, 300, 'seed');
+
+    // Something wrote to the table without going through the service.
+    LoyaltyLedger::where('user_id', $user->id)->update(['balance_after' => 99999]);
+
+    $this->artisan('loyalty:verify')->assertFailed();
+});
+
+it('catches points that are in the balance but in no lot', function () {
+    $user = loyaltyCustomer();
+    loyalty()->adjust($user, 300, 'seed');
+
+    LoyaltyLedger::where('user_id', $user->id)->update(['remaining' => 0]);
+
+    $this->artisan('loyalty:verify')->assertFailed();
+});
+
+// ── Reports ──────────────────────────────────────────────────────────────
+
+it('reports what discounts cost and what loyalty owes', function () {
+    $user    = loyaltyCustomer();
+    $booking = loyaltyBooking($user, 1000, 'completed', 'RPT 1111');
+    // Dated inside the report window: the page filters on booking_date and
+    // the helper books into the future.
+    $booking->update(['booking_date' => today()->toDateString()]);
+    loyalty()->earnFor($booking->fresh());
+
+    $d = $this->actingAs(User::factory()->create(['role' => 'admin']))
+        ->get('/admin/reports')->assertOk()->viewData('discounts');
+
+    expect($d['points_issued'])->toBe(20);
+    expect($d['points_outstanding'])->toBe(20);
+    // 20 unspent points at ₱0.50 is ₱10 of future discount owed.
+    expect($d['liability'])->toBe(10.0);
+});
+
+it('shows the liability on the reports page', function () {
+    $this->actingAs(User::factory()->create(['role' => 'admin']))
+        ->get('/admin/reports')->assertOk()
+        ->assertSee('Loyalty Liability')
+        ->assertSee('Points Outstanding');
+});
