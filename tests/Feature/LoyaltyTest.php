@@ -370,3 +370,95 @@ it('earns on completion through the admin booking form', function () {
     expect(loyalty()->balanceFor($user))->toBe(30);   // 1500 / 50
     assertLedgerConsistent($user);
 });
+
+// ── Admin surfaces ───────────────────────────────────────────────────────
+
+it('lets the admin adjust points with a reason, and logs it', function () {
+    $user     = loyaltyCustomer();
+    $customer = App\Models\Customer::create(['user_id' => $user->id, 'phone' => '09171234567']);
+    $admin    = User::factory()->create(['role' => 'admin', 'name' => 'The Admin']);
+
+    $this->actingAs($admin)->post("/admin/customers/{$customer->id}/points", [
+        'points' => 250, 'reason' => 'Goodwill after a delayed service',
+    ])->assertRedirect();
+
+    expect(loyalty()->balanceFor($user))->toBe(250);
+
+    $log = App\Models\AuditLog::where('action', 'loyalty.adjusted')->sole();
+    expect($log->reason)->toBe('Goodwill after a delayed service');
+    expect($log->actor_name)->toBe('The Admin');
+    assertLedgerConsistent($user);
+});
+
+it('refuses an adjustment with no reason', function () {
+    $user     = loyaltyCustomer();
+    $customer = App\Models\Customer::create(['user_id' => $user->id, 'phone' => '09171234567']);
+
+    $this->actingAs(User::factory()->create(['role' => 'admin']))
+        ->post("/admin/customers/{$customer->id}/points", ['points' => 250])
+        ->assertSessionHasErrors('reason');
+
+    expect(loyalty()->balanceFor($user))->toBe(0);
+});
+
+it('refuses an adjustment of zero', function () {
+    $user     = loyaltyCustomer();
+    $customer = App\Models\Customer::create(['user_id' => $user->id, 'phone' => '09171234567']);
+
+    $this->actingAs(User::factory()->create(['role' => 'admin']))
+        ->post("/admin/customers/{$customer->id}/points", ['points' => 0, 'reason' => 'nothing at all'])
+        ->assertSessionHasErrors('points');
+});
+
+it('keeps point adjustment away from customers', function () {
+    $user     = loyaltyCustomer();
+    $customer = App\Models\Customer::create(['user_id' => $user->id, 'phone' => '09171234567']);
+
+    $this->actingAs($user)->post("/admin/customers/{$customer->id}/points", [
+        'points' => 99999, 'reason' => 'giving myself points',
+    ])->assertStatus(403);
+
+    expect(loyalty()->balanceFor($user))->toBe(0);
+});
+
+it('lets the admin change the loyalty rates', function () {
+    $this->actingAs(User::factory()->create(['role' => 'admin']))
+        ->put('/admin/settings/loyalty', [
+            'loyalty_enabled' => '1', 'loyalty_pesos_per_point' => 100,
+            'loyalty_point_value' => 1.00, 'loyalty_min_redeem' => 50,
+            'loyalty_max_redeem_percent' => 25, 'loyalty_expiry_months' => 6,
+        ])->assertRedirect();
+
+    Setting::flushCache();
+    expect(loyalty()->pesosPerPoint())->toBe(100);
+    expect(loyalty()->pointValue())->toBe(1.0);
+    expect(loyalty()->maxRedeemPercent())->toBe(25);
+});
+
+it('refuses a zero cost per point, which would mint points from nothing', function () {
+    $this->actingAs(User::factory()->create(['role' => 'admin']))
+        ->put('/admin/settings/loyalty', [
+            'loyalty_enabled' => '1', 'loyalty_pesos_per_point' => 0,
+            'loyalty_point_value' => 1.00, 'loyalty_min_redeem' => 50,
+            'loyalty_max_redeem_percent' => 25, 'loyalty_expiry_months' => 6,
+        ])->assertSessionHasErrors('loyalty_pesos_per_point');
+});
+
+// ── Customer surfaces ────────────────────────────────────────────────────
+
+it('shows the balance and its history to the customer', function () {
+    $user = loyaltyCustomer();
+    loyalty()->adjust($user, 250, 'Goodwill after a delayed service');
+
+    $this->actingAs($user)->get('/customer/dashboard')->assertOk()
+        ->assertSee('My Points')
+        ->assertSee('250')
+        ->assertSee('Goodwill after a delayed service');
+});
+
+it('hides the points panel entirely while loyalty is off', function () {
+    Setting::setMany(['loyalty_enabled' => false]);
+
+    $this->actingAs(loyaltyCustomer())->get('/customer/dashboard')->assertOk()
+        ->assertDontSee('My Points');
+});

@@ -510,9 +510,75 @@
 
             <!-- PROMOS PANEL -->
             <div class="tab-panel" id="panel-promos">
+
+                @if ($loyalty['enabled'])
+                {{-- LOYALTY
+                     Balance and every movement behind it. The history is the
+                     point: a balance on its own is a number a customer has
+                     to take on trust. --}}
                 <div class="rw-section-header">
-                    <div class="rw-section-title"><i class="fas fa-tag"></i> Promos & Offers</div>
-                    <span class="card-badge" id="promoCount">4 active</span>
+                    <div class="rw-section-title"><i class="fas fa-star"></i> My Points</div>
+                    <span class="card-badge">{{ number_format($loyalty['balance']) }} points</span>
+                </div>
+
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:24px;">
+                    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:baseline;">
+                        <div>
+                            <div style="font-family:'Barlow Condensed',sans-serif;font-size:2.4rem;font-weight:800;line-height:1;color:var(--text);">
+                                {{ number_format($loyalty['balance']) }}
+                            </div>
+                            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-top:2px;">
+                                points
+                            </div>
+                        </div>
+                        <div style="font-size:.86rem;color:var(--text-muted);line-height:1.6;">
+                            Worth <strong style="color:var(--text);">₱{{ number_format($loyalty['balance'] * $loyalty['value'], 2) }}</strong>
+                            off a future booking.<br>
+                            You earn 1 point for every ₱{{ number_format($loyalty['perPeso']) }} spent on completed work.
+                            @if ($loyalty['balance'] < $loyalty['minRedeem'])
+                            <br><span style="color:var(--text-muted);">{{ number_format($loyalty['minRedeem'] - $loyalty['balance']) }} more points until you can redeem.</span>
+                            @else
+                            <br>Points can cover up to {{ $loyalty['maxPercent'] }}% of a booking.
+                            @endif
+                        </div>
+                    </div>
+
+                    @if ($loyalty['history']->isNotEmpty())
+                    <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:14px;">
+                        <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:10px;">
+                            History
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="apx-table" style="min-width:420px;font-size:.82rem;">
+                                <tbody>
+                                    @foreach ($loyalty['history'] as $row)
+                                    <tr>
+                                        <td style="white-space:nowrap;color:var(--text-muted);">{{ $row['when'] }}</td>
+                                        <td>
+                                            {{ $row['what'] }}
+                                            @if ($row['expires'])
+                                            <div style="font-size:.72rem;color:var(--text-muted);">Expires {{ $row['expires'] }}</div>
+                                            @endif
+                                        </td>
+                                        <td style="text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:700;color:{{ $row['points'] >= 0 ? '#16a34a' : 'var(--text-muted)' }};">
+                                            {{ $row['points'] >= 0 ? '+' : '' }}{{ number_format($row['points']) }}
+                                        </td>
+                                        <td style="text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--text-muted);">
+                                            {{ number_format($row['balance']) }}
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    @endif
+                </div>
+                @endif
+
+                <div class="rw-section-header">
+                    <div class="rw-section-title"><i class="fas fa-tag"></i> Bundles</div>
+                    <span class="card-badge" id="promoCount">—</span>
                 </div>
                 <div class="promos-grid" id="promosGrid"></div>
             </div><!-- /panel-promos -->
@@ -846,6 +912,28 @@
                                 <span style="color:var(--text-muted);">Total</span>
                                 <span><strong id="bkTotalPrice">—</strong> <span style="color:var(--text-muted);">&middot; <span id="bkTotalDuration">—</span></span></span>
                             </div>
+
+                            @if ($loyalty['enabled'])
+                            {{-- POINTS
+                                 Redemption is opt-in and the slider is only a
+                                 request: the server caps it against the real
+                                 balance and the maximum share of a booking
+                                 points may cover, so nothing here can be
+                                 nudged into spending points that do not
+                                 exist. Informational, so blue. --}}
+                            <div id="bkPointsBox" style="margin-top:10px;padding:10px 12px;border-radius:8px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);font-size:.8rem;line-height:1.55;color:var(--text-muted);">
+                                @if ($loyalty['balance'] >= $loyalty['minRedeem'] && $loyalty['minRedeem'] > 0)
+                                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                    <input type="checkbox" id="bkUsePoints" onchange="refreshBookingTotal()" />
+                                    <span>Use my points — <strong id="bkPointsApplied">0</strong> available</span>
+                                </label>
+                                <div id="bkPointsDetail" style="margin-top:4px;"></div>
+                                @else
+                                <i class="fas fa-circle-info" style="color:var(--info,#3B82F6);"></i>
+                                <span id="bkPointsEarn"></span>
+                                @endif
+                            </div>
+                            @endif
                             <div class="m-form-group">
                                 <label class="m-label">Preferred Date &amp; Time</label>
                                 <input type="hidden" id="mDate" required />
@@ -1322,10 +1410,74 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         });
     });
 
+    const LOYALTY = @json($loyalty ?? ['enabled' => false]);
+
+    const peso = n => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    /* How many points this booking could take, mirroring the server's rules.
+       Only ever a preview: BookingPricing recomputes all of it and caps the
+       request against the real balance, so a tampered page cannot spend
+       points that are not there. */
+    /* The booking's price before points, which is what the usable-points
+       cap is calculated against. */
+    function currentBookingTotal() {
+        if (selectedBundle) return Number(selectedBundle.price);
+        if (!selectedService) return 0;
+
+        return (selectedService.priceValue ?? 0)
+            + extraBoxes().filter(b => b.checked).reduce((t, b) => t + parseFloat(b.dataset.price || 0), 0);
+    }
+
+    function pointsUsable(total) {
+        if (!LOYALTY.enabled || LOYALTY.balance < LOYALTY.minRedeem || LOYALTY.value <= 0) return 0;
+        const cashCap = total * LOYALTY.maxPercent / 100;
+        return Math.max(0, Math.min(LOYALTY.balance, Math.floor(cashCap / LOYALTY.value)));
+    }
+
+    function applyPointsPreview(total) {
+        if (!LOYALTY.enabled) return total;
+
+        const usingBox = document.getElementById('bkUsePoints');
+        const detail   = document.getElementById('bkPointsDetail');
+        const earnLine = document.getElementById('bkPointsEarn');
+        const usable   = pointsUsable(total);
+
+        if (document.getElementById('bkPointsApplied')) {
+            document.getElementById('bkPointsApplied').textContent = Number(LOYALTY.balance).toLocaleString();
+        }
+
+        let final = total;
+
+        if (usingBox && usingBox.checked && usable > 0) {
+            final = Math.max(0, total - usable * LOYALTY.value);
+            if (detail) {
+                detail.innerHTML = 'Using <strong>' + usable.toLocaleString() + '</strong> points — '
+                    + peso(usable * LOYALTY.value) + ' off.';
+            }
+        } else if (detail) {
+            detail.textContent = usable > 0
+                ? 'Up to ' + usable.toLocaleString() + ' points can be used on this booking ('
+                  + peso(usable * LOYALTY.value) + ' off).'
+                : '';
+        }
+
+        // What this booking will earn once it is completed — on what is
+        // actually paid, which is what the server awards.
+        const willEarn = LOYALTY.perPeso > 0 ? Math.floor(final / LOYALTY.perPeso) : 0;
+        const earnText = 'You will earn ' + willEarn.toLocaleString() + ' point'
+            + (willEarn === 1 ? '' : 's') + ' when this booking is completed.';
+
+        if (earnLine) earnLine.textContent = earnText;
+        if (detail && detail.innerHTML) detail.innerHTML += '<br>' + earnText;
+        else if (detail) detail.textContent = earnText;
+
+        return final;
+    }
+
     function refreshBookingTotal() {
         if (selectedBundle) {
-            document.getElementById('bkTotalPrice').textContent =
-                '₱' + Number(selectedBundle.price).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const total = applyPointsPreview(Number(selectedBundle.price));
+            document.getElementById('bkTotalPrice').textContent = peso(total);
             document.getElementById('bkTotalDuration').textContent = selectedBundle.duration + ' min';
             return;
         }
@@ -1337,8 +1489,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         const mins = (selectedService.durationValue ?? 0)
             + extraBoxes().filter(b => b.checked).reduce((t, b) => t + parseInt(b.dataset.duration || 0, 10), 0);
 
-        document.getElementById('bkTotalPrice').textContent =
-            '₱' + price.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('bkTotalPrice').textContent = peso(applyPointsPreview(price));
         document.getElementById('bkTotalDuration').textContent = mins + ' min';
     }
 
@@ -1434,6 +1585,9 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             body: JSON.stringify({
                 service_ids:  chosenServiceIds(),
                 bundle_id:    selectedBundle ? selectedBundle.id : null,
+                // A request, not an instruction: the server caps it.
+                points:       (document.getElementById('bkUsePoints')?.checked)
+                                  ? pointsUsable(currentBookingTotal()) : 0,
                 vehicle_id:   vehicleId,
                 booking_date: date,
                 booking_time: time,

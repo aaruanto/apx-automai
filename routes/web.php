@@ -83,6 +83,7 @@ Route::middleware(['auth', 'role:admin'])
     Route::get('/customers',                  [CustomerController::class, 'index'])   ->name('customers.index');
     Route::get('/customers/{id}/edit',        [CustomerController::class, 'edit'])    ->name('customers.edit');
     Route::put('/customers/{id}',             [CustomerController::class, 'update'])  ->name('customers.update');
+    Route::post('/customers/{id}/points',  [CustomerController::class, 'adjustPoints'])->name('customers.points');
     Route::delete('/customers/{id}',          [CustomerController::class, 'destroy']) ->name('customers.destroy');
 
     // ── Reports ────────────────────────────────────────────────────────────
@@ -97,6 +98,7 @@ Route::middleware(['auth', 'role:admin'])
     Route::get('/settings',                   [SettingsController::class, 'index'])          ->name('settings');
     Route::put('/settings/general',           [SettingsController::class, 'updateGeneral'])  ->name('settings.general');
     Route::put('/settings/booking',           [SettingsController::class, 'updateBooking'])  ->name('settings.booking');
+    Route::put('/settings/loyalty',          [SettingsController::class, 'updateLoyalty'])  ->name('settings.loyalty');
     Route::put('/settings/system',            [SettingsController::class, 'updateSystem'])   ->name('settings.system');
     Route::post('/settings/services',         [SettingsController::class, 'storeService'])   ->name('settings.services.store');
     Route::put('/settings/services/{id}',     [SettingsController::class, 'updateService'])  ->name('settings.services.update');

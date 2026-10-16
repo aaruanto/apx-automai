@@ -108,6 +108,54 @@ class SettingsController extends Controller
         return back()->with('success', 'System preferences saved.');
     }
 
+    /**
+     * Loyalty rates.
+     *
+     * Their own form rather than part of the booking settings, because these
+     * decide what points are worth and a stray save on an unrelated screen
+     * should not be able to move them.
+     */
+    public function updateLoyalty(Request $request)
+    {
+        $data = $request->validate([
+            'loyalty_pesos_per_point'    => 'required|integer|min:1|max:10000',
+            'loyalty_point_value'        => 'required|numeric|min:0|max:100',
+            'loyalty_min_redeem'         => 'required|integer|min:0|max:100000',
+            'loyalty_max_redeem_percent' => 'required|integer|min:0|max:100',
+            'loyalty_expiry_months'      => 'required|integer|min:0|max:120',
+        ], [
+            'loyalty_pesos_per_point.min' => 'A point must cost at least ₱1 to earn.',
+            'loyalty_expiry_months.min'   => 'Use 0 for points that never expire.',
+        ]);
+
+        $data['loyalty_enabled'] = $request->boolean('loyalty_enabled');
+
+        $before = [
+            'enabled'       => (bool) Setting::get('loyalty_enabled'),
+            'pesos_per_point' => (int) Setting::get('loyalty_pesos_per_point'),
+            'point_value'   => (float) Setting::get('loyalty_point_value'),
+        ];
+
+        Setting::setMany($data);
+
+        $after = [
+            'enabled'       => $data['loyalty_enabled'],
+            'pesos_per_point' => (int) $data['loyalty_pesos_per_point'],
+            'point_value'   => (float) $data['loyalty_point_value'],
+        ];
+
+        // Logged like a price change: these set what every future booking
+        // earns and what every point is worth when spent.
+        if ($before != $after) {
+            AuditLog::record(
+                'settings.loyalty_changed', null, $before, $after,
+                label: 'Loyalty rates',
+            );
+        }
+
+        return back()->with('success', 'Loyalty settings saved.');
+    }
+
     // ── Services CRUD ──────────────────────────────────────────────────────
     public function storeService(Request $request)
     {

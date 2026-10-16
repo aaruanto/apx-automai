@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Bundle;
 use App\Models\Customer;
+use App\Models\LoyaltyLedger;
 use App\Models\Service;
 use App\Models\Vehicle;
 use App\Services\AccountAnonymizer;
 use App\Services\BookingAvailability;
 use App\Services\BookingPricing;
+use App\Services\LoyaltyService;
 use App\Exceptions\SlotUnavailableException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -95,10 +97,35 @@ class DashboardController extends Controller
                 'duration'    => $b->totalDuration(),
             ])->values();
 
+        // Loyalty, for the rewards panel and the booking summary. The
+        // balance comes from the ledger rather than a stored counter, so it
+        // is always the sum of the movements the customer can see listed.
+        $loyaltyService = app(LoyaltyService::class);
+        $loyalty = [
+            'enabled'    => $loyaltyService->enabled(),
+            'balance'    => $loyaltyService->balanceFor(Auth::user()),
+            'value'      => $loyaltyService->pointValue(),
+            'perPeso'    => $loyaltyService->pesosPerPoint(),
+            'minRedeem'  => $loyaltyService->minimumRedemption(),
+            'maxPercent' => $loyaltyService->maxRedeemPercent(),
+            'history'    => $loyaltyService->enabled()
+                ? LoyaltyLedger::with('booking:id,reference_number')
+                    ->where('user_id', Auth::id())
+                    ->recentFirst()->limit(25)->get()
+                    ->map(fn ($row) => [
+                        'points'  => $row->points,
+                        'balance' => $row->balance_after,
+                        'what'    => $row->describe(),
+                        'when'    => $row->created_at->format('M j, Y'),
+                        'expires' => $row->expires_at?->format('M j, Y'),
+                    ])->values()
+                : collect(),
+        ];
+
         return view('dashboard.customer-dashboard', compact(
             'bookings', 'vehicles', 'services',
             'upcoming', 'completed', 'totalBookings', 'totalSpent',
-            'bookingsJs', 'vehiclesJs', 'bundlesJs',
+            'bookingsJs', 'vehiclesJs', 'bundlesJs', 'loyalty',
             'customer'
         ));
     }

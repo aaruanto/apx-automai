@@ -211,6 +211,92 @@
                 </div>
             </div>
 
+            {{-- LOYALTY POINTS
+                 Its own form rather than part of the booking settings: these
+                 decide what points are worth, and a stray save on an
+                 unrelated screen should not be able to move them. --}}
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-header-title"><i class="fas fa-star"></i> Loyalty Points</div>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ route('admin.settings.loyalty') }}">
+                        @csrf @method('PUT')
+
+                        <div class="setting-row" style="padding:0 0 8px;">
+                            <div class="setting-info">
+                                <div class="label">Loyalty Programme</div>
+                                <div class="hint">Customers earn points on completed work and spend them on future bookings</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="loyalty_enabled" {{ ($settings['loyalty_enabled'] ?? false) ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="form-row cols-2">
+                            <div class="form-group">
+                                <label class="form-label">Pesos Per Point</label>
+                                <input class="form-control @error('loyalty_pesos_per_point') fv-invalid @enderror"
+                                       type="number" name="loyalty_pesos_per_point" min="1" max="10000"
+                                       value="{{ old('loyalty_pesos_per_point', $settings['loyalty_pesos_per_point'] ?? 50) }}"
+                                       oninput="recalcLoyalty()" id="loyPesos" />
+                                <div class="form-hint">Spend this much to earn one point.</div>
+                                @error('loyalty_pesos_per_point')<div class="fv-error show">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Point Value (₱)</label>
+                                <input class="form-control @error('loyalty_point_value') fv-invalid @enderror"
+                                       type="number" step="0.01" name="loyalty_point_value" min="0" max="100"
+                                       value="{{ old('loyalty_point_value', $settings['loyalty_point_value'] ?? 0.50) }}"
+                                       oninput="recalcLoyalty()" id="loyValue" />
+                                <div class="form-hint">What one point is worth when redeemed.</div>
+                                @error('loyalty_point_value')<div class="fv-error show">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+
+                        {{-- The return rate is the number that actually matters
+                             and the one nobody works out by hand. --}}
+                        <div id="loyMath" style="background:var(--surface-2);border-radius:8px;padding:10px 14px;font-size:.82rem;color:var(--text-muted);margin-bottom:14px;"></div>
+
+                        <div class="form-row cols-2">
+                            <div class="form-group">
+                                <label class="form-label">Minimum To Redeem</label>
+                                <input class="form-control @error('loyalty_min_redeem') fv-invalid @enderror"
+                                       type="number" name="loyalty_min_redeem" min="0" max="100000"
+                                       value="{{ old('loyalty_min_redeem', $settings['loyalty_min_redeem'] ?? 100) }}" />
+                                <div class="form-hint">Points needed before any can be spent.</div>
+                                @error('loyalty_min_redeem')<div class="fv-error show">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Most Of A Booking Points May Cover</label>
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <input class="form-control @error('loyalty_max_redeem_percent') fv-invalid @enderror"
+                                           type="number" name="loyalty_max_redeem_percent" min="0" max="100"
+                                           value="{{ old('loyalty_max_redeem_percent', $settings['loyalty_max_redeem_percent'] ?? 50) }}" />
+                                    <span style="color:var(--text-muted);font-weight:700;">%</span>
+                                </div>
+                                @error('loyalty_max_redeem_percent')<div class="fv-error show">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="max-width:260px;">
+                            <label class="form-label">Points Expire After</label>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <input class="form-control @error('loyalty_expiry_months') fv-invalid @enderror"
+                                       type="number" name="loyalty_expiry_months" min="0" max="120"
+                                       value="{{ old('loyalty_expiry_months', $settings['loyalty_expiry_months'] ?? 12) }}" />
+                                <span style="color:var(--text-muted);font-weight:700;">months</span>
+                            </div>
+                            <div class="form-hint">Use 0 for points that never expire.</div>
+                            @error('loyalty_expiry_months')<div class="fv-error show">{{ $message }}</div>@enderror
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" style="margin-top:8px;"><i class="fas fa-floppy-disk"></i> Save Changes</button>
+                    </form>
+                </div>
+            </div>
+
             <!-- System Preferences -->
             <div class="card">
                 <div class="card-header">
@@ -538,5 +624,33 @@ function openDeleteService(btn) {
         message: @json($errors->first() . ($errors->count() > 1 ? ' (and ' . ($errors->count() - 1) . ' more)' : '')),
     });
 @endif
+</script>
+@endpush
+
+@push('scripts')
+<script>
+/* The return rate: what a customer gets back as a percentage of what they
+   spend. It is the number that decides whether the programme is affordable,
+   and the one nobody works out by hand from "₱50 per point, ₱0.50 a point". */
+function recalcLoyalty() {
+    const pesos = parseFloat(document.getElementById('loyPesos')?.value || 0);
+    const value = parseFloat(document.getElementById('loyValue')?.value || 0);
+    const box   = document.getElementById('loyMath');
+    if (!box) return;
+
+    if (!pesos || value < 0) {
+        box.textContent = 'Enter both figures to see the return rate.';
+        return;
+    }
+
+    const rate = (value / pesos) * 100;
+    const per1000 = Math.round((1000 / pesos)) + ' points, worth ₱'
+        + ((1000 / pesos) * value).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    box.innerHTML = '₱1,000 spent earns ' + per1000
+        + ' · <strong style="color:var(--text);">a ' + rate.toFixed(2) + '% return</strong>'
+        + (rate > 10 ? ' <span style="color:var(--red);">— that is unusually generous, check the figures.</span>' : '');
+}
+recalcLoyalty();
 </script>
 @endpush

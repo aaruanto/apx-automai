@@ -101,6 +101,14 @@
                                     data-bookings="{{ $c->bookings_count ?? 0 }}"
                                     data-last="{{ $c->last_visit ? \Carbon\Carbon::parse($c->last_visit)->format('M d, Y') : 'Never' }}"
                             ><i class="fas fa-eye"></i></button>
+                            @if ($loyaltyEnabled)
+                            <button class="btn btn-ghost btn-sm btn-icon" title="Adjust Points"
+                                    onclick="adjustPoints(this)"
+                                    data-name="{{ $c->name }}"
+                                    data-balance="{{ $c->points_balance }}"
+                                    data-action="{{ route('admin.customers.points', $c->id) }}"
+                            ><i class="fas fa-star"></i></button>
+                            @endif
                             <button class="btn btn-danger btn-sm btn-icon" title="Delete"
                                     onclick="deleteCustomer(this)"
                                     data-name="{{ $c->name }}"
@@ -133,6 +141,47 @@
 @endpush
 
 @section('modals')
+
+@if ($loyaltyEnabled)
+{{-- ADJUST POINTS
+     Points are money, so the reason is required and the change lands in the
+     audit trail. Informational framing rather than a warning — adding points
+     is a normal act of goodwill, not a destructive one. --}}
+<div class="modal-overlay" id="pointsModal">
+    <div class="modal" style="max-width:440px;">
+        <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-star" style="color:var(--red);margin-right:8px;"></i> Adjust Points</div>
+            <button class="modal-close" onclick="closeModal('pointsModal')"><i class="fas fa-xmark"></i></button>
+        </div>
+        <form id="pointsForm" method="POST" action="">
+            @csrf
+            <div class="modal-body">
+                <p style="color:var(--text-muted);font-size:.86rem;line-height:1.6;margin:0 0 14px;">
+                    <strong id="pointsCustomerName" style="color:var(--text);"></strong>
+                    currently has <strong id="pointsCurrentBalance" style="color:var(--text);"></strong> points.
+                </p>
+                <div class="form-group">
+                    <label class="form-label">Adjustment <span style="color:var(--red);">*</span></label>
+                    <input class="form-control" type="number" name="points" id="pointsAmount"
+                           placeholder="e.g. 250, or -100 to remove" required />
+                    <div class="form-hint">Positive adds, negative removes. A balance can never go below zero.</div>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Reason <span style="color:var(--red);">*</span></label>
+                    <textarea class="form-control" name="reason" rows="2"
+                              placeholder="e.g. goodwill after a delayed service" required></textarea>
+                    <div class="form-hint">Recorded against your account in the audit trail.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('pointsModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Apply</button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
+
 {{-- VIEW CUSTOMER MODAL
      Both modals used to be static placeholders opened with no customer id, so
      every row showed the same empty panel. They are filled from the clicked
@@ -237,6 +286,15 @@ function viewCustomer(btn) {
     set('vc-bookings', d.bookings);
     set('vc-last', d.last);
     openModal('viewCustomerModal');
+}
+
+function adjustPoints(btn) {
+    document.getElementById('pointsForm').action = btn.dataset.action;
+    document.getElementById('pointsCustomerName').textContent = btn.dataset.name;
+    document.getElementById('pointsCurrentBalance').textContent = Number(btn.dataset.balance || 0).toLocaleString();
+    document.getElementById('pointsAmount').value = '';
+    document.querySelector('#pointsForm [name="reason"]').value = '';
+    openModal('pointsModal');
 }
 
 function deleteCustomer(btn) {

@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Support\EmailRule;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Customer;
+use App\Services\LoyaltyService;
 use Illuminate\Support\Str;
 use App\Support\CsvExport;
 use App\Models\User;
@@ -39,7 +41,18 @@ class CustomerController extends Controller
                 return $c;
             });
 
-        return view('admin.customers.index', compact('customers'));
+        $loyalty        = app(LoyaltyService::class);
+        $loyaltyEnabled = $loyalty->enabled();
+
+        if ($loyaltyEnabled) {
+            // One grouped query for every balance rather than one per row.
+            $balances = \App\Models\LoyaltyLedger::selectRaw('user_id, SUM(points) as total')
+                ->groupBy('user_id')->pluck('total', 'user_id');
+
+            $customers->each(fn ($c) => $c->points_balance = (int) ($balances[$c->user_id] ?? 0));
+        }
+
+        return view('admin.customers.index', compact('customers', 'loyaltyEnabled'));
     }
 
     public function create()
@@ -118,6 +131,58 @@ class CustomerController extends Controller
         return redirect()
             ->route('admin.customers.index')
             ->with('error', 'Customer personal details are read-only. The customer can update them from their own account; booking details are edited from the booking itself.');
+    }
+
+    /**
+     * Adjust a customer's loyalty points by hand.
+     *
+     * Points are money, so an adjustment always carries a reason and always
+     * lands in the audit trail — the Phase 2 decision was that admin may
+     * change points provided every change is attributable.
+     */
+    public function adjustPoints(Request $request, LoyaltyService $loyalty, $id)
+    {
+        $customer = Customer::with('user')->findOrFail($id);
+
+        if (! $loyalty->enabled()) {
+            return back()->with('error', 'The loyalty programme is switched off.');
+        }
+
+        if (! $customer->user) {
+            return back()->with('error', 'That customer has no account to hold points.');
+        }
+
+        $data = $request->validate([
+            'points' => ['required', 'integer', 'not_in:0', 'min:-100000', 'max:100000'],
+            'reason' => ['required', 'string', 'min:5', 'max:255'],
+        ], [
+            'points.not_in'   => 'Enter a positive number to add points, or a negative one to remove them.',
+            'reason.required' => 'Give a reason for this adjustment.',
+            'reason.min'      => 'Give a little more detail than that.',
+        ]);
+
+        $applied = $loyalty->adjust($customer->user, (int) $data['points'], $data['reason']);
+
+        if ($applied === 0) {
+            return back()->with('error', 'Nothing to remove — that customer has no points.');
+        }
+
+        AuditLog::record(
+            'loyalty.adjusted', $customer->user,
+            ['balance' => $loyalty->balanceFor($customer->user) - $applied],
+            ['points' => $applied, 'balance' => $loyalty->balanceFor($customer->user)],
+            $data['reason'],
+            label: $customer->user->name,
+        );
+
+        return back()->with('success', sprintf(
+            '%s %d point%s %s %s. New balance: %d.',
+            $applied > 0 ? 'Added' : 'Removed',
+            abs($applied), abs($applied) === 1 ? '' : 's',
+            $applied > 0 ? 'to' : 'from',
+            $customer->user->name,
+            $loyalty->balanceFor($customer->user),
+        ));
     }
 
 
