@@ -979,6 +979,81 @@
         .apx-acct-nudge { margin-top:10px; padding:9px 12px; border-radius:8px; background:rgba(59,130,246,.09); border:1px solid rgba(59,130,246,.22); font-size:0.76rem; color:#334155; line-height:1.5; }
         .apx-acct-nudge i { color:#3B82F6; margin-right:5px; }
         .apx-acct-nudge a { color:#2563EB; font-weight:700; text-decoration:underline; margin-left:4px; }
+
+        /* GUIDED STEP 1
+           Built from the modal's own type and spacing rather than the
+           mockup's pixel values, so it sits inside the existing design
+           instead of beside it. Every card is a real button: the whole
+           surface is the tap target, and it is reachable by keyboard
+           without any extra handling. */
+        .apx-path-heading { font-family:'Barlow',sans-serif; font-weight:700; color:#222; font-size:1rem; margin:0 0 4px; }
+        .apx-path-sub { font-size:0.8rem; color:#888; margin:0 0 14px; line-height:1.5; }
+
+        .apx-path-card {
+            display:flex; align-items:center; gap:14px; width:100%; text-align:left;
+            background:#fff; border:1.5px solid #e8e8e8; border-radius:12px;
+            padding:16px 16px; margin-bottom:10px; cursor:pointer;
+            transition:border-color .18s, box-shadow .18s;
+            font-family:'Ubuntu',sans-serif; min-height:44px;
+        }
+        .apx-path-card:hover { border-color:#e63946; box-shadow:0 2px 10px rgba(230,57,70,.08); }
+        .apx-path-card:focus-visible { outline:2px solid #e63946; outline-offset:2px; }
+        .apx-path-icon {
+            flex:0 0 auto; width:40px; height:40px; border-radius:10px; background:#f5f5f5;
+            display:flex; align-items:center; justify-content:center; color:#444; font-size:.95rem;
+        }
+        .apx-path-card:hover .apx-path-icon { background:#fff0f1; color:#e63946; }
+        .apx-path-text { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:3px; }
+        .apx-path-title { font-weight:700; color:#222; font-size:.92rem; line-height:1.3; }
+        .apx-path-desc { font-size:.78rem; color:#888; line-height:1.45; }
+        .apx-path-chev { flex:0 0 auto; color:#ccc; font-size:.8rem; }
+
+        .apx-path-back {
+            background:none; border:none; padding:6px 0; margin:0 0 8px; cursor:pointer;
+            color:#888; font-size:.8rem; font-family:'Ubuntu',sans-serif; min-height:44px;
+            display:inline-flex; align-items:center; gap:6px;
+        }
+        .apx-path-back:hover { color:#e63946; }
+        .apx-path-back:focus-visible { outline:2px solid #e63946; outline-offset:2px; }
+
+        .apx-chip-row { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:12px; }
+        .apx-chip {
+            border:1.5px solid #e8e8e8; background:#fff; border-radius:999px;
+            padding:8px 14px; font-size:.78rem; color:#555; cursor:pointer;
+            font-family:'Ubuntu',sans-serif; min-height:36px;
+        }
+        .apx-chip:hover { border-color:#e63946; color:#e63946; }
+        .apx-chip.selected { background:#fff5f5; border-color:#e63946; color:#c0392b; font-weight:700; }
+        .apx-chip:focus-visible { outline:2px solid #e63946; outline-offset:2px; }
+
+        .apx-path-note {
+            font-size:.78rem; color:#555; line-height:1.55;
+            background:rgba(59,130,246,.07); border:1px solid rgba(59,130,246,.18);
+            border-radius:8px; padding:10px 12px;
+        }
+
+        .apx-browse-toggle { display:flex; gap:6px; margin-bottom:12px; }
+        .apx-browse-tab {
+            flex:1; border:1.5px solid #e8e8e8; background:#fff; border-radius:8px;
+            padding:9px 10px; font-size:.82rem; color:#666; cursor:pointer;
+            font-family:'Ubuntu',sans-serif; font-weight:700; min-height:44px;
+        }
+        .apx-browse-tab.active { background:#fff5f5; border-color:#e63946; color:#c0392b; }
+        .apx-browse-tab:focus-visible { outline:2px solid #e63946; outline-offset:2px; }
+
+        .apx-modal-search {
+            width:100%; border:1.5px solid #e8e8e8; border-radius:8px; padding:10px 12px;
+            font-size:.84rem; font-family:'Ubuntu',sans-serif; margin-bottom:10px; min-height:44px;
+        }
+        .apx-modal-search:focus { outline:none; border-color:#e63946; }
+
+        /* No horizontal scroll at 320px: the grid drops to one column before
+           the cards can force the dialog wider than the screen. */
+        @media (max-width: 400px) {
+            .apx-modal-svc-grid { grid-template-columns:1fr; }
+            .apx-path-card { padding:14px 12px; gap:11px; }
+            .apx-path-icon { width:36px; height:36px; }
+        }
         .apx-modal-svc-card.selected .apx-modal-svc-tag.free { background:#b8dfc2; color:#0d3d1a; }
         .apx-modal-svc-price { font-size:11px; color:#aaa; display:block; margin-top:3px; }
         .apx-modal-svc-card.selected .apx-modal-svc-price { color:#c0392b; }
@@ -1056,9 +1131,94 @@
 
                     <!-- STEP 1: Services -->
                     <div id="apx-view-1">
-                        <p style="font-size:0.8rem; color:#888; margin:0 0 10px;">Select one or more services. Prices are estimates.</p>
-                        <div class="apx-modal-svc-grid" id="apx-svc-grid"></div>
-                        <div class="apx-estimate-bar">
+
+                        {{-- 1a — THE THREE PATHS
+                             Most people booking a car in do not know what
+                             "CVT Fluid Change" means, and a wall of service
+                             names is where they give up. This asks what is
+                             wrong instead, and the reassurance line exists
+                             because "I don't know" is the honest answer for
+                             most customers and they should not feel stuck. --}}
+                        <div id="apx-path-root">
+                            <h6 class="apx-path-heading">What do you need help with?</h6>
+                            <p class="apx-path-sub">Choose the option that best describes what you need. Not sure? That's okay.</p>
+
+                            <button type="button" class="apx-path-card" onclick="apxChoosePath('checkup')">
+                                <span class="apx-path-icon"><i class="fas fa-magnifying-glass"></i></span>
+                                <span class="apx-path-text">
+                                    <span class="apx-path-title">General Check-up / Inspection</span>
+                                    <span class="apx-path-desc">Something seems wrong, or I want my car checked.</span>
+                                </span>
+                                <span class="apx-path-chev"><i class="fas fa-chevron-right"></i></span>
+                            </button>
+
+                            <button type="button" class="apx-path-card" onclick="apxChoosePath('pms')">
+                                <span class="apx-path-icon"><i class="fas fa-wrench"></i></span>
+                                <span class="apx-path-text">
+                                    <span class="apx-path-title">Periodic Maintenance (PMS)</span>
+                                    <span class="apx-path-desc">Routine servicing, oil changes, and scheduled maintenance.</span>
+                                </span>
+                                <span class="apx-path-chev"><i class="fas fa-chevron-right"></i></span>
+                            </button>
+
+                            <button type="button" class="apx-path-card" onclick="apxChoosePath('browse')">
+                                <span class="apx-path-icon"><i class="fas fa-list"></i></span>
+                                <span class="apx-path-text">
+                                    <span class="apx-path-title">Browse All Services</span>
+                                    <span class="apx-path-desc">I already know which service I want.</span>
+                                </span>
+                                <span class="apx-path-chev"><i class="fas fa-chevron-right"></i></span>
+                            </button>
+                        </div>
+
+                        {{-- 1b — CHECK-UP
+                             The inspection is already chosen; the chips only
+                             write into the notes field the details step
+                             already has, so nothing about that step changes
+                             and no new column is needed to carry a symptom. --}}
+                        <div id="apx-path-checkup" style="display:none;">
+                            <button type="button" class="apx-path-back" onclick="apxChoosePath('root')">
+                                <i class="fas fa-chevron-left"></i> Back
+                            </button>
+                            <h6 class="apx-path-heading">What's going on?</h6>
+                            <p class="apx-path-sub">Tap anything that sounds right, or skip this — the mechanic will check either way.</p>
+                            <div class="apx-chip-row" id="apx-symptom-chips"></div>
+                            <div class="apx-path-note" id="apx-checkup-note"></div>
+                        </div>
+
+                        {{-- 1c — PERIODIC MAINTENANCE --}}
+                        <div id="apx-path-pms" style="display:none;">
+                            <button type="button" class="apx-path-back" onclick="apxChoosePath('root')">
+                                <i class="fas fa-chevron-left"></i> Back
+                            </button>
+                            <h6 class="apx-path-heading">Routine servicing</h6>
+                            <p class="apx-path-sub">Pick whatever is due. Not sure? Choose the oil change — it's the usual one.</p>
+                            <div class="apx-modal-svc-grid" id="apx-pms-grid"></div>
+                        </div>
+
+                        {{-- 1d — BROWSE ALL --}}
+                        <div id="apx-path-browse" style="display:none;">
+                            <button type="button" class="apx-path-back" onclick="apxChoosePath('root')">
+                                <i class="fas fa-chevron-left"></i> Back
+                            </button>
+                            <div class="apx-browse-toggle" role="tablist">
+                                <button type="button" class="apx-browse-tab active" id="apx-tab-services"
+                                        role="tab" aria-selected="true" onclick="apxBrowseTab('services')">Services</button>
+                                <button type="button" class="apx-browse-tab" id="apx-tab-bundles"
+                                        role="tab" aria-selected="false" onclick="apxBrowseTab('bundles')">Bundles</button>
+                            </div>
+                            <div id="apx-browse-services">
+                                <input type="text" class="apx-modal-search" id="apx-modal-search"
+                                       placeholder="Search services…" aria-label="Search services">
+                                <div class="apx-chip-row" id="apx-cat-chips"></div>
+                            </div>
+                            <div class="apx-modal-svc-grid" id="apx-svc-grid"></div>
+                            <div class="apx-path-note" id="apx-browse-empty" style="display:none;">
+                                No services match that search.
+                            </div>
+                        </div>
+
+                        <div class="apx-estimate-bar" id="apx-estimate-bar" style="display:none;">
                             <span class="apx-est-count" id="apx-sel-count">No services selected</span>
                             <span class="apx-est-val" id="apx-est-total">₱0</span>
                         </div>
@@ -1194,6 +1354,22 @@
             'enabled' => (bool) \App\Models\Setting::get('account_discount_enabled'),
             'percent' => (int) \App\Models\Setting::get('account_discount_percent'),
         ];
+
+        // Which services each guided path offers. A view of the existing
+        // category data — nothing is re-filed, so the browse filters keep
+        // working exactly as they did.
+        $paths       = config('apx.booking_paths');
+        $checkupSvc  = $services->firstWhere('name', $paths['checkup_service'])
+                       ?? $services->firstWhere('category', $paths['checkup_category']);
+
+        $guidedPaths = [
+            'checkupId'   => $checkupSvc?->id,
+            'checkupName' => $checkupSvc?->name,
+            'symptoms'    => $paths['checkup_symptoms'],
+            'pmsIds'      => $services->whereIn('category', $paths['pms_categories'])
+                                 ->pluck('id')->values()->all(),
+            'categories'  => $services->pluck('category')->filter()->unique()->values()->all(),
+        ];
     @endphp
     <script>
     (function () {
@@ -1201,6 +1377,7 @@
         var BUNDLES  = @json($bundlesJs);
         var BUNDLE_SERVICE_IDS = @json((object) $bundleServiceIds);
         var ACCOUNT_DISCOUNT   = @json($accountDiscount);
+        var GUIDED             = @json($guidedPaths);
         var VEHICLES = {
             car: {
                 Toyota:['Vios','Innova','Fortuner','Hiace','Camry','Corolla Cross','Rush'],
@@ -1246,12 +1423,137 @@
 
         function fmt(price) { return price === 0 ? 'FREE' : '₱'+price.toLocaleString(); }
 
+        /* ── Guided step 1 ──────────────────────────────────────────────
+           Four sub-screens inside what used to be a single grid. Steps 2
+           and 3 are untouched: whatever is chosen here lands in the same
+           `selected` set and `selectedBundle` the old screen filled, so the
+           booking that gets posted is identical. */
+        var pathView   = 'root';
+        var browseTab  = 'services';
+        var catFilter  = '';
+        var symptoms   = new Set();
+
+        window.apxChoosePath = function (which) {
+            pathView = which;
+
+            ['root', 'checkup', 'pms', 'browse'].forEach(function (name) {
+                var el = document.getElementById('apx-path-' + name);
+                if (el) el.style.display = (name === which) ? '' : 'none';
+            });
+
+            // The estimate bar and Next button are meaningless on the menu
+            // itself — there is nothing chosen yet to total or advance.
+            document.getElementById('apx-estimate-bar').style.display = which === 'root' ? 'none' : '';
+            document.getElementById('apx-btn-next').style.visibility  = which === 'root' ? 'hidden' : 'visible';
+            apxSyncBack();
+
+            if (which === 'checkup') {
+                apxStartCheckup();
+            } else if (which === 'pms') {
+                buildGrid();
+            } else if (which === 'browse') {
+                buildGrid();
+            }
+
+            // Move focus to the new screen so a keyboard user is not left
+            // on a button that is now hidden.
+            var target = document.querySelector('#apx-path-' + which + ' button, #apx-path-' + which + ' input');
+            if (target) target.focus({ preventScroll: true });
+
+            apxUpdateEst();
+        };
+
+        /* Back is shown whenever there is somewhere to go back to: a later
+           step, or a sub-screen of step 1. */
+        function apxSyncBack() {
+            document.getElementById('apx-btn-back').style.visibility =
+                (step > 1 || pathView !== 'root') ? 'visible' : 'hidden';
+        }
+
+        function apxStartCheckup() {
+            // The inspection is the booking; the chips only colour in the
+            // notes field step 2 already has.
+            selected.clear();
+            selectedBundle = null;
+
+            var idx = SERVICES.findIndex(function (s) { return s.id === GUIDED.checkupId; });
+            if (idx >= 0) selected.add(idx);
+
+            document.getElementById('apx-checkup-note').innerHTML =
+                '<i class="fas fa-circle-info" style="color:#3B82F6;margin-right:5px;"></i>'
+                + 'We will book a <strong>' + (GUIDED.checkupName || 'general inspection')
+                + '</strong>. If the mechanic finds something, they will talk you through it before any work starts.';
+
+            var row = document.getElementById('apx-symptom-chips');
+            row.innerHTML = '';
+            GUIDED.symptoms.forEach(function (text) {
+                var chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'apx-chip' + (symptoms.has(text) ? ' selected' : '');
+                chip.textContent = text;
+                chip.setAttribute('aria-pressed', symptoms.has(text) ? 'true' : 'false');
+                chip.onclick = function () {
+                    symptoms.has(text) ? symptoms.delete(text) : symptoms.add(text);
+                    chip.classList.toggle('selected');
+                    chip.setAttribute('aria-pressed', symptoms.has(text) ? 'true' : 'false');
+                    apxWriteSymptomsToNotes();
+                };
+                row.appendChild(chip);
+            });
+        }
+
+        /* Writes into the existing notes field rather than anywhere new.
+           Anything the customer typed themselves is preserved below the
+           line, so tapping a chip never eats their own words. */
+        function apxWriteSymptomsToNotes() {
+            var field = document.getElementById('apx-f-notes');
+            if (!field) return;
+
+            var marker = 'Reported: ';
+            var own    = field.value.split('\n').filter(function (line) {
+                return line.indexOf(marker) !== 0;
+            }).join('\n').trim();
+
+            var line = symptoms.size ? marker + Array.from(symptoms).join(', ') : '';
+            field.value = [line, own].filter(Boolean).join('\n');
+        }
+
+        window.apxBrowseTab = function (which) {
+            browseTab = which;
+            document.getElementById('apx-tab-services').classList.toggle('active', which === 'services');
+            document.getElementById('apx-tab-bundles').classList.toggle('active', which === 'bundles');
+            document.getElementById('apx-tab-services').setAttribute('aria-selected', which === 'services');
+            document.getElementById('apx-tab-bundles').setAttribute('aria-selected', which === 'bundles');
+            document.getElementById('apx-browse-services').style.display = which === 'services' ? '' : 'none';
+            buildGrid();
+        };
+
+        function apxBuildCategoryChips() {
+            var row = document.getElementById('apx-cat-chips');
+            if (!row) return;
+            row.innerHTML = '';
+
+            [''].concat(GUIDED.categories).forEach(function (cat) {
+                var chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'apx-chip' + (catFilter === cat ? ' selected' : '');
+                chip.textContent = cat === '' ? 'All' : cat;
+                chip.onclick = function () { catFilter = cat; apxBuildCategoryChips(); buildGrid(); };
+                row.appendChild(chip);
+            });
+        }
+
         function buildGrid() {
-            var grid = document.getElementById('apx-svc-grid');
+            // Which grid is being filled depends on the sub-screen.
+            var grid = document.getElementById(pathView === 'pms' ? 'apx-pms-grid' : 'apx-svc-grid');
+            if (!grid) return;
             grid.innerHTML = '';
 
-            // Bundles first, and only those that suit the chosen vehicle type.
-            BUNDLES.filter(function (b) { return !b.vehicle || b.vehicle === vtype; })
+            // Bundles appear under the Bundles tab of Browse All, and never
+            // on the maintenance screen, which is about single services.
+            var showBundles = (pathView === 'browse' && browseTab === 'bundles');
+
+            (showBundles ? BUNDLES.filter(function (b) { return !b.vehicle || b.vehicle === vtype; }) : [])
                    .forEach(function (b) {
                 var card = document.createElement('div');
                 card.className = 'apx-modal-svc-card apx-bundle-card'
@@ -1266,10 +1568,25 @@
                 grid.appendChild(card);
             });
 
+            // Which services this screen offers. PMS shows the routine
+            // categories; Browse All shows everything, filtered by the
+            // search box and category chips; the Bundles tab shows none.
+            var search = (document.getElementById('apx-modal-search')?.value || '').trim().toLowerCase();
+            var shown  = 0;
+
             SERVICES.forEach(function(s, i) {
+                if (pathView === 'pms' && GUIDED.pmsIds.indexOf(s.id) === -1) return;
+                if (showBundles) return;
+
+                if (pathView === 'browse') {
+                    if (catFilter && s.category !== catFilter) return;
+                    if (search && (s.name + ' ' + s.category).toLowerCase().indexOf(search) === -1) return;
+                }
+
+                shown++;
                 var isFree = s.price === 0;
                 var card = document.createElement('div');
-                card.className = 'apx-modal-svc-card';
+                card.className = 'apx-modal-svc-card' + (selected.has(i) ? ' selected' : '');
                 card.dataset.idx = i;
                 card.innerHTML = '<div class="apx-svc-check"><svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5l2 2 4-4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></div>'
                     + s.name
@@ -1278,6 +1595,15 @@
                 card.onclick = function() { apxToggle(i, card); };
                 grid.appendChild(card);
             });
+
+            var empty = document.getElementById('apx-browse-empty');
+            if (empty) {
+                var nothing = showBundles ? BUNDLES.length === 0 : shown === 0;
+                empty.style.display = (pathView === 'browse' && nothing) ? '' : 'none';
+                empty.textContent = showBundles
+                    ? 'No bundles are running at the moment.'
+                    : 'No services match that search.';
+            }
         }
 
         function apxToggle(i, card) {
@@ -1348,6 +1674,12 @@
         }
 
         // Open modal and pre-select a service by id
+        /* Tapping a specific service on the page already knows what the
+           customer wants, so the guided menu would only be in the way. It
+           opens straight into Browse All with that service selected.
+           Deliberately not auto-advancing to step 2: landing there needs a
+           "Change" control on step 2 to be any use, and step 2 is out of
+           scope. Back still returns to the three paths. */
         window.apxOpenWithService = function(e, svcId) {
             e.preventDefault();
             // Find matching service index
@@ -1359,6 +1691,8 @@
             modal.show();
             // After grid is built, select the card
             setTimeout(function() {
+                apxChoosePath('browse');
+
                 if (idx >= 0 && !selected.has(idx)) {
                     var card = document.querySelector('.apx-modal-svc-card[data-idx="'+idx+'"]');
                     if (card) apxToggle(idx, card);
@@ -1457,10 +1791,13 @@
             ['apx-view-1','apx-view-2','apx-view-3'].forEach(function(id, i){
                 document.getElementById(id).style.display = (i+1===n) ? '' : 'none';
             });
-            document.getElementById('apx-btn-back').style.visibility = n>1 ? 'visible' : 'hidden';
+            apxSyncBack();
             var btn = document.getElementById('apx-btn-next');
             btn.textContent = n===3 ? 'Confirm booking ✓' : 'Next →';
             btn.className = n===3 ? 'btn-apx-next confirm' : 'btn-apx-next';
+            // On the path menu there is nothing to advance to yet; the cards
+            // are the action. Everywhere else Next behaves as it always did.
+            btn.style.visibility = (n === 1 && pathView === 'root') ? 'hidden' : 'visible';
         }
 
         window.apxNext = function() {
@@ -1576,12 +1913,27 @@
             });
         }
 
-        window.apxBack = function() { if (step>1) apxSetStep(step-1); };
+        /* Back walks out of a step-1 sub-screen before it walks out of a
+           step, so the three paths are reachable again without closing the
+           modal. Nothing typed into step 2 is cleared on the way. */
+        window.apxBack = function () {
+            if (step > 1) { apxSetStep(step - 1); return; }
+            if (pathView !== 'root') { apxChoosePath('root'); }
+        };
 
         /* reset modal state when it closes */
         document.getElementById('bookingModal').addEventListener('hidden.bs.modal', function() {
             selected.clear();
+            selectedBundle = null;
+            symptoms.clear();
+            catFilter = '';
+            browseTab = 'services';
+            var searchBox = document.getElementById('apx-modal-search');
+            if (searchBox) searchBox.value = '';
             step = 1;
+            // Back to the three paths, not into whichever sub-screen was
+            // open when it closed.
+            apxChoosePath('root');
             apxSetStep(1);
             document.getElementById('apx-view-success').style.display = 'none';
             document.getElementById('apx-modal-footer').style.display = '';
@@ -1607,7 +1959,12 @@
             apxSubmitBooking(true);
         });
 
-        buildGrid();
+        // Bound here rather than as an inline attribute: buildGrid lives
+        // inside this closure and an onchange attribute cannot see it.
+        document.getElementById('apx-modal-search').addEventListener('input', buildGrid);
+
+        apxBuildCategoryChips();
+        apxChoosePath('root');
         apxPopMakes();
     })();
     </script>

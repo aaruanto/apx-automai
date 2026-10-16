@@ -38,4 +38,48 @@ return [
     'branch_name'    => env('APX_BRANCH_NAME', 'APX Motors — Tandang Sora'),
     'contact_number' => env('APX_CONTACT_NUMBER', ''),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Guided booking
+    |--------------------------------------------------------------------------
+    |
+    | The first step of the booking modal asks what the customer needs rather
+    | than showing them a list of service names, because most people booking a
+    | car in do not know what the names mean.
+    |
+    | Defined here rather than in the services table: re-filing services into a
+    | "Periodic Maintenance" category would have emptied the Engine & Oil and
+    | CVT categories the browse filters rely on, and a service can reasonably
+    | be both routine maintenance and something you browse to directly. This
+    | is a view of existing data, not a change to it.
+    |
+    */
+    'booking_paths' => [
+
+        // Tapping "General Check-up" preselects this service by name, so the
+        // customer lands on the details step with something already chosen.
+        // Falls back to the first service in the inspection category.
+        'checkup_service'    => 'General Vehicle Inspection',
+        'checkup_category'   => 'Inspection',
+
+        // What counts as routine servicing. Brakes & Pipes is deliberately
+        // absent: pad replacement and exhaust repair are repairs, not
+        // scheduled maintenance.
+        'pms_categories'     => ['Engine & Oil', 'CVT & Transmission'],
+
+        // Offered as symptom chips on the check-up path. Tapping one writes
+        // into the notes field the details step already has, so nothing about
+        // that step changes.
+        'checkup_symptoms' => [
+            'Strange noise',
+            'Warning light on',
+            'Brakes feel off',
+            'Aircon not cold',
+            'Hard to start',
+            'Pulling to one side',
+            'Overheating',
+            'Something else',
+        ],
+    ],
+
 ];
