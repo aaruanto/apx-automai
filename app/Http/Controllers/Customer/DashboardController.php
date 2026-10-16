@@ -75,10 +75,29 @@ class DashboardController extends Controller
             ];
         })->values();
 
+        // Replaces the four hardcoded "promos" this panel used to show, which
+        // were invented placeholders with 2025 expiry dates and discount
+        // codes that nothing in the app would ever honour.
+        $bundlesJs = Bundle::with('services')->bookable()->orderBy('name')->get()
+            ->map(fn ($b) => [
+                'id'          => $b->id,
+                'name'        => $b->name,
+                'description' => $b->description,
+                'price'       => (float) $b->price,
+                'list'        => $b->listPrice(),
+                'saves'       => $b->savings(),
+                'percent'     => $b->savingsPercent(),
+                'vehicle'     => $b->vehicle_type,
+                'ends'        => $b->ends_at?->format('M j, Y'),
+                'includes'    => $b->services->pluck('name')->all(),
+                'serviceIds'  => $b->services->pluck('id')->all(),
+                'duration'    => $b->totalDuration(),
+            ])->values();
+
         return view('dashboard.customer-dashboard', compact(
             'bookings', 'vehicles', 'services',
             'upcoming', 'completed', 'totalBookings', 'totalSpent',
-            'bookingsJs', 'vehiclesJs',
+            'bookingsJs', 'vehiclesJs', 'bundlesJs',
             'customer'
         ));
     }

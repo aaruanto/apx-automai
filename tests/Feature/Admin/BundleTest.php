@@ -260,3 +260,61 @@ it('ignores services the browser sends alongside a bundle', function () {
     expect($booking->services->pluck('id'))->not->toContain($sneaky->id);
     expect($booking->total_price)->toBe(2000.0);
 });
+
+// ── Where customers see bundles ──────────────────────────────────────────
+
+it('offers bookable bundles on the landing page', function () {
+    makeBundle(2000, [1500, 800], ['name' => 'Visible Bundle']);
+    makeBundle(2000, [1500, 800], ['name' => 'Hidden Bundle', 'is_active' => false]);
+
+    $this->get('/')->assertOk()
+        ->assertSee('Visible Bundle')
+        ->assertDontSee('Hidden Bundle');
+});
+
+it('shows real bundles in the customer rewards panel, not invented promos', function () {
+    makeBundle(2000, [1500, 800], ['name' => 'Real Bundle']);
+    $customer = User::factory()->create(['role' => 'customer']);
+
+    $page = $this->actingAs($customer)->get('/customer/dashboard')->assertOk();
+
+    $page->assertSee('Real Bundle');
+    // This panel used to list four invented promos with codes nothing would
+    // honour and expiry dates that had already passed.
+    $page->assertDontSee('OIL100');
+    $page->assertDontSee('BUNDLE150');
+    $page->assertDontSee('WELCOME10');
+});
+
+it('lets a guest book a bundle', function () {
+    $bundle = makeBundle(2000, [1500, 800]);
+
+    $this->postJson('/booking/guest', [
+        'guest_name' => 'Walk In', 'guest_email' => 'walkin@example.com',
+        'guest_phone' => '09171234567',
+        'vehicle_make' => 'Toyota', 'vehicle_model' => 'Vios', 'vehicle_year' => 2021,
+        'vehicle_plate' => 'GBD 1234', 'vehicle_type' => 'car',
+        'bundle_id' => $bundle->id,
+        'booking_date' => nextWeekday(), 'booking_time' => '10:00',
+    ])->assertOk();
+
+    $booking = Booking::sole();
+    expect($booking->bundle_id)->toBe($bundle->id);
+    expect($booking->total_price)->toBe(2000.0);
+});
+
+it('ignores services a guest sends alongside a bundle', function () {
+    $bundle = makeBundle(2000, [1500, 800]);
+    $sneaky = Service::create(['name' => 'Engine Rebuild', 'price' => 50000, 'duration' => 30]);
+
+    $this->postJson('/booking/guest', [
+        'guest_name' => 'Walk In', 'guest_email' => 'sneaky@example.com',
+        'guest_phone' => '09171234567',
+        'vehicle_make' => 'Toyota', 'vehicle_model' => 'Vios', 'vehicle_year' => 2021,
+        'vehicle_plate' => 'GBD 5678', 'vehicle_type' => 'car',
+        'bundle_id' => $bundle->id, 'service_ids' => [$sneaky->id],
+        'booking_date' => nextWeekday(), 'booking_time' => '10:00',
+    ])->assertOk();
+
+    expect(Booking::sole()->total_price)->toBe(2000.0);
+});

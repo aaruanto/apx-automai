@@ -1276,6 +1276,9 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
     }
 
     let selectedService = null;
+    // Set while booking a bundle; cleared whenever a plain service modal
+    // opens, so the two can never be sent together.
+    let selectedBundle  = null;
 
     // Extra services ticked alongside the primary one.
     function extraBoxes() {
@@ -1320,6 +1323,13 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
     });
 
     function refreshBookingTotal() {
+        if (selectedBundle) {
+            document.getElementById('bkTotalPrice').textContent =
+                '₱' + Number(selectedBundle.price).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('bkTotalDuration').textContent = selectedBundle.duration + ' min';
+            return;
+        }
+
         if (!selectedService) return;
 
         const price = (selectedService.priceValue ?? 0)
@@ -1340,9 +1350,16 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         getServiceIds: () => chosenServiceIds(),
     });
 
-    function openModal(svcId) {
+    function openModal(svcId, keepBundle) {
         selectedService = SERVICES.find(s => s.id === svcId);
         if (!selectedService) return;
+        // Opening a plain service drops any bundle, unless bookBundle is the
+        // caller and is about to recast this modal as one.
+        if (!keepBundle) {
+            selectedBundle = null;
+            var ew = document.getElementById('extrasList');
+            if (ew && ew.parentElement) { ew.parentElement.style.display = ''; }
+        }
         document.getElementById('modalFormView').style.display = 'block';
         document.getElementById('modalSuccessView').classList.remove('show');
         document.getElementById('modalServiceName').textContent     = selectedService.name;
@@ -1416,6 +1433,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             },
             body: JSON.stringify({
                 service_ids:  chosenServiceIds(),
+                bundle_id:    selectedBundle ? selectedBundle.id : null,
                 vehicle_id:   vehicleId,
                 booking_date: date,
                 booking_time: time,
@@ -1483,33 +1501,89 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         });
     }
 
-    const PROMOS = [
-        { id:'promo-01', tag:'Oil Service',  tagIcon:'fa-oil-can',       accentColor:'#E8192C', title:'₱100 Off Oil Change',    desc:'Get ₱100 off your next Change Oil & Filter service.',              code:'OIL100',    expiry:'Jan 31, 2025' },
-        { id:'promo-02', tag:'CVT Service',  tagIcon:'fa-gear',           accentColor:'#3B82F6', title:'Free CVT Inspection',    desc:'Book any CVT cleaning service and get a complimentary inspection.', code:'CVTFREE',   expiry:'Feb 15, 2025' },
-        { id:'promo-03', tag:'New Customer', tagIcon:'fa-user-plus',      accentColor:'#22C55E', title:'10% Off First Booking',  desc:'First-time customers enjoy 10% off any single service booking.',   code:'WELCOME10', expiry:'Mar 31, 2025' },
-        { id:'promo-04', tag:'Bundle Deal',  tagIcon:'fa-boxes-stacked',  accentColor:'#F59E0B', title:'Brake + Pipe Bundle',    desc:'Book Brake Cleaning and Pipe Cleaning together and save ₱150.',    code:'BUNDLE150', expiry:'Feb 28, 2025' },
-    ];
+    /* Real bundles from the database.
+       This panel used to list four invented promos with discount codes that
+       nothing in the app would honour and expiry dates already in the past.
+       A customer copying one of those codes had nowhere to use it. */
+    const BUNDLES = @json($bundlesJs ?? []);
 
     function renderPromos() {
         const grid = document.getElementById('promosGrid');
         if (!grid) return;
-        document.getElementById('promoCount').textContent = PROMOS.length + ' active';
-        grid.innerHTML = PROMOS.map(p => `
+
+        const peso = n => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        document.getElementById('promoCount').textContent =
+            BUNDLES.length + (BUNDLES.length === 1 ? ' bundle' : ' bundles');
+
+        if (!BUNDLES.length) {
+            grid.innerHTML = `
+                <div style="grid-column:1/-1;text-align:center;padding:36px 16px;color:var(--text-muted);font-size:.86rem;">
+                    <i class="fas fa-box-open" style="font-size:1.6rem;display:block;margin-bottom:10px;opacity:.5;"></i>
+                    No bundles are running at the moment. Check back soon.
+                </div>`;
+            return;
+        }
+
+        grid.innerHTML = BUNDLES.map(b => `
             <div class="promo-card">
-                <div class="promo-card-accent" style="background:${p.accentColor};"></div>
+                <div class="promo-card-accent" style="background:#16a34a;"></div>
                 <div class="promo-card-body">
-                    <div class="promo-tag" style="color:${p.accentColor};"><i class="fas ${p.tagIcon}"></i>${p.tag}</div>
-                    <div class="promo-title">${p.title}</div>
-                    <div class="promo-desc">${p.desc}</div>
-                    <div class="promo-card-footer">
-                        <span class="promo-expiry"><i class="fas fa-clock"></i>Expires ${p.expiry}</span>
-                        <div class="promo-code-wrap">
-                            <span class="promo-code">${p.code}</span>
-                            <button class="btn-copy-code" onclick="copyCode(this, '${p.code}')" title="Copy code"><i class="fas fa-copy"></i></button>
-                        </div>
+                    <div class="promo-tag" style="color:#16a34a;">
+                        <i class="fas fa-boxes-stacked"></i>Save ${peso(b.saves)} (${b.percent}%)
                     </div>
+                    <div class="promo-title">${b.name}</div>
+                    <div class="promo-desc">
+                        ${b.description ? b.description + '<br>' : ''}
+                        <strong>Includes:</strong> ${b.includes.join(' + ')}
+                        ${b.vehicle ? '<br><em>' + b.vehicle.charAt(0).toUpperCase() + b.vehicle.slice(1) + 's only</em>' : ''}
+                    </div>
+                    <div class="promo-card-footer">
+                        <span class="promo-expiry">
+                            <s style="color:var(--text-muted);">${peso(b.list)}</s>
+                            <strong style="color:var(--text);margin-left:6px;font-size:1rem;">${peso(b.price)}</strong>
+                        </span>
+                        <button class="btn btn-primary btn-sm" onclick="bookBundle(${b.id})">
+                            <i class="fas fa-calendar-plus"></i> Book
+                        </button>
+                    </div>
+                    ${b.ends ? '<div style="font-size:.72rem;color:var(--text-muted);margin-top:8px;"><i class="fas fa-clock"></i> Until ' + b.ends + '</div>' : ''}
                 </div>
             </div>`).join('');
+    }
+
+    /* Booking a bundle reuses the service modal: the bundle's first service
+       stands in for the header, and the server ignores whatever service_ids
+       the page sends once bundle_id is set, so the contents cannot drift
+       from what the bundle actually contains. */
+    function bookBundle(id) {
+        const bundle = BUNDLES.find(b => b.id === id);
+        if (!bundle) return;
+
+        const primary = SERVICES.find(s => s.dbId === bundle.serviceIds[0]);
+        if (!primary) {
+            apxDialog({
+                variant: 'danger', title: 'Bundle unavailable',
+                message: 'This bundle refers to a service that is no longer offered. Please contact the shop.',
+            });
+            return;
+        }
+
+        selectedBundle = bundle;
+        openModal(primary.id, true);
+
+        // Recast the modal for the bundle: its own name, its contents, its
+        // price — and no extras, because adding to a bundle is not offered.
+        document.getElementById('modalServiceName').textContent     = bundle.name;
+        document.getElementById('modalServiceNameChip').textContent = bundle.name;
+        document.getElementById('modalServiceCat').textContent =
+            'Bundle · ' + bundle.includes.length + ' services · ' + bundle.duration + ' min';
+        document.getElementById('modalServiceIcon').className = 'fas fa-boxes-stacked';
+
+        const extrasWrap = document.getElementById('extrasList')?.parentElement;
+        if (extrasWrap) extrasWrap.style.display = 'none';
+
+        refreshBookingTotal();
     }
 
     function copyCode(btn, code) {

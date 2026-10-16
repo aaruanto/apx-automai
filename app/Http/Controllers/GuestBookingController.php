@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Support\EmailRule;
 
+use App\Models\Bundle;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -29,7 +30,9 @@ class GuestBookingController extends Controller
             'guest_email'    => ['required', EmailRule::strict(), 'max:255'],
             'booking_date'   => 'required|date|after_or_equal:today',
             'booking_time'   => 'required',
-            'service_ids'    => 'required|array|min:1',
+            // A bundle supplies its own services, so one or the other.
+            'bundle_id'      => 'nullable|integer|exists:bundles,id',
+            'service_ids'    => [$request->filled('bundle_id') ? 'nullable' : 'required', 'array'],
             'service_ids.*'  => 'integer|exists:services,id',
             'vehicle_make'   => 'required|string|max:100',
             'vehicle_model'  => 'required|string|max:100',
@@ -112,8 +115,33 @@ class GuestBookingController extends Controller
             ]);
         }
 
-        // ── Load the selected services by ID ───────────────────────────────
-        $services = Service::whereIn('id', $request->service_ids)->get();
+        // ── What is being booked ───────────────────────────────────────────
+        // A bundle decides its own contents; services posted alongside one
+        // are ignored, or a bundle could be loaded with extra work at the
+        // bundle's price.
+        $bundle = $request->filled('bundle_id')
+            ? Bundle::with('services')->bookable()->find($request->bundle_id)
+            : null;
+
+        if ($request->filled('bundle_id') && ! $bundle) {
+            return response()->json([
+                'success' => false,
+                'message' => 'That bundle is no longer available. Please choose again.',
+            ], 422);
+        }
+
+        if ($bundle && ! $bundle->suitsVehicleType($request->vehicle_type)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'That bundle is for '.$bundle->vehicle_type.'s only.',
+            ], 422);
+        }
+
+        $serviceIds = $bundle
+            ? $bundle->services->pluck('id')->all()
+            : (array) $request->service_ids;
+
+        $services = Service::whereIn('id', $serviceIds)->get();
 
         if ($services->isEmpty()) {
             return response()->json([
@@ -134,7 +162,7 @@ class GuestBookingController extends Controller
                 'user_id'      => $user->id,
                 'vehicle_id'   => $vehicle->id,
                 'service_id'   => $firstService->id,
-                'service_ids'  => $request->service_ids,
+                'service_ids'  => $serviceIds,
                 'mechanic_id'  => null,
                 'booking_date' => $request->booking_date,
                 'booking_time' => $request->booking_time,
@@ -145,6 +173,12 @@ class GuestBookingController extends Controller
                 // customer's own text again.
                 'notes'        => $request->notes ?: null,
             ]);
+
+            // Re-prices the pivot at the bundle rate. After reserve, so the
+            // slot check still runs against the full service duration.
+            if ($bundle) {
+                $availability->attachBundle($booking, $bundle);
+            }
         } catch (SlotUnavailableException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }

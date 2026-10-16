@@ -22,7 +22,11 @@ Route::get('/', function () {
         ->orderBy('name')
         ->get();
 
-    return view('index', compact('services'));
+    // Only bundles a visitor could actually book today — switched on and
+    // inside their run dates.
+    $bundles = \App\Models\Bundle::with('services')->bookable()->orderBy('name')->get();
+
+    return view('index', compact('services', 'bundles'));
 });
 Route::get('/about',       fn() => view('about'));
 Route::get('/booking',     fn() => view('booking'));

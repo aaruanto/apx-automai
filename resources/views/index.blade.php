@@ -964,6 +964,17 @@
         .apx-modal-svc-tag { display:inline-block; font-size:10px; padding:2px 7px; border-radius:4px; margin-top:5px; background:#f0f0f0; color:#777; }
         .apx-modal-svc-card.selected .apx-modal-svc-tag { background:#ffd6d8; color:#c0392b; }
         .apx-modal-svc-tag.free { background:#d4edda; color:#155724; }
+        /* Bundles sit above the services and read as a different kind of
+           thing: a green saving rather than a category, the list price struck
+           through, and the included services spelled out. */
+        .apx-bundle-card { border-color:#b8dfc2; background:#f6fdf8; }
+        .apx-bundle-card:hover { border-color:#16a34a; }
+        .apx-bundle-card.selected { border-color:#16a34a; background:#eafaf0; color:#14532d; }
+        .apx-bundle-card.selected .apx-svc-check { background:#16a34a; }
+        .apx-bundle-tag { background:#d4edda; color:#155724; font-weight:700; }
+        .apx-bundle-card.selected .apx-modal-svc-tag { background:#b8dfc2; color:#0d3d1a; }
+        .apx-bundle-includes { display:block; font-size:10.5px; color:#6b7280; margin-top:5px; line-height:1.45; }
+        .apx-bundle-card .apx-modal-svc-price s { color:#9ca3af; font-weight:400; margin-right:4px; }
         .apx-modal-svc-card.selected .apx-modal-svc-tag.free { background:#b8dfc2; color:#0d3d1a; }
         .apx-modal-svc-price { font-size:11px; color:#aaa; display:block; margin-top:3px; }
         .apx-modal-svc-card.selected .apx-modal-svc-price { color:#c0392b; }
@@ -1146,10 +1157,30 @@
                 'price'    => (float) $s->price,
             ];
         })->values();
+
+        $bundlesJs = ($bundles ?? collect())->map(function ($b) {
+            return [
+                'id'        => $b->id,
+                'name'      => $b->name,
+                'price'     => (float) $b->price,
+                'list'      => $b->listPrice(),
+                'saves'     => $b->savings(),
+                'percent'   => $b->savingsPercent(),
+                'vehicle'   => $b->vehicle_type,
+                'includes'  => $b->services->pluck('name')->all(),
+            ];
+        })->values();
+
+        // Keyed separately so the availability picker can reserve the right
+        // length of bay for a bundle without re-deriving it from names.
+        $bundleServiceIds = ($bundles ?? collect())
+            ->mapWithKeys(fn ($b) => [$b->id => $b->services->pluck('id')->all()]);
     @endphp
     <script>
     (function () {
         var SERVICES = @json($servicesJs);
+        var BUNDLES  = @json($bundlesJs);
+        var BUNDLE_SERVICE_IDS = @json((object) $bundleServiceIds);
         var VEHICLES = {
             car: {
                 Toyota:['Vios','Innova','Fortuner','Hiace','Camry','Corolla Cross','Rush'],
@@ -1172,6 +1203,11 @@
         };
 
         var selected = new Set();
+        // A bundle is the whole order, so it is exclusive: picking one clears
+        // any services, and picking a service clears the bundle. Allowing
+        // both would raise the obvious question of whether the bundle's
+        // discount applies to the extras, and the answer is no.
+        var selectedBundle = null;
         var vtype = 'car';
         var step = 1;
 
@@ -1179,7 +1215,13 @@
             root: '#guestAvp',
             dateInput: document.getElementById('apx-f-date'),
             timeInput: document.getElementById('apx-f-time'),
-            getServiceIds: function () { return Array.from(selected).map(function (i) { return SERVICES[i].id; }); },
+            // A bundle reserves the bay for all of its services, so the
+            // availability check must see them, not an empty list.
+            getServiceIds: function () {
+                var b = currentBundle();
+                if (b) { return BUNDLE_SERVICE_IDS[b.id] || []; }
+                return Array.from(selected).map(function (i) { return SERVICES[i].id; });
+            },
         });
 
         function fmt(price) { return price === 0 ? 'FREE' : '₱'+price.toLocaleString(); }
@@ -1187,6 +1229,23 @@
         function buildGrid() {
             var grid = document.getElementById('apx-svc-grid');
             grid.innerHTML = '';
+
+            // Bundles first, and only those that suit the chosen vehicle type.
+            BUNDLES.filter(function (b) { return !b.vehicle || b.vehicle === vtype; })
+                   .forEach(function (b) {
+                var card = document.createElement('div');
+                card.className = 'apx-modal-svc-card apx-bundle-card'
+                    + (selectedBundle === b.id ? ' selected' : '');
+                card.dataset.bundle = b.id;
+                card.innerHTML = '<div class="apx-svc-check"><svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5l2 2 4-4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></div>'
+                    + b.name
+                    + '<br><span class="apx-modal-svc-tag apx-bundle-tag">bundle · saves ' + fmt(b.saves) + '</span>'
+                    + '<span class="apx-bundle-includes">' + b.includes.join(' + ') + '</span>'
+                    + '<span class="apx-modal-svc-price"><s>' + fmt(b.list) + '</s> ' + fmt(b.price) + '</span>';
+                card.onclick = function () { apxToggleBundle(b.id, card); };
+                grid.appendChild(card);
+            });
+
             SERVICES.forEach(function(s, i) {
                 var isFree = s.price === 0;
                 var card = document.createElement('div');
@@ -1202,13 +1261,43 @@
         }
 
         function apxToggle(i, card) {
+            // Choosing a service drops any bundle.
+            if (selectedBundle !== null) {
+                selectedBundle = null;
+                buildGrid();
+                card = document.querySelector('.apx-modal-svc-card[data-idx="' + i + '"]');
+            }
+
             selected.has(i) ? selected.delete(i) : selected.add(i);
-            card.classList.toggle('selected');
+            if (card) card.classList.toggle('selected');
             apxUpdateEst();
             guestPicker.refresh();
         }
 
+        function apxToggleBundle(id, card) {
+            var wasSelected = selectedBundle === id;
+            selectedBundle = wasSelected ? null : id;
+            // A bundle is the whole order, so services clear with it.
+            selected.clear();
+            buildGrid();
+            apxUpdateEst();
+            guestPicker.refresh();
+        }
+
+        function currentBundle() {
+            return BUNDLES.find(function (b) { return b.id === selectedBundle; }) || null;
+        }
+
         function apxUpdateEst() {
+            var bundle = currentBundle();
+
+            if (bundle) {
+                document.getElementById('apx-sel-count').textContent =
+                    bundle.name + ' · ' + bundle.includes.length + ' services';
+                document.getElementById('apx-est-total').textContent = fmt(bundle.price);
+                return;
+            }
+
             var total = 0;
             selected.forEach(function(i){ total += SERVICES[i].price; });
             var n = selected.size;
@@ -1239,6 +1328,13 @@
 
         window.apxSetVtype = function(t) {
             vtype = t;
+            // Bundles can be restricted to one vehicle type, so a switch may
+            // change which are on offer. Drop a selection that no longer
+            // applies rather than letting the server refuse it later.
+            var b = currentBundle();
+            if (b && b.vehicle && b.vehicle !== vtype) { selectedBundle = null; }
+            buildGrid();
+            apxUpdateEst();
             document.getElementById('apx-vtype-car').className = 'apx-vtype-btn'+(t==='car'?' active':'');
             document.getElementById('apx-vtype-moto').className = 'apx-vtype-btn'+(t==='motorcycle'?' active':'');
             apxPopMakes();
@@ -1327,8 +1423,8 @@
 
         window.apxNext = function() {
             if (step===1) {
-                if (selected.size===0) {
-                    ApxAlertModal.show({ variant: 'error', title: 'No services selected', message: 'Please select at least one service.' });
+                if (selected.size === 0 && selectedBundle === null) {
+                    ApxAlertModal.show({ variant: 'error', title: 'Nothing selected', message: 'Please choose a bundle or at least one service.' });
                     return;
                 }
                 apxSetStep(2);
@@ -1395,6 +1491,7 @@
                 vehicle_year:  document.getElementById('apx-v-year').value,
                 vehicle_plate: document.getElementById('apx-v-plate').value,
                 service_ids:   serviceIds,
+                bundle_id:     selectedBundle,
                 notes:         document.getElementById('apx-f-notes').value,
                 create_account: createAccount
             };
