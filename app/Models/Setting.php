@@ -33,10 +33,18 @@ class Setting extends Model
         'default_theme'    => 'light',
         'show_id_prefix'   => true,
         'maintenance'      => false,
+        // The discount for booking while signed in rather than as a guest.
+        // Configurable rather than a hardcoded 5%, because the figure is a
+        // commercial decision the shop will want to change without a deploy.
+        'account_discount_enabled' => false,
+        'account_discount_percent' => 5,
     ];
 
     /** Keys stored as booleans, so reads cast back instead of returning "0"/"1". */
-    public const BOOLEAN_KEYS = ['allow_walkin', 'email_reminders', 'show_id_prefix', 'maintenance'];
+    public const BOOLEAN_KEYS = [
+        'allow_walkin', 'email_reminders', 'show_id_prefix', 'maintenance',
+        'account_discount_enabled',
+    ];
 
     protected static ?array $cache = null;
 

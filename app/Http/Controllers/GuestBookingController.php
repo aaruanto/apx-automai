@@ -11,6 +11,7 @@ use App\Models\Vehicle;
 use App\Mail\BookingReceived;
 use App\Mail\GuestAccountCreated;
 use App\Services\BookingAvailability;
+use App\Services\BookingPricing;
 use App\Exceptions\SlotUnavailableException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -174,11 +175,15 @@ class GuestBookingController extends Controller
                 'notes'        => $request->notes ?: null,
             ]);
 
-            // Re-prices the pivot at the bundle rate. After reserve, so the
-            // slot check still runs against the full service duration.
-            if ($bundle) {
-                $availability->attachBundle($booking, $bundle);
-            }
+            // Price it server side. A guest gets no account discount — that
+            // is the whole point of the offer — but the same code decides it,
+            // so there is one answer to what a booking costs.
+            $pricing = app(BookingPricing::class);
+            $pricing->apply(
+                $booking,
+                $pricing->quote($services, $bundle, $user),
+                $services
+            );
         } catch (SlotUnavailableException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }

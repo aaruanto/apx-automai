@@ -179,6 +179,33 @@
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
+                        {{-- ACCOUNT DISCOUNT
+                             Configurable rather than a hardcoded percentage:
+                             the figure is a commercial decision the shop will
+                             want to change without a deploy. Off by default,
+                             so enabling it is deliberate. --}}
+                        <div class="setting-row" style="padding:8px 0;">
+                            <div class="setting-info">
+                                <div class="label">Account Discount</div>
+                                <div class="hint">Customers who book signed in get a discount; guests pay full price</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="account_discount_enabled" {{ (old('open_time') !== null ? old('account_discount_enabled') : ($settings['account_discount_enabled'] ?? false)) ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="form-group" style="max-width:220px;">
+                            <label class="form-label">Discount Percentage</label>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <input class="form-control @error('account_discount_percent') fv-invalid @enderror"
+                                       type="number" name="account_discount_percent" min="0" max="50"
+                                       value="{{ old('account_discount_percent', $settings['account_discount_percent'] ?? 5) }}" />
+                                <span style="color:var(--text-muted);font-weight:700;">%</span>
+                            </div>
+                            @error('account_discount_percent')<div class="fv-error show">{{ $message }}</div>@enderror
+                            <div class="form-hint">Applies to services and bundles, calculated on the server at booking time.</div>
+                        </div>
+
                         <button type="submit" class="btn btn-primary" style="margin-top:8px;"><i class="fas fa-floppy-disk"></i> Save Changes</button>
                     </form>
                 </div>

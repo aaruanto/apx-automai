@@ -48,7 +48,8 @@ class Booking extends Model
     }
 
     protected $fillable = [
-        'user_id', 'vehicle_id', 'service_id', 'bundle_id', 'bundle_price', 'mechanic_id',
+        'user_id', 'vehicle_id', 'service_id', 'bundle_id', 'bundle_price',
+        'list_price', 'discount_percent', 'discount_amount', 'mechanic_id',
         'booking_date', 'booking_time', 'duration', 'status', 'notes', 'reference_number',
         'cancel_reason', 'cancelled_by', 'cancelled_at', 'arrived_at',
     ];

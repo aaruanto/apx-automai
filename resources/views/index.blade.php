@@ -975,6 +975,10 @@
         .apx-bundle-card.selected .apx-modal-svc-tag { background:#b8dfc2; color:#0d3d1a; }
         .apx-bundle-includes { display:block; font-size:10.5px; color:#6b7280; margin-top:5px; line-height:1.45; }
         .apx-bundle-card .apx-modal-svc-price s { color:#9ca3af; font-weight:400; margin-right:4px; }
+        /* Informational, so blue — this is an offer, not an error. */
+        .apx-acct-nudge { margin-top:10px; padding:9px 12px; border-radius:8px; background:rgba(59,130,246,.09); border:1px solid rgba(59,130,246,.22); font-size:0.76rem; color:#334155; line-height:1.5; }
+        .apx-acct-nudge i { color:#3B82F6; margin-right:5px; }
+        .apx-acct-nudge a { color:#2563EB; font-weight:700; text-decoration:underline; margin-left:4px; }
         .apx-modal-svc-card.selected .apx-modal-svc-tag.free { background:#b8dfc2; color:#0d3d1a; }
         .apx-modal-svc-price { font-size:11px; color:#aaa; display:block; margin-top:3px; }
         .apx-modal-svc-card.selected .apx-modal-svc-price { color:#c0392b; }
@@ -1057,6 +1061,14 @@
                         <div class="apx-estimate-bar">
                             <span class="apx-est-count" id="apx-sel-count">No services selected</span>
                             <span class="apx-est-val" id="apx-est-total">₱0</span>
+                        </div>
+                        {{-- Shown only while the account discount is running
+                             and something is selected, so the nudge quotes a
+                             real figure rather than an abstract percentage. --}}
+                        <div id="apx-acct-nudge" class="apx-acct-nudge" style="display:none;">
+                            <i class="fas fa-circle-info"></i>
+                            <span id="apx-acct-nudge-text"></span>
+                            <a href="{{ route('register') }}">Create an account</a>
                         </div>
                     </div>
 
@@ -1175,12 +1187,20 @@
         // length of bay for a bundle without re-deriving it from names.
         $bundleServiceIds = ($bundles ?? collect())
             ->mapWithKeys(fn ($b) => [$b->id => $b->services->pluck('id')->all()]);
+
+        // For the nudge only. The server decides the real discount at booking
+        // time; this is just what the figure would be.
+        $accountDiscount = [
+            'enabled' => (bool) \App\Models\Setting::get('account_discount_enabled'),
+            'percent' => (int) \App\Models\Setting::get('account_discount_percent'),
+        ];
     @endphp
     <script>
     (function () {
         var SERVICES = @json($servicesJs);
         var BUNDLES  = @json($bundlesJs);
         var BUNDLE_SERVICE_IDS = @json((object) $bundleServiceIds);
+        var ACCOUNT_DISCOUNT   = @json($accountDiscount);
         var VEHICLES = {
             car: {
                 Toyota:['Vios','Innova','Fortuner','Hiace','Camry','Corolla Cross','Rush'],
@@ -1290,19 +1310,41 @@
 
         function apxUpdateEst() {
             var bundle = currentBundle();
+            var total  = 0;
 
             if (bundle) {
+                total = bundle.price;
                 document.getElementById('apx-sel-count').textContent =
                     bundle.name + ' · ' + bundle.includes.length + ' services';
-                document.getElementById('apx-est-total').textContent = fmt(bundle.price);
+                document.getElementById('apx-est-total').textContent = fmt(total);
+            } else {
+                selected.forEach(function(i){ total += SERVICES[i].price; });
+                var n = selected.size;
+                document.getElementById('apx-sel-count').textContent = n===0 ? 'No services selected' : n+' service'+(n>1?'s':'')+' selected';
+                document.getElementById('apx-est-total').textContent = n===0 ? '₱0' : fmt(total);
+            }
+
+            apxUpdateNudge(total);
+        }
+
+        /* The guest nudge. Quotes the actual peso saving on what is selected,
+           because "save 5%" is an abstraction and "save ₱292" is a decision.
+           The figure here is only ever a preview — the server recomputes the
+           discount from its own settings and ignores anything posted. */
+        function apxUpdateNudge(total) {
+            var box = document.getElementById('apx-acct-nudge');
+            if (!box) return;
+
+            if (!ACCOUNT_DISCOUNT.enabled || total <= 0) {
+                box.style.display = 'none';
                 return;
             }
 
-            var total = 0;
-            selected.forEach(function(i){ total += SERVICES[i].price; });
-            var n = selected.size;
-            document.getElementById('apx-sel-count').textContent = n===0 ? 'No services selected' : n+' service'+(n>1?'s':'')+' selected';
-            document.getElementById('apx-est-total').textContent = n===0 ? '₱0' : fmt(total);
+            var saving = Math.round(total * ACCOUNT_DISCOUNT.percent) / 100;
+            document.getElementById('apx-acct-nudge-text').textContent =
+                'Booking signed in would save you ' + fmt(saving)
+                + ' (' + ACCOUNT_DISCOUNT.percent + '% off).';
+            box.style.display = 'block';
         }
 
         // Open modal and pre-select a service by id

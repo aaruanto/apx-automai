@@ -10,6 +10,7 @@ use App\Models\Service;
 use App\Models\Vehicle;
 use App\Services\AccountAnonymizer;
 use App\Services\BookingAvailability;
+use App\Services\BookingPricing;
 use App\Exceptions\SlotUnavailableException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -202,11 +203,19 @@ class DashboardController extends Controller
                 'status'       => 'pending',
             ]);
 
-            // Re-prices the pivot at the bundle rate. Done after reserve so
-            // the slot check still runs against the full service duration.
-            if ($bundle) {
-                app(BookingAvailability::class)->attachBundle($booking, $bundle);
-            }
+            // Price it. Server side, from database rows — nothing the browser
+            // posted about money is read. Done after reserve so the slot
+            // check still runs against the full service duration.
+            $pricing  = app(BookingPricing::class);
+            $priced   = $bundle
+                ? $bundle->services
+                : Service::whereIn('id', $data['service_ids'])->get();
+
+            $pricing->apply(
+                $booking,
+                $pricing->quote($priced, $bundle, Auth::user()),
+                $priced
+            );
         } catch (SlotUnavailableException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
