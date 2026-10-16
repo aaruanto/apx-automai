@@ -38,12 +38,22 @@ class Setting extends Model
         // commercial decision the shop will want to change without a deploy.
         'account_discount_enabled' => false,
         'account_discount_percent' => 5,
+        // Loyalty. Off by default; the rates are the shop's to set.
+        // 1 point per ₱50 spent, each worth ₱0.50 back — so ₱50 spent
+        // returns ₱0.50, a 1% return. 100 points minimum to redeem, and
+        // points may cover at most half of any one booking.
+        'loyalty_enabled'            => false,
+        'loyalty_pesos_per_point'    => 50,
+        'loyalty_point_value'        => 0.50,
+        'loyalty_min_redeem'         => 100,
+        'loyalty_max_redeem_percent' => 50,
+        'loyalty_expiry_months'      => 12,
     ];
 
     /** Keys stored as booleans, so reads cast back instead of returning "0"/"1". */
     public const BOOLEAN_KEYS = [
         'allow_walkin', 'email_reminders', 'show_id_prefix', 'maintenance',
-        'account_discount_enabled',
+        'account_discount_enabled', 'loyalty_enabled',
     ];
 
     protected static ?array $cache = null;

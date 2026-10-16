@@ -11,6 +11,7 @@ use App\Notifications\BookingNotification;
 use App\Models\Service;
 use App\Mail\BookingConfirmed;
 use App\Services\BookingAvailability;
+use App\Services\LoyaltyService;
 use App\Exceptions\SlotUnavailableException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -272,6 +273,13 @@ class BookingController extends Controller
             );
         }
 
+        // Points are earned when the work is done, never when it is booked,
+        // and on the amount actually paid so a discount is not rewarded
+        // twice. earnFor is idempotent, so this cannot mint on a re-save.
+        if ($oldStatus !== 'completed' && $request->status === 'completed') {
+            app(LoyaltyService::class)->earnFor($booking->fresh());
+        }
+
         if ($oldDate !== $booking->booking_date || $oldTime !== $booking->booking_time) {
             AuditLog::record(
                 'booking.rescheduled', $booking,
@@ -502,6 +510,14 @@ class BookingController extends Controller
             ['status' => 'cancelled'], [], $validated['reason'],
             label: $booking->reference_number,
         );
+
+        // Work that is not happening earns nothing. Points spent on it are
+        // returned, and points it earned are taken back — clamped so a
+        // customer is never pushed into a negative balance by the shop's
+        // own cancellation.
+        $loyalty = app(LoyaltyService::class);
+        $loyalty->reverseFor($booking);
+        $loyalty->refundSpentFor($booking);
 
         if ($booking->user) {
             $booking->user->notify(BookingNotification::cancelled($booking->fresh()));

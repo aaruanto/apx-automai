@@ -211,9 +211,12 @@ class DashboardController extends Controller
                 ? $bundle->services
                 : Service::whereIn('id', $data['service_ids'])->get();
 
+            // How many points the customer asked to spend is a ceiling, not
+            // an instruction: quote() caps it against their real balance and
+            // the maximum share of a booking points may cover.
             $pricing->apply(
                 $booking,
-                $pricing->quote($priced, $bundle, Auth::user()),
+                $pricing->quote($priced, $bundle, Auth::user(), (int) $request->input('points', 0)),
                 $priced
             );
         } catch (SlotUnavailableException $e) {

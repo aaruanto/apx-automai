@@ -37,7 +37,12 @@ class BookingPricing
      *     bundle_price: ?float
      * }
      */
-    public function quote(Collection $services, ?Bundle $bundle = null, ?User $user = null): array
+    public function quote(
+        Collection $services,
+        ?Bundle $bundle = null,
+        ?User $user = null,
+        int $requestedPoints = 0,
+    ): array
     {
         // What the work costs before anything is taken off: a bundle's own
         // price if there is one, otherwise the sum of the list prices.
@@ -45,14 +50,34 @@ class BookingPricing
             ? (float) $bundle->price
             : (float) $services->sum('price');
 
-        $percent = $this->discountPercentFor($user);
+        $percent  = $this->discountPercentFor($user);
         $discount = round($listPrice * $percent / 100, 2);
-        $total    = round($listPrice - $discount, 2);
+
+        // Bundle price, then the account discount, then points — the order
+        // matters, because each step takes its cut of what is left.
+        $afterDiscount = round($listPrice - $discount, 2);
+
+        $loyalty      = app(LoyaltyService::class);
+        $pointsToSpend = 0;
+        $pointsValue   = 0.0;
+
+        if ($requestedPoints > 0 && $user) {
+            // Capped by their balance, by the minimum, and by the share of a
+            // booking points are allowed to cover. The request is a ceiling,
+            // never an instruction.
+            $allowed       = $loyalty->redeemableAgainst($user, $afterDiscount);
+            $pointsToSpend = max(0, min($requestedPoints, $allowed));
+            $pointsValue   = $loyalty->pesoValueOf($pointsToSpend);
+        }
+
+        $total = round($afterDiscount - $pointsValue, 2);
 
         return [
             'list'             => $listPrice,
             'discount_percent' => $percent,
             'discount_amount'  => $discount,
+            'points_spent'     => $pointsToSpend,
+            'points_discount'  => $pointsValue,
             'total'            => $total,
             'allocation'       => $this->allocate($services, $bundle, $total),
             'bundle_id'        => $bundle?->id,
@@ -162,5 +187,11 @@ class BookingPricing
             'discount_percent' => $quote['discount_percent'],
             'discount_amount'  => $quote['discount_amount'],
         ]);
+
+        // Spending happens through LoyaltyService so it goes through the lock
+        // and the ledger; the quote only decided how many were allowed.
+        if (($quote['points_spent'] ?? 0) > 0 && $booking->user) {
+            app(LoyaltyService::class)->redeemFor($booking, $booking->user, $quote['points_spent']);
+        }
     }
 }

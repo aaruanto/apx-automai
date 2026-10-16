@@ -20,6 +20,11 @@ Schedule::command('bookings:cancel-no-shows')->everyMinute();
 // Anonymize accounts whose 30-day deletion grace period has run out.
 Schedule::command('accounts:purge-expired')->dailyAt('03:00');
 
+// Retire loyalty points past their expiry date. Daily is often enough:
+// points expire on a date, not at an hour, and the command is a no-op while
+// loyalty is switched off.
+Schedule::command('loyalty:expire')->dailyAt('03:30');
+
 // Heartbeat. The admin Message Templates screen used to claim the scheduler
 // was "Running" from hard-coded markup, with a last-run time of now() and a
 // countdown to a fixed 8:00 AM, so it reported health whether or not anything
