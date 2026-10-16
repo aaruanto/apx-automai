@@ -41,7 +41,21 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * The next day the shop is open all day.
+ *
+ * Saturday and Sunday close at noon, so a test that books an afternoon slot
+ * on today()->addDay() passes most of the week and fails every Friday and
+ * Saturday. Several did, which is a test that reports the calendar rather
+ * than the code.
+ */
+function nextWeekday(): string
 {
-    // ..
+    $date = Carbon\Carbon::today()->addDay();
+
+    while ($date->dayOfWeekIso >= 6) {
+        $date->addDay();
+    }
+
+    return $date->toDateString();
 }

@@ -56,6 +56,9 @@ class GuestBookingController extends Controller
         }
 
         // ── Find or create the guest's account ────────────────────────────
+        // Matching on email alone is safe here: the guard above has already
+        // turned away any address belonging to a registered account, so
+        // anything found is a guest record this flow created.
         $user = User::firstOrCreate(
             ['email' => $request->guest_email],
             [

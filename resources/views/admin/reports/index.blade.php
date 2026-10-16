@@ -127,6 +127,7 @@
                 <div style="width:100%;display:flex;flex-direction:column;gap:6px;">
                     @php
                         $statusBreakdown = [
+                            ['label'=>'Completed',   'count'=>$statusCounts['completed'] ?? 0,   'color'=>'#16a34a'],
                             ['label'=>'Confirmed',   'count'=>$statusCounts['confirmed'] ?? 0,   'color'=>'#22c55e'],
                             ['label'=>'Pending',     'count'=>$statusCounts['pending'] ?? 0,     'color'=>'#f59e0b'],
                             ['label'=>'In Progress', 'count'=>$statusCounts['in_progress'] ?? 0, 'color'=>'#3b82f6'],
@@ -270,15 +271,16 @@ new Chart(rCtx, {
 new Chart(document.getElementById('statusDonut'), {
     type:'doughnut',
     data:{
-        labels:['Confirmed','Pending','In Progress','Cancelled'],
+        labels:['Completed','Confirmed','Pending','In Progress','Cancelled'],
         datasets:[{
             data:[
+                {!! $statusCounts['completed']   ?? 0 !!},
                 {!! $statusCounts['confirmed']   ?? 0 !!},
                 {!! $statusCounts['pending']     ?? 0 !!},
                 {!! $statusCounts['in_progress'] ?? 0 !!},
                 {!! $statusCounts['cancelled']   ?? 0 !!}
             ],
-            backgroundColor:['#22c55e','#f59e0b','#3b82f6','#E8192C'],
+            backgroundColor:['#16a34a','#22c55e','#f59e0b','#3b82f6','#E8192C'],
             borderWidth:0, hoverOffset:4,
         }]
     },

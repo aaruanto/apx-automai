@@ -21,7 +21,7 @@ function reportAdmin(): User
     return User::factory()->create(['role' => 'admin']);
 }
 
-function seedBooking(string $status, string $date): Booking
+function seedBooking(string $status, string $date, int $price = 1500, ?Service $service = null): Booking
 {
     $unique   = substr(str_replace('.', '', uniqid('', true)), -6);
     $customer = User::factory()->create(['role' => 'customer']);
@@ -31,16 +31,22 @@ function seedBooking(string $status, string $date): Booking
         'year' => 2020, 'plate_number' => 'XYZ '.$unique, 'color' => 'Blue',
     ]);
 
-    $service = Service::create([
-        'name' => 'Service '.$unique, 'price' => 1500, 'duration' => 45,
+    $service ??= Service::create([
+        'name' => 'Service '.$unique, 'price' => $price, 'duration' => 45,
     ]);
 
-    return Booking::create([
+    $booking = Booking::create([
         'user_id' => $customer->id, 'vehicle_id' => $vehicle->id,
         'service_id' => $service->id, 'booking_date' => $date,
         'booking_time' => '10:00', 'status' => $status,
         'reference_number' => 'APX-'.$unique,
     ]);
+
+    // Every real booking gets pivot rows through attachServices; a helper that
+    // skipped them was testing a shape the application never produces.
+    $booking->services()->attach($service->id, ['price' => $price, 'duration' => 45]);
+
+    return $booking;
 }
 
 it('renders with a completely empty database', function () {
@@ -54,16 +60,85 @@ it('renders with a completely empty database', function () {
 });
 
 it('renders with bookings present and totals them', function () {
-    seedBooking('confirmed', today()->toDateString());
-    seedBooking('confirmed', today()->subDays(2)->toDateString());
+    seedBooking('completed', today()->toDateString());
+    seedBooking('completed', today()->subDays(2)->toDateString());
     seedBooking('cancelled', today()->subDay()->toDateString());
 
     $response = $this->actingAs(reportAdmin())->get('/admin/reports')->assertOk();
 
     expect($response->viewData('totalBookings'))->toBe(3);
+    // Revenue is completed work only, so the cancelled one contributes nothing.
     expect($response->viewData('totalRevenue'))->toBe(3000.0);
     expect($response->viewData('cancelledCount'))->toBe(1);
     expect($response->viewData('serviceStats'))->toHaveCount(3);
+});
+
+/*
+ * Revenue used to be computed three ways that were each wrong. Every one of
+ * these reproduced a confirmed failure before the fix.
+ */
+
+it('does not erase revenue when a booking is completed', function () {
+    $booking = seedBooking('confirmed', today()->toDateString());
+    $admin   = reportAdmin();
+
+    // Confirmed work is not yet earned, so it should not count.
+    expect($this->actingAs($admin)->get('/admin/reports')->viewData('totalRevenue'))->toBe(0.0);
+
+    $booking->update(['status' => 'completed']);
+
+    // It used to go the other way: 1500 while confirmed, 0 once finished.
+    expect($this->actingAs($admin)->get('/admin/reports')->viewData('totalRevenue'))->toBe(1500.0);
+});
+
+it('reports what a booking was sold for, not the current price list', function () {
+    $service = Service::create(['name' => 'Oil', 'price' => 1500, 'duration' => 45]);
+    seedBooking('completed', today()->toDateString(), 1500, $service);
+
+    $service->update(['price' => 9999]);
+
+    // Previously reported 9999: a price change rewrote history.
+    expect($this->actingAs(reportAdmin())->get('/admin/reports')->viewData('totalRevenue'))
+        ->toBe(1500.0);
+});
+
+it('counts every service on a booking, not just the first', function () {
+    $oil     = Service::create(['name' => 'Oil', 'price' => 1000, 'duration' => 30]);
+    $brakes  = Service::create(['name' => 'Brakes', 'price' => 2000, 'duration' => 30]);
+    $booking = seedBooking('completed', today()->toDateString(), 1000, $oil);
+    $booking->services()->attach($brakes->id, ['price' => 2000, 'duration' => 30]);
+
+    // Previously 1000: the query joined the legacy single service_id.
+    expect($this->actingAs(reportAdmin())->get('/admin/reports')->viewData('totalRevenue'))
+        ->toBe(3000.0);
+});
+
+it('stops counting a deleted booking', function () {
+    // A query-builder join bypasses the SoftDeletes scope, so this has to be
+    // excluded by hand or a deleted booking keeps earning.
+    $booking = seedBooking('completed', today()->toDateString());
+    $booking->delete();
+
+    expect($this->actingAs(reportAdmin())->get('/admin/reports')->viewData('totalRevenue'))
+        ->toBe(0.0);
+});
+
+it('averages over completed bookings rather than all of them', function () {
+    seedBooking('completed', today()->toDateString(), 2000);
+    seedBooking('pending', today()->toDateString(), 2000);
+
+    // 2000 / 1 completed, not 2000 / 2 bookings.
+    expect($this->actingAs(reportAdmin())->get('/admin/reports')->viewData('avgBookingValue'))
+        ->toBe(2000.0);
+});
+
+it('shows completed work in the status breakdown', function () {
+    seedBooking('completed', today()->toDateString());
+
+    // 'completed' was missing from this chart entirely, so finished work
+    // appeared in no slice of it.
+    expect($this->actingAs(reportAdmin())->get('/admin/reports')->viewData('statusCounts'))
+        ->toHaveKey('completed');
 });
 
 it('accepts each period the selector offers', function (int $days) {

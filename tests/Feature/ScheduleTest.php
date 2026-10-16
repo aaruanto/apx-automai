@@ -18,16 +18,6 @@ uses(RefreshDatabase::class);
  * outside opening hours or on a closed day.
  */
 
-function nextWeekday(): string
-{
-    $d = Carbon::today()->addDay();
-    while ($d->dayOfWeekIso >= 6) {
-        $d->addDay();
-    }
-
-    return $d->toDateString();
-}
-
 function nextSaturday(): string
 {
     return Carbon::today()->next(Carbon::SATURDAY)->toDateString();

@@ -41,7 +41,7 @@ it('sums duration and price across every attached service', function () {
     $booking = app(BookingAvailability::class)->reserve([
         'user_id' => $user->id, 'vehicle_id' => $vehicle->id,
         'service_ids' => [$a->id, $b->id],
-        'booking_date' => today()->addDay()->toDateString(),
+        'booking_date' => nextWeekday(),
         'booking_time' => '10:00', 'status' => 'pending',
     ]);
 
@@ -60,7 +60,7 @@ it('snapshots price and duration so later changes do not rewrite history', funct
     $booking = app(BookingAvailability::class)->reserve([
         'user_id' => $user->id, 'vehicle_id' => $vehicle->id,
         'service_ids' => [$a->id],
-        'booking_date' => today()->addDay()->toDateString(),
+        'booking_date' => nextWeekday(),
         'booking_time' => '10:00', 'status' => 'pending',
     ]);
 
@@ -76,7 +76,7 @@ it('holds a bay for the summed duration, not just the first service', function (
     // overlapping one must be refused — proving the long block is really held.
     [$user, $vehicle] = bookingCustomer();
     $long = [svc('A', 100, 60)->id, svc('B', 100, 60)->id];
-    $date = today()->addDay()->toDateString();
+    $date = nextWeekday();
 
     foreach (range(1, 3) as $i) {
         app(BookingAvailability::class)->reserve([
@@ -102,7 +102,7 @@ it('lets a customer book several services at once', function () {
     $this->actingAs($user)->postJson('/customer/bookings', [
         'service_ids'  => [$a->id, $b->id],
         'vehicle_id'   => $vehicle->id,
-        'booking_date' => today()->addDay()->toDateString(),
+        'booking_date' => nextWeekday(),
         'booking_time' => '11:00',
     ])->assertOk();
 
@@ -119,7 +119,7 @@ it('still accepts a single service_id from an older client', function () {
     $this->actingAs($user)->postJson('/customer/bookings', [
         'service_id'   => $a->id,
         'vehicle_id'   => $vehicle->id,
-        'booking_date' => today()->addDay()->toDateString(),
+        'booking_date' => nextWeekday(),
         'booking_time' => '11:00',
     ])->assertOk();
 
@@ -132,7 +132,7 @@ it('rejects a booking with no services at all', function () {
     $this->actingAs($user)->postJson('/customer/bookings', [
         'service_ids'  => [],
         'vehicle_id'   => $vehicle->id,
-        'booking_date' => today()->addDay()->toDateString(),
+        'booking_date' => nextWeekday(),
         'booking_time' => '11:00',
     ])->assertStatus(422);
 });
@@ -150,7 +150,7 @@ it('records every service on a guest booking instead of in the notes', function 
         'vehicle_year'  => 2021,
         'vehicle_plate' => 'GST 1234',
         'service_ids'  => [$a->id, $b->id],
-        'booking_date' => today()->addDay()->toDateString(),
+        'booking_date' => nextWeekday(),
         'booking_time' => '13:00',
         'notes'        => 'Please check the aircon.',
     ])->assertOk();
@@ -172,7 +172,7 @@ it('syncs services when an admin edits a booking', function () {
 
     $booking = app(BookingAvailability::class)->reserve([
         'user_id' => $user->id, 'vehicle_id' => $vehicle->id,
-        'service_ids' => [$a->id], 'booking_date' => today()->addDay()->toDateString(),
+        'service_ids' => [$a->id], 'booking_date' => nextWeekday(),
         'booking_time' => '09:00', 'status' => 'pending',
     ]);
 
@@ -199,7 +199,7 @@ it('shows every service wherever a booking is listed', function () {
     app(BookingAvailability::class)->reserve([
         'user_id' => $user->id, 'vehicle_id' => $vehicle->id,
         'service_ids' => [$a->id, $b->id],
-        'booking_date' => today()->addDay()->toDateString(),
+        'booking_date' => nextWeekday(),
         'booking_time' => '09:00', 'status' => 'confirmed',
     ]);
 

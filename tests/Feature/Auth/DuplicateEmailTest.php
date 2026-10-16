@@ -155,7 +155,7 @@ it('blocks a guest booking on an email that belongs to a real account', function
         'vehicle_year'  => 2021,
         'vehicle_plate' => 'GST 1234',
         'service_ids'   => [$service->id],
-        'booking_date'  => today()->addDay()->toDateString(),
+        'booking_date'  => nextWeekday(),
         'booking_time'  => '10:00',
     ])->assertStatus(422);
 
@@ -183,7 +183,7 @@ it('still lets a previous guest book again', function () {
         'vehicle_year'  => 2021,
         'vehicle_plate' => 'RPT 1234',
         'service_ids'   => [$service->id],
-        'booking_date'  => today()->addDay()->toDateString(),
+        'booking_date'  => nextWeekday(),
         'booking_time'  => '13:00',
     ])->assertOk();
 
@@ -203,7 +203,7 @@ it('marks a new guest account as a guest', function () {
         'vehicle_year'  => 2021,
         'vehicle_plate' => 'NWG 1234',
         'service_ids'   => [$service->id],
-        'booking_date'  => today()->addDay()->toDateString(),
+        'booking_date'  => nextWeekday(),
         'booking_time'  => '14:00',
     ])->assertOk();
 
@@ -211,4 +211,61 @@ it('marks a new guest account as a guest', function () {
     $user = User::where('email', 'newguest@example.com')->first();
     expect($user)->not->toBeNull();
     expect($user->is_guest)->toBeTrue();
+});
+
+/*
+ * A guest booking must never reach a registered account. firstOrCreate on the
+ * email alone found the real customer, attached the booking to them, and then
+ * overwrote their name and phone with whatever the form said.
+ */
+
+function guestBooking(array $overrides = []): array
+{
+    $service = App\Models\Service::create([
+        'name' => 'Svc '.uniqid(), 'price' => 1500, 'duration' => 45,
+    ]);
+
+    return array_merge([
+        'guest_name'    => 'Someone Else',
+        'guest_email'   => 'victim@example.com',
+        'guest_phone'   => '09170000000',
+        'vehicle_make'  => 'Toyota',
+        'vehicle_model' => 'Vios',
+        'vehicle_year'  => 2021,
+        'vehicle_plate' => 'GST 4321',
+        'service_ids'   => [$service->id],
+        'booking_date'  => nextWeekday(),
+        'booking_time'  => '14:00',
+    ], $overrides);
+}
+
+it('refuses a guest booking that uses a registered account email', function () {
+    // Already guarded before this phase; pinned here because the protection
+    // is easy to lose and the consequence is renaming a real customer.
+    $victim = App\Models\User::factory()->create([
+        'name' => 'Real Customer', 'email' => 'victim@example.com',
+        'phone' => '09171111111', 'role' => 'customer', 'is_guest' => false,
+    ]);
+
+    $this->postJson('/booking/guest', guestBooking())
+        ->assertStatus(422)
+        ->assertJsonPath('success', false);
+
+    // The account is untouched: this used to rename the real customer.
+    expect($victim->fresh()->name)->toBe('Real Customer');
+    expect($victim->fresh()->phone)->toBe('09171111111');
+    expect(App\Models\Booking::where('user_id', $victim->id)->count())->toBe(0);
+});
+
+it('still lets a returning guest reuse their own guest record', function () {
+    $this->postJson('/booking/guest', guestBooking([
+        'guest_email' => 'returning@example.com', 'vehicle_plate' => 'RET 1111',
+    ]))->assertOk();
+
+    $this->postJson('/booking/guest', guestBooking([
+        'guest_email' => 'returning@example.com', 'vehicle_plate' => 'RET 1111',
+    ]))->assertOk();
+
+    // One guest account, two bookings — not a second row each time.
+    expect(App\Models\User::where('email', 'returning@example.com')->count())->toBe(1);
 });
