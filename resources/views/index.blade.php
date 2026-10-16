@@ -1119,7 +1119,7 @@
                             </div>
                         </div>
                         <div class="apx-step-bar">
-                            <div class="apx-step-item active" id="apx-s1"><div class="apx-step-dot">1</div><span class="apx-step-lbl">Services</span></div>
+                            <div class="apx-step-item active" id="apx-s1"><div class="apx-step-dot">1</div><span class="apx-step-lbl">Choose service</span></div>
                             <div class="apx-step-item" id="apx-s2"><div class="apx-step-dot">2</div><span class="apx-step-lbl">Your details</span></div>
                             <div class="apx-step-item" id="apx-s3"><div class="apx-step-dot">3</div><span class="apx-step-lbl">Confirm</span></div>
                         </div>
