@@ -192,27 +192,39 @@ class GuestBookingController extends Controller
 
         $this->notifyAdminsOfBooking($booking);
 
-        // ── Send emails ───────────────────────────────────────────────────
-        try {
-            $booking->load(['user', 'service', 'vehicle']);
+        // ── Send emails, after the customer has their answer ───────────────
+        //
+        // These went out inside the request. One SMTP round trip measures
+        // about 3.3 seconds, and a new guest gets two, so the customer sat
+        // on a "Submitting…" button for the better part of seven seconds
+        // after their booking had already been saved. It looked hung, and a
+        // hung Confirm button is how you lose a booking that already exists.
+        //
+        // afterResponse runs this once the response has been flushed to the
+        // browser, in the same process — no queue worker, and nothing for
+        // Render to pay for. The booking is what matters; the email is a
+        // courtesy that can take its time.
+        $booking->load(['user', 'service', 'vehicle']);
+        $guestEmail = $request->guest_email;
 
-            // Always send booking received email
-            Mail::to($request->guest_email)->send(new BookingReceived($booking));
+        dispatch(function () use ($booking, $guestEmail, $isNewGuest, $user) {
+            try {
+                Mail::to($guestEmail)->send(new BookingReceived($booking));
 
-            // If brand new guest account, send password setup email
-            if ($isNewGuest) {
-                $token    = Password::createToken($user);
-                $resetUrl = url(route('password.reset', [
-                    'token' => $token,
-                    'email' => $user->email,
-                ], false));
+                // If brand new guest account, send password setup email
+                if ($isNewGuest) {
+                    $token    = Password::createToken($user);
+                    $resetUrl = url(route('password.reset', [
+                        'token' => $token,
+                        'email' => $user->email,
+                    ], false));
 
-                Mail::to($request->guest_email)->send(new GuestAccountCreated($user, $resetUrl));
+                    Mail::to($guestEmail)->send(new GuestAccountCreated($user, $resetUrl));
+                }
+            } catch (\Throwable $e) {
+                \Log::error('Guest booking email failed: '.$e->getMessage());
             }
-
-        } catch (\Exception $e) {
-            \Log::error('Guest booking email failed: ' . $e->getMessage());
-        }
+        })->afterResponse();
 
         return response()->json([
             'success'        => true,
