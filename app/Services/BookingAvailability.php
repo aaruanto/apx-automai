@@ -220,6 +220,39 @@ class BookingAvailability
      * Creation passes false — there is nothing to preserve, and today's price
      * is the right one.
      */
+    /**
+     * Put a bundle on a booking: its services in the usual pivot, with the
+     * bundle's discount already spread across their snapshots.
+     *
+     * Doing it this way means revenue, per-service reports and the customer's
+     * total spent all keep reading booking_service.price and need no idea
+     * that bundles exist. The bundle_price column is the record of what was
+     * sold, not a second source of truth for the money.
+     */
+    public function attachBundle(Booking $booking, \App\Models\Bundle $bundle): void
+    {
+        $bundle->loadMissing('services');
+        $allocated = $bundle->allocatePrice();
+
+        $pivot = $bundle->services
+            ->mapWithKeys(fn ($service) => [
+                $service->id => [
+                    'price'    => $allocated[$service->id] ?? 0,
+                    'duration' => $service->duration,
+                ],
+            ])
+            ->all();
+
+        $booking->services()->sync($pivot);
+
+        $booking->update([
+            'bundle_id'    => $bundle->id,
+            'bundle_price' => $bundle->price,
+            'duration'     => $bundle->totalDuration(),
+            'service_id'   => $bundle->services->first()?->id,
+        ]);
+    }
+
     public function attachServices(Booking $booking, array $serviceIds, bool $preserveExisting = false): void
     {
         if ($serviceIds === []) {

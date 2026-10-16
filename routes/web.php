@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\BookingController;
+use App\Http\Controllers\Admin\BundleController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
@@ -101,6 +102,14 @@ Route::middleware(['auth', 'role:admin'])
     Route::get('/templates',       [MessageTemplateController::class, 'index'])   ->name('templates.index');
     Route::post('/templates/save', [MessageTemplateController::class, 'save'])    ->name('templates.save');
     Route::post('/templates/test', [MessageTemplateController::class, 'sendTest'])->name('templates.test');
+
+    // ── Bundles ─────────────────────────────────────────────────────────────
+    // Several services sold together for less. Switched off rather than
+    // deleted, because bookings reference the bundle they were sold under.
+    Route::get('/bundles',               [BundleController::class, 'index'])  ->name('bundles.index');
+    Route::post('/bundles',              [BundleController::class, 'store'])  ->name('bundles.store');
+    Route::put('/bundles/{id}',          [BundleController::class, 'update']) ->name('bundles.update');
+    Route::patch('/bundles/{id}/toggle', [BundleController::class, 'toggle']) ->name('bundles.toggle');
 
     // ── Mechanics ───────────────────────────────────────────────────────────
     // Records, not accounts: a name and a contact number so work can be

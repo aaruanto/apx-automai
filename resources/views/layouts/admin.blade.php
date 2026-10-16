@@ -1098,6 +1098,10 @@
                 <hr class="sidebar-divider" />
                 <div class="section-label">System</div>
 
+                <a class="nav-link {{ request()->routeIs('admin.bundles.*') ? 'active' : '' }}" href="{{ route('admin.bundles.index') }}">
+                    <span class="nav-icon"><i class="fas fa-box-open"></i></span>
+                    <span class="nav-label">Bundles</span>
+                </a>
                 <a class="nav-link {{ request()->routeIs('admin.mechanics.*') ? 'active' : '' }}" href="{{ route('admin.mechanics.index') }}">
                     <span class="nav-icon"><i class="fas fa-screwdriver-wrench"></i></span>
                     <span class="nav-label">Mechanics</span>

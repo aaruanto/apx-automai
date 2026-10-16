@@ -48,7 +48,7 @@ class Booking extends Model
     }
 
     protected $fillable = [
-        'user_id', 'vehicle_id', 'service_id', 'mechanic_id',
+        'user_id', 'vehicle_id', 'service_id', 'bundle_id', 'bundle_price', 'mechanic_id',
         'booking_date', 'booking_time', 'duration', 'status', 'notes', 'reference_number',
         'cancel_reason', 'cancelled_by', 'cancelled_at', 'arrived_at',
     ];
@@ -195,5 +195,22 @@ class Booking extends Model
     public function mechanic()
     {
         return $this->belongsTo(Mechanic::class, 'mechanic_id');
+    }
+
+    /**
+     * The bundle this was sold under, if any.
+     *
+     * The money does not come from here — bundle_price is the record of what
+     * was sold, while the discounted amounts live in the service pivot so one
+     * set of queries covers both bundled and unbundled work.
+     */
+    public function bundle()
+    {
+        return $this->belongsTo(Bundle::class);
+    }
+
+    public function isBundle(): bool
+    {
+        return $this->bundle_id !== null;
     }
 }

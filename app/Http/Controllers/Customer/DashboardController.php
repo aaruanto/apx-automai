@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\Bundle;
 use App\Models\Customer;
 use App\Models\Service;
 use App\Models\Vehicle;
@@ -134,8 +135,21 @@ class DashboardController extends Controller
             $request->merge(['service_ids' => [$request->input('service_id')]]);
         }
 
+        // A bundle supplies its own services, so service_ids is only required
+        // when no bundle was chosen.
+        $bundle = $request->filled('bundle_id')
+            ? Bundle::with('services')->bookable()->find($request->input('bundle_id'))
+            : null;
+
+        if ($request->filled('bundle_id') && ! $bundle) {
+            return response()->json([
+                'success' => false,
+                'message' => 'That bundle is no longer available. Please choose again.',
+            ], 422);
+        }
+
         $data = $request->validate([
-            'service_ids'   => 'required|array|min:1',
+            'service_ids'   => [$bundle ? 'nullable' : 'required', 'array'],
             'service_ids.*' => 'integer|exists:services,id',
             'vehicle_id'    => 'required|exists:vehicles,id',
             'booking_date'  => 'required|date|after_or_equal:today',
@@ -144,20 +158,36 @@ class DashboardController extends Controller
         ]);
 
         // The vehicle must belong to THIS customer — stops booking with someone else's vehicle_id.
-        Vehicle::where('id', $data['vehicle_id'])
+        $vehicle = Vehicle::where('id', $data['vehicle_id'])
             ->where('user_id', Auth::id())
             ->firstOrFail();
+
+        if ($bundle && ! $bundle->suitsVehicleType($vehicle->vehicle_type)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'That bundle is for '.$bundle->vehicle_type.'s only.',
+            ], 422);
+        }
 
         try {
             $booking = app(BookingAvailability::class)->reserve([
                 'user_id'      => Auth::id(),
-                'service_ids'  => $data['service_ids'],
+                // The bundle decides what is on the booking, not the browser.
+                'service_ids'  => $bundle
+                    ? $bundle->services->pluck('id')->all()
+                    : $data['service_ids'],
                 'vehicle_id'   => $data['vehicle_id'],
                 'booking_date' => $data['booking_date'],
                 'booking_time' => $data['booking_time'],
                 'notes'        => $data['notes'] ?? null,
                 'status'       => 'pending',
             ]);
+
+            // Re-prices the pivot at the bundle rate. Done after reserve so
+            // the slot check still runs against the full service duration.
+            if ($bundle) {
+                app(BookingAvailability::class)->attachBundle($booking, $bundle);
+            }
         } catch (SlotUnavailableException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
