@@ -89,6 +89,12 @@
         .btn-book-service { background: var(--red); color: #fff; border: none; padding: 6px 14px; border-radius: 6px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; display: flex; align-items: center; gap: 5px; opacity: 0; transform: translateY(4px); transition: background 0.2s, transform 0.2s, opacity 0.2s; pointer-events: none; }
         .service-card:hover .btn-book-service { opacity: 1; transform: translateY(0); pointer-events: auto; }
         .btn-book-service:hover { background: var(--red-dark); transform: scale(1.03); }
+        /* Bundle cards reuse the service Book button so the two read as the
+           same action, but they have no hover-to-reveal parent — a bundle is
+           the whole offer, not a row you hover to inspect — so it stays
+           visible. It was a generic .btn btn-primary before, which rendered
+           dark and lowercase beside the red uppercase one on the next tab. */
+        .promo-card .btn-book-service { opacity: 1; transform: none; pointer-events: auto; }
         .m-control.m-select { appearance: none; -webkit-appearance: none; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
         .m-control.m-select option { background: var(--surface-3); color: var(--text); }
         .m-vehicle-hint { font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px; margin-top: 4px; }
@@ -1697,7 +1703,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                             <s style="color:var(--text-muted);">${peso(b.list)}</s>
                             <strong style="color:var(--text);margin-left:6px;font-size:1rem;">${peso(b.price)}</strong>
                         </span>
-                        <button class="btn btn-primary btn-sm" onclick="bookBundle(${b.id})">
+                        <button class="btn-book-service" onclick="bookBundle(${b.id})">
                             <i class="fas fa-calendar-plus"></i> Book
                         </button>
                     </div>
