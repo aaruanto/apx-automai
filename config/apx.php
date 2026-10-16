@@ -62,10 +62,10 @@ return [
         'checkup_service'    => 'General Vehicle Inspection',
         'checkup_category'   => 'Inspection',
 
-        // What counts as routine servicing. Brakes & Pipes is deliberately
-        // absent: pad replacement and exhaust repair are repairs, not
-        // scheduled maintenance.
-        'pms_categories'     => ['Engine & Oil', 'CVT & Transmission'],
+        // Periodic maintenance offers the bundles, not a filtered list of
+        // services: most customers cannot name what their vehicle is due
+        // for, which is the reason packages exist. Nothing to configure —
+        // the packages are whatever is live in the bundles table.
 
         // Offered as symptom chips on the check-up path. Tapping one writes
         // into the notes field the details step already has, so nothing about

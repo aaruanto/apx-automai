@@ -1032,14 +1032,15 @@
             border-radius:8px; padding:10px 12px;
         }
 
-        .apx-browse-toggle { display:flex; gap:6px; margin-bottom:12px; }
-        .apx-browse-tab {
-            flex:1; border:1.5px solid #e8e8e8; background:#fff; border-radius:8px;
-            padding:9px 10px; font-size:.82rem; color:#666; cursor:pointer;
-            font-family:'Ubuntu',sans-serif; font-weight:700; min-height:44px;
+
+        /* An inline action inside an informational note, so it reads as a
+           link rather than competing with the footer buttons. */
+        .apx-path-link {
+            background:none; border:none; padding:0; cursor:pointer;
+            color:#2563EB; font-weight:700; text-decoration:underline;
+            font-size:inherit; font-family:inherit;
         }
-        .apx-browse-tab.active { background:#fff5f5; border-color:#e63946; color:#c0392b; }
-        .apx-browse-tab:focus-visible { outline:2px solid #e63946; outline-offset:2px; }
+        .apx-path-link:focus-visible { outline:2px solid #e63946; outline-offset:2px; }
 
         .apx-modal-search {
             width:100%; border:1.5px solid #e8e8e8; border-radius:8px; padding:10px 12px;
@@ -1191,9 +1192,14 @@
                             <button type="button" class="apx-path-back" onclick="apxChoosePath('root')">
                                 <i class="fas fa-chevron-left"></i> Back
                             </button>
-                            <h6 class="apx-path-heading">Routine servicing</h6>
-                            <p class="apx-path-sub">Pick whatever is due. Not sure? Choose the oil change — it's the usual one.</p>
+                            <h6 class="apx-path-heading">Maintenance packages</h6>
+                            <p class="apx-path-sub">Each package covers the servicing that's usually done together, so you don't have to pick the parts yourself.</p>
                             <div class="apx-modal-svc-grid" id="apx-pms-grid"></div>
+                            <div class="apx-path-note" id="apx-pms-empty" style="display:none;">
+                                No maintenance packages are set up right now. You can still
+                                <button type="button" class="apx-path-link" onclick="apxChoosePath('browse')">browse the individual services</button>,
+                                or choose a general check-up and let the mechanic advise.
+                            </div>
                         </div>
 
                         {{-- 1d — BROWSE ALL --}}
@@ -1201,12 +1207,11 @@
                             <button type="button" class="apx-path-back" onclick="apxChoosePath('root')">
                                 <i class="fas fa-chevron-left"></i> Back
                             </button>
-                            <div class="apx-browse-toggle" role="tablist">
-                                <button type="button" class="apx-browse-tab active" id="apx-tab-services"
-                                        role="tab" aria-selected="true" onclick="apxBrowseTab('services')">Services</button>
-                                <button type="button" class="apx-browse-tab" id="apx-tab-bundles"
-                                        role="tab" aria-selected="false" onclick="apxBrowseTab('bundles')">Bundles</button>
-                            </div>
+                            {{-- Services only. Packages live on the
+                                 maintenance path, which is what they are
+                                 for; listing them here as well would ask
+                                 the customer to understand the difference
+                                 twice. --}}
                             <div id="apx-browse-services">
                                 <input type="text" class="apx-modal-search" id="apx-modal-search"
                                        placeholder="Search services…" aria-label="Search services">
@@ -1366,8 +1371,6 @@
             'checkupId'   => $checkupSvc?->id,
             'checkupName' => $checkupSvc?->name,
             'symptoms'    => $paths['checkup_symptoms'],
-            'pmsIds'      => $services->whereIn('category', $paths['pms_categories'])
-                                 ->pluck('id')->values()->all(),
             'categories'  => $services->pluck('category')->filter()->unique()->values()->all(),
         ];
     @endphp
@@ -1429,7 +1432,6 @@
            `selected` set and `selectedBundle` the old screen filled, so the
            booking that gets posted is identical. */
         var pathView   = 'root';
-        var browseTab  = 'services';
         var catFilter  = '';
         var symptoms   = new Set();
 
@@ -1518,16 +1520,6 @@
             field.value = [line, own].filter(Boolean).join('\n');
         }
 
-        window.apxBrowseTab = function (which) {
-            browseTab = which;
-            document.getElementById('apx-tab-services').classList.toggle('active', which === 'services');
-            document.getElementById('apx-tab-bundles').classList.toggle('active', which === 'bundles');
-            document.getElementById('apx-tab-services').setAttribute('aria-selected', which === 'services');
-            document.getElementById('apx-tab-bundles').setAttribute('aria-selected', which === 'bundles');
-            document.getElementById('apx-browse-services').style.display = which === 'services' ? '' : 'none';
-            buildGrid();
-        };
-
         function apxBuildCategoryChips() {
             var row = document.getElementById('apx-cat-chips');
             if (!row) return;
@@ -1549,9 +1541,11 @@
             if (!grid) return;
             grid.innerHTML = '';
 
-            // Bundles appear under the Bundles tab of Browse All, and never
-            // on the maintenance screen, which is about single services.
-            var showBundles = (pathView === 'browse' && browseTab === 'bundles');
+            // Periodic maintenance IS the packages: most customers cannot
+            // name the services their vehicle is due for, which is the whole
+            // reason bundles exist. Browse All stays individual services, for
+            // the customers who already know what they want.
+            var showBundles = (pathView === 'pms');
 
             (showBundles ? BUNDLES.filter(function (b) { return !b.vehicle || b.vehicle === vtype; }) : [])
                    .forEach(function (b) {
@@ -1575,7 +1569,7 @@
             var shown  = 0;
 
             SERVICES.forEach(function(s, i) {
-                if (pathView === 'pms' && GUIDED.pmsIds.indexOf(s.id) === -1) return;
+                // The maintenance screen offers packages only.
                 if (showBundles) return;
 
                 if (pathView === 'browse') {
@@ -1598,11 +1592,12 @@
 
             var empty = document.getElementById('apx-browse-empty');
             if (empty) {
-                var nothing = showBundles ? BUNDLES.length === 0 : shown === 0;
-                empty.style.display = (pathView === 'browse' && nothing) ? '' : 'none';
-                empty.textContent = showBundles
-                    ? 'No bundles are running at the moment.'
-                    : 'No services match that search.';
+                empty.style.display = (pathView === 'browse' && shown === 0) ? '' : 'none';
+            }
+
+            var pmsEmpty = document.getElementById('apx-pms-empty');
+            if (pmsEmpty) {
+                pmsEmpty.style.display = (pathView === 'pms' && grid.children.length === 0) ? '' : 'none';
             }
         }
 
@@ -1927,7 +1922,6 @@
             selectedBundle = null;
             symptoms.clear();
             catFilter = '';
-            browseTab = 'services';
             var searchBox = document.getElementById('apx-modal-search');
             if (searchBox) searchBox.value = '';
             step = 1;
