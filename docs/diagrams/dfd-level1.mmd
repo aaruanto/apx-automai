@@ -3,7 +3,7 @@ flowchart TB
     GUEST[Guest]
     CUST[Customer]
     ADMIN[Administrator]
-    CRON[Scheduler / Cron]
+    CRON[External Cron Service]
     MAIL[Email Service]
     SMSG[SMS Gateway]
 
@@ -11,7 +11,8 @@ flowchart TB
     P2["2.0<br/>Vehicle<br/>Management"]
     P3["3.0<br/>Booking and<br/>Scheduling"]
     P4["4.0<br/>Booking<br/>Management"]
-    P5["5.0<br/>Notification and<br/>Reminders"]
+    P5["5.0<br/>Appointment<br/>Reminders"]
+    P8["8.0<br/>Maintenance Due<br/>Detection"]
     P6["6.0<br/>Loyalty<br/>Points"]
     P7["7.0<br/>Reporting and<br/>Dashboard"]
 
@@ -22,7 +23,9 @@ flowchart TB
     D5[(D5 loyalty_ledger)]
     D6[(D6 audit_logs)]
     D7[(D7 sms_logs)]
-    D8[(D8 settings)]
+    D8[(D8 settings + message templates)]
+    D9[(D9 maintenance_rules)]
+    D10[(D10 reminders)]
 
     CUST -->|credentials| P1
     ADMIN -->|credentials| P1
@@ -30,7 +33,7 @@ flowchart TB
     P1 -->|session for role| CUST
     P1 -->|session for role| ADMIN
 
-    CUST -->|vehicle details| P2
+    CUST -->|vehicle details, optional mileage| P2
     P2 <-->|vehicle record| D2
 
     GUEST -->|guest booking| P3
@@ -50,14 +53,34 @@ flowchart TB
     P4 -->|who, what, why| D6
     P4 -->|award or reverse points| P6
     P4 -->|status change notice| MAIL
+    P4 -->|stamp last service date and mileage| D2
 
-    CRON -->|scheduled run| P5
-    P5 -->|find due bookings| D4
+    %% 5.0 — you have an appointment coming up.
+    CRON -->|scheduled tick| P5
+    P5 -->|find confirmed bookings in window| D4
     P5 -->|read template and triggers| D8
     P5 -->|read contact details| D1
+    P5 -->|claim before sending, exactly once| D10
     P5 -->|send email| MAIL
     P5 -->|send SMS| SMSG
     P5 -->|record every attempt| D7
+
+    %% 8.0 — your vehicle is due for servicing. Nothing the customer did
+    %% triggers this; only the passage of time, which is why it is scheduled.
+    CRON -->|scheduled tick| P8
+    P8 -->|read service intervals| D9
+    P8 -->|read last service date and mileage| D2
+    P8 -->|skip if work already booked| D4
+    P8 -->|read template and triggers| D8
+    P8 -->|claim once per interval| D10
+    P8 -->|service due email| MAIL
+    P8 -->|service due SMS| SMSG
+    P8 -->|record every attempt| D7
+    ADMIN -->|edit intervals and templates| D8
+
+    %% The dashboard runs the same due calculation, so the screen and the
+    %% inbox cannot disagree about whether a car is due.
+    P8 -->|due status per vehicle| CUST
 
     P6 <-->|earn, redeem, expire, adjust| D5
     P6 -->|balance and history| CUST
@@ -67,4 +90,5 @@ flowchart TB
     ADMIN -->|date range filter| P7
     P7 -->|completed work and snapshots| D4
     P7 -->|outstanding points liability| D5
+    P7 -->|scheduler heartbeat| D8
     P7 -->|figures and charts| ADMIN

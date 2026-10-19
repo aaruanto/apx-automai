@@ -3,7 +3,7 @@ flowchart TB
     GUEST[Guest Visitor]
     CUST[Registered Customer]
     ADMIN[Administrator]
-    CRON[Scheduler / Cron]
+    CRON[External Cron Service<br/>cron-job.org]
 
     SYS(("APX AutoMai<br/>Unified Portal"))
 
@@ -14,12 +14,13 @@ flowchart TB
     SYS -->|booking reference, confirmation email| GUEST
 
     CUST -->|registration, vehicle, booking, points redemption| SYS
-    SYS -->|booking history, points balance, reminders| CUST
+    SYS -->|booking history, points balance, reminders,<br/>service-due alerts| CUST
 
     ADMIN -->|status updates, cancellations with reason, services, bundles, settings| SYS
     SYS -->|dashboard, schedule, customer records, reports| ADMIN
 
-    CRON -->|trigger scheduled run| SYS
+    CRON -->|token-guarded tick, every 5 minutes| SYS
+    SYS -->|what ran, and for how long| CRON
 
     SYS -->|reminder and confirmation messages| MAIL
     SYS -->|reminder text messages| SMS

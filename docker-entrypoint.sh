@@ -19,6 +19,16 @@ php artisan migrate --force
 # every start adds no duplicates.
 php artisan db:seed --class=ServiceSeeder --force
 
+# The three PMS packages and the service intervals that recommend them. Both
+# seeders key on name with updateOrCreate, so repeated boots change nothing;
+# the package seeder also refuses to create a bundle whose services are missing
+# or whose price is not actually a saving, so a half-seeded catalogue is safe.
+#
+# Run here rather than by hand because Render's free tier has no shell: without
+# this there is no way to get reference data onto production at all.
+php artisan db:seed --class=MaintenancePackageSeeder --force
+php artisan db:seed --class=MaintenanceRuleSeeder --force
+
 # Registration hardcodes role=customer, so there is no public path to an admin
 # account and a fresh database has none. This provisions the first one from the
 # environment, and no-ops when ADMIN_EMAIL/ADMIN_PASSWORD are unset.

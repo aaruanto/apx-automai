@@ -217,7 +217,7 @@ it('records a reschedule and a service change', function () {
 
     $this->actingAs(intAdmin())->put("/admin/bookings/{$b->id}", editPayload($b, [
         'service_ids'  => [$oil->id, $extra->id],
-        'booking_date' => today()->addDays(3)->toDateString(),
+        'booking_date' => nextWeekdayAfter(3),
     ]));
 
     expect(AuditLog::where('action', 'booking.services_changed')->exists())->toBeTrue();

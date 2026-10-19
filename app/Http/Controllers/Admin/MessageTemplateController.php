@@ -42,6 +42,20 @@ class MessageTemplateController extends Controller
             'email_preheader' => 'nullable|string|max:255',
             'email_body'      => 'required|string',
             'sms_body'        => 'required|string|max:480',
+
+            // The service-due template. Validated as its own set rather than
+            // folded into the ones above: it is a different message with
+            // different placeholders, and leaving these out of the rules
+            // would silently drop them on every save.
+            //
+            // "sometimes" so a payload that does not mention them at all is
+            // still accepted — load() fills any absent key from the defaults —
+            // while one that does send them cannot send them empty and leave
+            // customers receiving a blank reminder.
+            'maintenance_subject' => 'sometimes|required|string|max:255',
+            'maintenance_body'    => 'sometimes|required|string',
+            'maintenance_sms'     => 'sometimes|required|string|max:480',
+
             'triggers'        => 'array',
             'channels'        => 'array',
             'sender_name'     => 'nullable|string|max:100',

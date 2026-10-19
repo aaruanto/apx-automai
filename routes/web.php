@@ -11,6 +11,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Customer\DashboardController as CustomerDashboard;
 use App\Http\Controllers\Admin\MechanicController;
 use App\Http\Controllers\Admin\MessageTemplateController;
+use App\Http\Controllers\Admin\MaintenanceRuleController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\GuestBookingController;
 use App\Models\Service;
@@ -120,6 +121,16 @@ Route::middleware(['auth', 'role:admin'])
     Route::put('/bundles/{id}',          [BundleController::class, 'update']) ->name('bundles.update');
     Route::patch('/bundles/{id}/toggle', [BundleController::class, 'toggle']) ->name('bundles.toggle');
 
+    // ── Service intervals ───────────────────────────────────────────────────
+    // What counts as "due for maintenance". These drive the service-due
+    // reminders, so the shop decides the intervals rather than the developer.
+    // Switched off rather than deleted, because reminders already sent
+    // reference the rule that raised them.
+    Route::get('/maintenance',                [MaintenanceRuleController::class, 'index'])  ->name('maintenance.index');
+    Route::post('/maintenance',               [MaintenanceRuleController::class, 'store'])  ->name('maintenance.store');
+    Route::put('/maintenance/{id}',           [MaintenanceRuleController::class, 'update']) ->name('maintenance.update');
+    Route::patch('/maintenance/{id}/toggle',  [MaintenanceRuleController::class, 'toggle']) ->name('maintenance.toggle');
+
     // ── Mechanics ───────────────────────────────────────────────────────────
     // Records, not accounts: a name and a contact number so work can be
     // assigned and someone can be rung about it. There is no mechanic login
@@ -153,5 +164,15 @@ Route::middleware(['auth', 'role:customer', 'maintenance'])->group(function () {
 // ── Availability picker API (public — counts only, no customer data) ──────
     Route::get('/booking/availability', \App\Http\Controllers\AvailabilityController::class)->name('booking.availability');
 
+
+// ── Scheduler trigger (token-guarded, called by an external cron) ─────────
+// Render's free tier has no cron jobs, no worker and no shell, so nothing
+// scheduled ever ticked in production. An outside cron service pings this on a
+// fixed interval and Laravel decides what is actually due. Deliberately
+// outside the 'maintenance' middleware: reminders should keep going out while
+// the shop has the customer-facing site switched off.
+Route::get('/cron/{task?}', \App\Http\Controllers\CronController::class)
+    ->middleware('throttle:cron')
+    ->name('cron.run');
 
 require __DIR__.'/auth.php';

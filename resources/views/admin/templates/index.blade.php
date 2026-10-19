@@ -140,6 +140,13 @@
                     <button class="msg-tab" data-tab="sms" onclick="switchChannel('sms',this)">
                         <i class="fas fa-mobile-screen"></i> SMS Template
                     </button>
+                    {{-- A different kind of message: not "your appointment is
+                         on Thursday" but "your car has not been in for six
+                         months". It has its own placeholders, because there is
+                         no booking to draw a date or a reference from. --}}
+                    <button class="msg-tab" data-tab="maintenance" onclick="switchChannel('maintenance',this)">
+                        <i class="fas fa-car-side"></i> Service Due
+                    </button>
                 </div>
 
                 <!-- EMAIL EDITOR -->
@@ -206,6 +213,40 @@
                             <div style="background:#e5e5ea;border-radius:14px 14px 2px 14px;padding:10px 14px;font-size:.84rem;line-height:1.5;max-width:280px;color:#000;" id="smsPreview">
                                 Hi {name}! This is a reminder from APX AutoMai...
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SERVICE-DUE EDITOR -->
+                <div class="tab-panel" id="panel-maintenance">
+                    <div class="card-body" style="padding:18px;">
+                        <div style="background:var(--surface-2);border-radius:8px;padding:10px 12px;font-size:.75rem;color:var(--text-muted);margin-bottom:14px;line-height:1.5;">
+                            Sent when a vehicle reaches a service interval and has nothing booked.
+                            One message per vehicle per interval — a car behind on three things
+                            gets one email, not three. Use
+                            <code>{due_date}</code>, <code>{reason}</code> and
+                            <code>{recommendation}</code> here; <code>{date}</code> and
+                            <code>{reference}</code> have no booking to read from.
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Email Subject Line</label>
+                            <input class="form-control" type="text" id="maintenanceSubject"
+                                   value="{{ $settings['maintenance_subject'] ?? '' }}" />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Email Body</label>
+                            <textarea class="form-control" id="maintenanceBody" rows="8"
+                                      style="resize:vertical;font-family:'Barlow',sans-serif;line-height:1.6;">{{ $settings['maintenance_body'] ?? '' }}</textarea>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label">SMS Message Body</label>
+                            <textarea class="form-control" id="maintenanceSms" rows="4"
+                                      oninput="updateMaintenanceSmsCounter(this)"
+                                      style="resize:none;font-family:'Barlow',sans-serif;line-height:1.6;">{{ $settings['maintenance_sms'] ?? '' }}</textarea>
+                            <div class="sms-counter" id="maintenanceSmsCounter">0 / 160 characters (1 SMS)</div>
                         </div>
                     </div>
                 </div>
@@ -282,6 +323,10 @@
                             ['key'=>'remind_3d','label'=>'3 days before','desc'=>'Three day reminder','icon'=>'fa-calendar-days'],
                             ['key'=>'remind_1d','label'=>'24 hours before','desc'=>'Day-of reminder','icon'=>'fa-calendar-day'],
                             ['key'=>'remind_2h','label'=>'2 hours before','desc'=>'Same-day final nudge','icon'=>'fa-clock'],
+                            // Not about a booking at all: this one goes out when a
+                            // vehicle is overdue for servicing and has nothing
+                            // booked, using the Maintenance template below.
+                            ['key'=>'maintenance_due','label'=>'Vehicle due for servicing','desc'=>'Service interval reached, nothing booked','icon'=>'fa-car-side'],
                         ];
                     @endphp
                     @foreach($triggerDefs as $t)
@@ -522,6 +567,7 @@ if (_savedSms && _savedSms.trim() !== '') {
 
 updateEmailPreview();
 updateSmsCounter(document.getElementById('smsBody'));
+updateMaintenanceSmsCounter(document.getElementById('maintenanceSms'));
 
 function resetEmailBody() {
     emailBody.innerHTML = defaultEmailTemplate();
@@ -580,20 +626,48 @@ function switchChannel(tab, btn) {
     document.getElementById('emailPreviewCard').style.display = tab === 'email' ? '' : 'none';
 }
 
+/* Insert a placeholder at the caret of whichever field was last focused.
+   The service-due tab has three plain textareas rather than one rich-text
+   body, so "the email body" is no longer the only thing the else branch can
+   mean — it has to be the field the admin was actually typing in. */
 function insertPlaceholder(tag) {
     const activeTab = document.querySelector('.msg-tab.active').dataset.tab;
+
+    if (activeTab === 'maintenance') {
+        const fields = ['maintenanceSubject', 'maintenanceBody', 'maintenanceSms']
+            .map(id => document.getElementById(id));
+        const target = fields.includes(document.activeElement)
+            ? document.activeElement
+            : document.getElementById('maintenanceBody');
+
+        insertAtCaret(target, tag);
+
+        if (target.id === 'maintenanceSms') {
+            updateMaintenanceSmsCounter(target);
+        }
+
+        return;
+    }
+
     if (activeTab === 'sms') {
         const ta = document.getElementById('smsBody');
-        const s = ta.selectionStart, e = ta.selectionEnd;
-        ta.value = ta.value.substring(0, s) + tag + ta.value.substring(e);
-        ta.selectionStart = ta.selectionEnd = s + tag.length;
-        ta.focus();
+        insertAtCaret(ta, tag);
         updateSmsCounter(ta);
-    } else {
-        emailBody.focus();
-        document.execCommand('insertText', false, tag);
-        updateEmailPreview();
+        return;
     }
+
+    emailBody.focus();
+    document.execCommand('insertText', false, tag);
+    updateEmailPreview();
+}
+
+function insertAtCaret(field, tag) {
+    const s = field.selectionStart ?? field.value.length;
+    const e = field.selectionEnd ?? field.value.length;
+
+    field.value = field.value.substring(0, s) + tag + field.value.substring(e);
+    field.selectionStart = field.selectionEnd = s + tag.length;
+    field.focus();
 }
 
 function updateSmsCounter(ta) {
@@ -606,17 +680,37 @@ function updateSmsCounter(ta) {
         ta.value.substring(0, 120) + (ta.value.length > 120 ? '...' : '');
 }
 
+/* Same arithmetic as the appointment SMS counter. Worth showing here too: a
+   service-due text that quietly grows past 160 characters costs double on
+   every send, and nothing else in the app would reveal that. */
+function updateMaintenanceSmsCounter(ta) {
+    const len     = ta.value.length;
+    const sms     = Math.ceil(len / 160) || 1;
+    const counter = document.getElementById('maintenanceSmsCounter');
+    counter.textContent = `${len} / ${sms * 160} characters (${sms} SMS)`;
+    counter.className   = 'sms-counter' + (len > 160 ? ' warn' : '') + (len > 320 ? ' over' : '');
+}
+
 function saveAllTemplates() {
     const payload = {
         email_subject:   document.getElementById('emailSubject').value,
         email_preheader: document.getElementById('emailPreheader').value,
         email_body:      emailBody.innerHTML,
         sms_body:        document.getElementById('smsBody').value,
+
+        maintenance_subject: document.getElementById('maintenanceSubject').value,
+        maintenance_body:    document.getElementById('maintenanceBody').value,
+        maintenance_sms:     document.getElementById('maintenanceSms').value,
+
         triggers: {
             remind_7d: document.querySelector('[name="remind_7d"]').checked,
             remind_3d: document.querySelector('[name="remind_3d"]').checked,
             remind_1d: document.querySelector('[name="remind_1d"]').checked,
             remind_2h: document.querySelector('[name="remind_2h"]').checked,
+            // Posted explicitly, like the others. A key left out of the payload
+            // is restored from the defaults when the file is read back, so an
+            // unchecked toggle that is not sent cannot be switched off at all.
+            maintenance_due: document.querySelector('[name="maintenance_due"]').checked,
         },
         channels: {
             send_email: document.querySelector('[name="send_email"]').checked,
@@ -630,13 +724,31 @@ function saveAllTemplates() {
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': _csrfToken },
         body: JSON.stringify(payload),
     })
-    .then(r => r.json())
+    /* The status is checked before the toast is shown. This used to resolve
+       the JSON and celebrate regardless, so a 422 from a field that failed
+       validation showed "Saved" and changed nothing — the one failure mode
+       where the admin most needs to be told. */
+    .then(async r => {
+        if (r.ok) return null;
+
+        const body = await r.json().catch(() => ({}));
+
+        throw new Error(
+            Object.values(body.errors || {}).flat().join(' ')
+            || body.message
+            || 'The server rejected the save.'
+        );
+    })
     .then(() => {
         const toast = document.getElementById('saveToast');
         toast.style.display = 'flex';
         setTimeout(() => toast.style.display = 'none', 3000);
     })
-    .catch(() => alert('Failed to save. Please try again.'));
+    .catch(e => ApxAlertModal.show({
+        variant: 'error',
+        title: 'Not saved',
+        message: e.message || 'Failed to save. Please try again.',
+    }));
 }
 
 /* Test send — reports per channel what actually happened.

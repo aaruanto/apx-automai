@@ -119,6 +119,29 @@
         .vehicle-meta-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.77rem; color: var(--text-muted); margin-bottom: 14px; }
         .vehicle-meta-row span { display: flex; align-items: center; gap: 4px; }
         .vehicle-meta-row i { color: var(--red); font-size: 0.7rem; }
+
+        /* Service-due strip. Three states, and the colour is the whole point:
+           red is reserved for errors and things genuinely wrong, so "due next
+           month" is informational blue and only "overdue" earns the red. A
+           vehicle with nothing outstanding gets the quiet grey variant. */
+        .vehicle-service-note {
+            display: flex; align-items: flex-start; gap: 7px;
+            font-size: 0.75rem; line-height: 1.45;
+            padding: 8px 10px; border-radius: 7px; margin-bottom: 14px;
+            background: var(--surface-2); color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+        .vehicle-service-note i { margin-top: 2px; font-size: 0.72rem; flex-shrink: 0; }
+        .vehicle-service-note.is-due {
+            background: var(--info-glow, rgba(59,130,246,.12));
+            border-color: var(--info, #3B82F6);
+            color: var(--text);
+        }
+        .vehicle-service-note.is-due i { color: var(--info, #3B82F6); }
+        .vehicle-service-note.is-overdue {
+            background: var(--red-glow); border-color: var(--red); color: var(--text);
+        }
+        .vehicle-service-note.is-overdue i { color: var(--red); }
         .vehicle-card-actions { display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
         .btn-veh-action { flex: 1; background: var(--surface-3); border: 1px solid var(--border); color: var(--text-muted); padding: 7px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; transition: color 0.2s, border-color 0.2s, background 0.2s; }
         .btn-veh-action:hover { color: var(--text); border-color: rgba(255,255,255,0.14); }
@@ -499,6 +522,16 @@
                         <div class="m-form-group">
                             <label class="m-label">Color</label>
                             <div class="m-input-wrap"><i class="fas fa-palette"></i><input class="m-control" id="avfColor" type="text" placeholder="e.g. Matte Black" /></div>
+                        </div>
+                        {{-- Optional, and said so on the label. Plenty of
+                             customers do not know their odometer reading, and
+                             service reminders work on time intervals without
+                             it — this only lets us tell them sooner when they
+                             drive more than average. --}}
+                        <div class="m-form-group">
+                            <label class="m-label">Mileage <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+                            <div class="m-input-wrap"><i class="fas fa-gauge"></i><input class="m-control" id="avfMileage" type="number" min="0" max="2000000" placeholder="e.g. 42000" /></div>
+                            <div class="m-hint">Helps us tell you sooner when a service is due. Leave blank if you are not sure.</div>
                         </div>
                     </div>
                     <div class="avf-actions">
@@ -1772,6 +1805,30 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         ).join('');
     }
 
+    /* The service-due strip on a vehicle card.
+       Drawn from the same calculation that decides whether to email the
+       customer — the controller runs MaintenanceDue and sends the answer
+       down — so the dashboard and the inbox cannot disagree about whether a
+       car is due. Nothing is drawn in the common case of nothing being due. */
+    function serviceDueNotice(v) {
+        if (!v.due) {
+            return v.lastService
+                ? `<div class="vehicle-service-note"><i class="fas fa-circle-check"></i> Last serviced ${esc(v.lastService)}</div>`
+                : '';
+        }
+
+        const label = v.due.overdue ? 'Overdue' : 'Due ' + esc(v.due.dueDate);
+        const suggest = v.due.recommendation
+            ? ` &middot; we suggest ${esc(v.due.recommendation)}`
+            : '';
+
+        return `
+            <div class="vehicle-service-note ${v.due.overdue ? 'is-overdue' : 'is-due'}">
+                <i class="fas fa-screwdriver-wrench"></i>
+                <span><strong>${label}</strong>: ${esc(v.due.name)}${suggest}</span>
+            </div>`;
+    }
+
     function renderVehicles() {
         const grid  = document.getElementById('vehiclesGrid');
         const empty = document.getElementById('vehiclesEmpty');
@@ -1791,7 +1848,9 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                         <span><i class="fas ${v.type === 'motorcycle' ? 'fa-motorcycle' : 'fa-car'}"></i>${v.type === 'motorcycle' ? 'Motorcycle' : 'Car'}</span>
                         ${v.year  ? `<span><i class="fas fa-calendar"></i>${esc(v.year)}</span>` : ''}
                         ${v.color ? `<span><i class="fas fa-palette"></i>${esc(v.color)}</span>` : ''}
+                        ${v.mileage ? `<span><i class="fas fa-gauge"></i>${Number(v.mileage).toLocaleString()} km</span>` : ''}
                     </div>
+                    ${serviceDueNotice(v)}
                     <div class="vehicle-card-actions">
                         <button class="btn-veh-action" onclick="editVehicle(${v.id})"><i class="fas fa-pen"></i> Edit</button>
                         <button class="btn-veh-action danger" onclick="deleteVehicle(${v.id})"><i class="fas fa-trash"></i> Remove</button>
@@ -1822,7 +1881,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         if (form.classList.contains('open')) {
             editingVehicleId = null;
             setVehicleFormMode('add');
-            ['avfMake','avfYear','avfPlate','avfColor'].forEach(id => document.getElementById(id).value = '');
+            ['avfMake','avfYear','avfPlate','avfColor','avfMileage'].forEach(id => document.getElementById(id).value = '');
             document.getElementById('avfType').value = 'car';
             setTimeout(() => document.getElementById('avfMake').focus(), 100);
         }
@@ -1845,6 +1904,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         document.getElementById('avfPlate').value = (v.plate && v.plate !== 'Not provided') ? v.plate : '';
         document.getElementById('avfColor').value = v.color || '';
         document.getElementById('avfType').value  = v.type  || 'car';
+        document.getElementById('avfMileage').value = v.mileage || '';
 
         form.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setTimeout(() => document.getElementById('avfMake').focus(), 200);
@@ -1863,6 +1923,12 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
     const year  = document.getElementById('avfYear').value.trim();
     const plate = document.getElementById('avfPlate').value.trim();
     const color = document.getElementById('avfColor').value.trim();
+
+    // Blank means "I do not know", which must reach the server as null and
+    // not as 0 — a vehicle recorded at zero kilometres would look brand new
+    // to every distance-based service rule.
+    const mileageRaw = document.getElementById('avfMileage').value.trim();
+    const mileage    = mileageRaw === '' ? null : parseInt(mileageRaw, 10);
 
     if (!FormValidate.validateForm([document.getElementById('avfMake'), document.getElementById('avfYear'), document.getElementById('avfPlate')])) {
         return;
@@ -1886,7 +1952,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             fetch(editing ? `/customer/vehicles/${editingVehicleId}` : '/customer/vehicles', {
                 method: editing ? 'PATCH' : 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                body: JSON.stringify({ brand: make, model: '', plate, year: parseInt(year), color, vehicle_type: vtype })
+                body: JSON.stringify({ brand: make, model: '', plate, year: parseInt(year), color, vehicle_type: vtype, mileage })
             })
             .then(r => r.json().catch(() => ({})).then(d => ({ ok: r.ok, data: d })))
             .then(({ ok, data }) => {

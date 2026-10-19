@@ -18,6 +18,12 @@ class DatabaseSeeder extends Seeder
         // database came up with no services at all.
         $this->call(ServiceSeeder::class);
 
+        // The PMS packages, and the intervals that decide when to recommend
+        // them. Order matters: a rule points at a bundle, and a bundle is
+        // built from services.
+        $this->call(MaintenancePackageSeeder::class);
+        $this->call(MaintenanceRuleSeeder::class);
+
         // Sample login — deliberately never created in production.
         if (! app()->environment('production')) {
             User::factory()->create([

@@ -99,14 +99,14 @@ it('tells the customer when their booking is rescheduled, naming both slots', fu
 
     $this->actingAs(notifAdmin())->put("/admin/bookings/{$booking->id}", [
         'service_ids'  => [$booking->service_id],
-        'booking_date' => today()->addDays(5)->toDateString(),
+        'booking_date' => nextWeekdayAfter(5),
         'booking_time' => '14:00',
         'status'       => 'confirmed',
     ])->assertSessionHasNoErrors();
 
     $body = collect($customer->notifications)->firstWhere('data.event', BookingNotification::BOOKING_RESCHEDULED)->data['body'];
     expect($body)->toContain($oldDate);
-    expect($body)->toContain(today()->addDays(5)->toDateString());
+    expect($body)->toContain(nextWeekdayAfter(5));
 });
 
 it('tells the customer when the service is completed', function () {

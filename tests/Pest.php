@@ -51,7 +51,20 @@ expect()->extend('toBeOne', function () {
  */
 function nextWeekday(): string
 {
-    $date = Carbon\Carbon::today()->addDay();
+    return nextWeekdayAfter(1);
+}
+
+/**
+ * The first full opening day at least $days from now.
+ *
+ * Same trap as nextWeekday(), one step further out: a test that books an
+ * afternoon slot on today()->addDays(5) passes for most of the week and fails
+ * whenever that lands on a Saturday or Sunday. Any test that picks a booking
+ * date arithmetically should come through here.
+ */
+function nextWeekdayAfter(int $days): string
+{
+    $date = Carbon\Carbon::today()->addDays($days);
 
     while ($date->dayOfWeekIso >= 6) {
         $date->addDay();

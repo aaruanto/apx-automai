@@ -4,13 +4,15 @@
 flowchart TB
     USERS["users<br/>id, name, email, phone<br/>role, is_guest, is_active"]
     CUSTOMERS["customers<br/>id, user_id, phone<br/>address, dob"]
-    VEHICLES["vehicles<br/>id, user_id, plate_number<br/>make, model, vehicle_type"]
+    VEHICLES["vehicles<br/>id, user_id, plate_number<br/>make, model, vehicle_type<br/>last_service_date, mileage"]
     SERVICES["services<br/>id, name, category<br/>price, duration, is_active"]
     BUNDLES["bundles<br/>id, name, price<br/>is_active, vehicle_type"]
     BUNDLESVC["bundle_service<br/>bundle_id, service_id"]
     MECHANICS["mechanics<br/>id, name, contact_number<br/>specialty, status"]
     BOOKINGS["bookings<br/>id, user_id, vehicle_id<br/>mechanic_id, bundle_id<br/>reference_number, date, time<br/>status, price snapshots"]
     BOOKINGSVC["booking_service<br/>booking_id, service_id<br/>price snapshot, duration"]
+    RULES["maintenance_rules<br/>id, name, bundle_id, service_id<br/>interval_months, interval_km<br/>lead_days, vehicle_type"]
+    REMINDERS["reminders<br/>id, type, user_id, vehicle_id<br/>booking_id, maintenance_rule_id<br/>trigger_key, channel<br/>due_date, sent_at, dedupe_key"]
     LEDGER["loyalty_ledger<br/>id, user_id, booking_id<br/>points, remaining<br/>balance_after, expires_at"]
     AUDIT["audit_logs<br/>id, user_id, actor_name<br/>action, old_values, new_values"]
     SMSLOG["sms_logs<br/>id, booking_id, recipient<br/>status, segments, trigger"]
@@ -22,9 +24,11 @@ flowchart TB
     USERS -->|1 to many| BOOKINGS
     USERS -->|1 to many| LEDGER
     USERS -->|1 to many| AUDIT
+    USERS -->|1 to many| REMINDERS
     USERS -->|1 to 1| DELETIONS
 
     VEHICLES -->|1 to many| BOOKINGS
+    VEHICLES -->|1 to many| REMINDERS
     MECHANICS -->|1 to many| BOOKINGS
     BUNDLES -->|1 to many| BOOKINGS
 
@@ -35,3 +39,8 @@ flowchart TB
 
     BOOKINGS -->|1 to many| LEDGER
     BOOKINGS -->|1 to many| SMSLOG
+    BOOKINGS -->|1 to many| REMINDERS
+
+    RULES -->|1 to many| REMINDERS
+    BUNDLES -->|recommends| RULES
+    SERVICES -->|recommends| RULES

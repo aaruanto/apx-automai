@@ -197,3 +197,71 @@ it('reads zero vehicles without breaking', function () {
     expect($response->viewData('customers')->first()->vehicle_count)->toBe(0);
     $response->assertSee('none registered');
 });
+
+it('stores an optional mileage reading and dates it', function () {
+    $customer = \App\Models\User::factory()->create(['role' => 'customer']);
+
+    $this->actingAs($customer)->postJson('/customer/vehicles', [
+        'brand'   => 'Toyota',
+        'plate'   => 'MIL 1234',
+        'year'    => 2021,
+        'mileage' => 42000,
+    ])->assertOk();
+
+    $vehicle = \App\Models\Vehicle::where('plate_number', 'MIL 1234')->sole();
+
+    expect($vehicle->mileage)->toBe(42000);
+    expect($vehicle->mileage_updated_at->toDateString())->toBe(now()->toDateString());
+});
+
+it('accepts a vehicle with no mileage at all', function () {
+    $customer = \App\Models\User::factory()->create(['role' => 'customer']);
+
+    // Most customers do not know their odometer reading. A blank field must
+    // not become 0, which every distance rule would read as a brand new car.
+    $this->actingAs($customer)->postJson('/customer/vehicles', [
+        'brand'   => 'Toyota',
+        'plate'   => 'MIL 5678',
+        'year'    => 2021,
+        'mileage' => null,
+    ])->assertOk();
+
+    $vehicle = \App\Models\Vehicle::where('plate_number', 'MIL 5678')->sole();
+
+    expect($vehicle->mileage)->toBeNull();
+    expect($vehicle->mileage_updated_at)->toBeNull();
+});
+
+it('does not wipe a stored mileage when the field is left blank on edit', function () {
+    $customer = \App\Models\User::factory()->create(['role' => 'customer']);
+
+    $vehicle = \App\Models\Vehicle::create([
+        'user_id'      => $customer->id,
+        'make'         => 'Toyota',
+        'model'        => 'Vios',
+        'year'         => 2021,
+        'plate_number' => 'MIL 9012',
+        'vehicle_type' => 'car',
+        'mileage'      => 30000,
+    ]);
+
+    $this->actingAs($customer)->patchJson("/customer/vehicles/{$vehicle->id}", [
+        'brand' => 'Toyota',
+        'plate' => 'MIL 9012',
+        'year'  => 2021,
+        'color' => 'Blue',
+    ])->assertOk();
+
+    expect($vehicle->fresh()->mileage)->toBe(30000);
+});
+
+it('rejects a negative mileage', function () {
+    $customer = \App\Models\User::factory()->create(['role' => 'customer']);
+
+    $this->actingAs($customer)->postJson('/customer/vehicles', [
+        'brand'   => 'Toyota',
+        'plate'   => 'MIL 3456',
+        'year'    => 2021,
+        'mileage' => -5,
+    ])->assertStatus(422);
+});

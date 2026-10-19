@@ -11,13 +11,18 @@ class Vehicle extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'user_id', 'make', 'model', 'plate_number', 'vehicle_type', 'year', 'color', 'is_primary'
+        'user_id', 'make', 'model', 'plate_number', 'vehicle_type', 'year', 'color', 'is_primary',
+        'last_service_date', 'mileage', 'mileage_updated_at', 'mileage_at_last_service',
     ];
 
     // Without this, is_primary reads back as 1/0, which is why callers were
     // casting it by hand before handing it to the front end.
     protected $casts = [
-        'is_primary' => 'boolean',
+        'is_primary'              => 'boolean',
+        'last_service_date'       => 'date',
+        'mileage_updated_at'      => 'date',
+        'mileage'                 => 'integer',
+        'mileage_at_last_service' => 'integer',
     ];
 
     public function user()

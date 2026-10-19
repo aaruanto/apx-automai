@@ -104,7 +104,7 @@ it('starts a future-dated booking', function () {
     // button from nearly every booking in practice.
     $booking = makeBooking([
         'status'       => 'confirmed',
-        'booking_date' => today()->addDays(3)->toDateString(),
+        'booking_date' => nextWeekdayAfter(3),
     ]);
 
     $this->actingAs(admin())

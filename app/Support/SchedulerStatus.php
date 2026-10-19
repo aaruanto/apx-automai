@@ -13,14 +13,29 @@ use Carbon\Carbon;
  * the schedule. It reported health whether or not anything was running, which
  * is worse than reporting nothing.
  *
- * A heartbeat task in routes/console.php writes a timestamp every minute. If
+ * A heartbeat task in routes/console.php writes a timestamp on every tick. If
  * that value is recent the scheduler is alive; if it is old or missing, it is
  * not, and the screen says so.
+ *
+ * In production the ticking is done by an external cron service calling
+ * /cron/schedule, because Render's free tier has no cron jobs, no worker and
+ * no shell. So this is also the readout for whether that cron is still
+ * configured and reaching the app.
  */
 class SchedulerStatus
 {
-    /** A tick may be missed under load, so allow a little slack. */
-    private const STALE_AFTER_MINUTES = 5;
+    /** How often the heartbeat is expected to run. Keep in step with console.php. */
+    private const TICK_MINUTES = 5;
+
+    /**
+     * Tolerate one missed tick plus drift.
+     *
+     * This was equal to the tick interval, which meant a heartbeat arriving a
+     * few seconds late read as "not running" — and once the ticking moved to
+     * an external cron, whose timing nobody controls, that would have been
+     * most of the time.
+     */
+    private const STALE_AFTER_MINUTES = self::TICK_MINUTES * 2 + 2;
 
     public static function lastRun(): ?Carbon
     {
@@ -51,7 +66,7 @@ class SchedulerStatus
             return null;
         }
 
-        return self::lastRun()->copy()->addMinute();
+        return self::lastRun()->copy()->addMinutes(self::TICK_MINUTES);
     }
 
     /** Everything the status card needs, in one call. */

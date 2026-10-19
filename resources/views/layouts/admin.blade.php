@@ -1106,6 +1106,12 @@
                     <span class="nav-icon"><i class="fas fa-screwdriver-wrench"></i></span>
                     <span class="nav-label">Mechanics</span>
                 </a>
+                {{-- Sits next to Bundles on purpose: an interval recommends a
+                     package, so the two screens are usually edited together. --}}
+                <a class="nav-link {{ request()->routeIs('admin.maintenance.*') ? 'active' : '' }}" href="{{ route('admin.maintenance.index') }}">
+                    <span class="nav-icon"><i class="fas fa-car-side"></i></span>
+                    <span class="nav-label">Service Intervals</span>
+                </a>
                 <a class="nav-link {{ request()->routeIs('admin.settings*') ? 'active' : '' }}" href="{{ route('admin.settings') }}">
                     <span class="nav-icon"><i class="fas fa-gear"></i></span>
                     <span class="nav-label">Settings</span>

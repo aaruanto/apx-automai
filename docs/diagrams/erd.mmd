@@ -22,6 +22,13 @@ erDiagram
     BOOKINGS ||--o{ LOYALTY_LEDGER : "moves points"
     BOOKINGS ||--o{ SMS_LOGS : "triggers"
 
+    USERS ||--o{ REMINDERS : receives
+    VEHICLES ||--o{ REMINDERS : "is due for"
+    BOOKINGS ||--o{ REMINDERS : "is reminded of"
+    MAINTENANCE_RULES ||--o{ REMINDERS : raises
+    BUNDLES ||--o{ MAINTENANCE_RULES : "recommended by"
+    SERVICES ||--o{ MAINTENANCE_RULES : "recommended by"
+
     USERS {
         int id PK
         string name
@@ -46,6 +53,9 @@ erDiagram
         string model
         string vehicle_type "car or motorcycle"
         bool is_primary
+        date last_service_date "set when a booking completes"
+        int mileage "optional, customer supplied"
+        int mileage_at_last_service
     }
     SERVICES {
         int id PK
@@ -134,4 +144,28 @@ erDiagram
         int id PK
         string key UK
         string value
+    }
+    MAINTENANCE_RULES {
+        int id PK
+        string name
+        int bundle_id FK "what to recommend booking"
+        int service_id FK
+        int interval_months "null when distance only"
+        int interval_km "null when time only"
+        int lead_days "how far ahead to warn"
+        string vehicle_type "null applies to all"
+        bool is_active
+    }
+    REMINDERS {
+        int id PK
+        string type "appointment or maintenance"
+        int user_id FK
+        int vehicle_id FK
+        int booking_id FK
+        int maintenance_rule_id FK
+        string trigger_key "remind_7d, maintenance_due"
+        string channel "email or sms"
+        date due_date
+        datetime sent_at
+        string dedupe_key UK "makes a send exactly-once"
     }

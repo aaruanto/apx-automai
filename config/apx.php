@@ -40,6 +40,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Scheduler trigger
+    |--------------------------------------------------------------------------
+    |
+    | Shared secret for the /cron/{task} endpoint, which an external cron
+    | service calls so Laravel's scheduler ticks in production. Render's free
+    | tier has no cron jobs, no worker process and no shell, so without this
+    | nothing scheduled ever runs — reminders included.
+    |
+    | Left unset, the endpoint 404s instead of running: a deploy that forgets
+    | the variable must not leave an unauthenticated way to make the app send
+    | mail. Generate one with `php artisan apx:cron-token`.
+    |
+    */
+    'cron_token' => env('APX_CRON_TOKEN', ''),
+
+    /*
+    |--------------------------------------------------------------------------
     | Guided booking
     |--------------------------------------------------------------------------
     |

@@ -58,3 +58,52 @@ it('resolves the shop placeholders that used to be null', function () {
     expect(config('apx.branch_name'))->not->toBeNull();
     expect(config('apx.contact_number'))->not->toBeNull();
 });
+
+it('round-trips the service-due template through the admin editor', function () {
+    $admin = \App\Models\User::factory()->create(['role' => 'admin']);
+
+    $this->actingAs($admin)->postJson('/admin/templates/save', [
+        'email_subject'       => 'Subject {service}',
+        'email_body'          => '<p>Body</p>',
+        'sms_body'            => 'Appointment SMS',
+        'maintenance_subject' => 'Your {vehicle} needs a look',
+        'maintenance_body'    => '<p>Due on {due_date} — {reason}</p>',
+        'maintenance_sms'     => 'Service due {due_date}. Try {recommendation}.',
+        'channels'            => ['send_email' => true, 'send_sms' => true],
+        'triggers'            => ['maintenance_due' => true],
+    ])->assertOk();
+
+    $loaded = MessageTemplate::load();
+
+    expect($loaded['maintenance_subject'])->toBe('Your {vehicle} needs a look');
+    expect($loaded['maintenance_sms'])->toBe('Service due {due_date}. Try {recommendation}.');
+});
+
+it('lets the admin switch service-due reminders off', function () {
+    $admin = \App\Models\User::factory()->create(['role' => 'admin']);
+
+    // The trigger ships on. A false that is posted must survive the read-back,
+    // or the feature cannot be turned off at all: load() merges the saved file
+    // over the defaults, so a key left out of the payload comes back true.
+    $this->actingAs($admin)->postJson('/admin/templates/save', [
+        'email_subject' => 'S',
+        'email_body'    => '<p>B</p>',
+        'sms_body'      => 'A',
+        'triggers'      => ['maintenance_due' => false],
+    ])->assertOk();
+
+    expect(MessageTemplate::load()['triggers']['maintenance_due'])->toBeFalse();
+});
+
+it('refuses a service-due template saved with an empty body', function () {
+    $admin = \App\Models\User::factory()->create(['role' => 'admin']);
+
+    $this->actingAs($admin)->postJson('/admin/templates/save', [
+        'email_subject'       => 'S',
+        'email_body'          => '<p>B</p>',
+        'sms_body'            => 'A',
+        'maintenance_subject' => 'Still here',
+        'maintenance_body'    => '',
+        'maintenance_sms'     => 'Fine',
+    ])->assertStatus(422);
+});

@@ -66,7 +66,20 @@ class DashboardController extends Controller
             ];
         })->values();
 
-        $vehiclesJs = $vehicles->map(function($v) {
+        // The same calculation the reminder emails use, so the dashboard and
+        // the inbox cannot disagree about whether a car is due. Rules are
+        // loaded once here rather than per vehicle.
+        $dueCalculator = app(\App\Services\MaintenanceDue::class);
+        $rules         = \App\Models\MaintenanceRule::active()
+            ->with(['bundle', 'service'])
+            ->orderBy('sort_order')
+            ->get();
+
+        $vehiclesJs = $vehicles->map(function ($v) use ($dueCalculator, $rules) {
+            $due = $dueCalculator->forVehicle($v, $rules)
+                ->sortBy(fn (array $d) => [$d['overdue'] ? 0 : 1, $d['due_date']->timestamp])
+                ->first();
+
             return [
                 'id'      => $v->id,
                 'make'    => $v->make . ' ' . $v->model,
@@ -75,6 +88,19 @@ class DashboardController extends Controller
                 'color'   => $v->color ?? '',
                 'type'    => $v->vehicle_type ?? 'car',
                 'primary' => (bool) $v->is_primary,
+                'mileage' => $v->mileage,
+
+                'lastService' => $v->last_service_date?->format('M j, Y'),
+
+                // null when nothing is due, which is the common case — the
+                // badge is drawn only when there is something to say.
+                'due' => $due ? [
+                    'name'           => $due['rule']->name,
+                    'dueDate'        => $due['due_date']->format('M j, Y'),
+                    'reason'         => $due['reason'],
+                    'overdue'        => $due['overdue'],
+                    'recommendation' => $due['rule']->recommendation(),
+                ] : null,
             ];
         })->values();
 
@@ -274,6 +300,12 @@ class DashboardController extends Controller
             'year'         => 'required|integer|min:1990|max:2100',
             'color'        => 'nullable|string|max:40',
             'vehicle_type' => 'nullable|in:car,motorcycle',
+
+            // Optional on purpose. Plenty of customers do not know their
+            // odometer reading, and maintenance reminders work on time
+            // intervals without it — asking would put a question they cannot
+            // answer in front of a form they are trying to finish.
+            'mileage'      => 'nullable|integer|min:0|max:2000000',
         ], [
             'plate.regex' => 'Enter a valid plate number (e.g. ABC 1234).',
         ]);
@@ -310,6 +342,11 @@ class DashboardController extends Controller
             'year'         => $data['year'],
             'color'        => $data['color'] ?? '',
             'is_primary'   => $isFirst,
+            'mileage'      => $data['mileage'] ?? null,
+
+            // Dated so the reading can be shown with its age. A number from
+            // two years ago should not be presented as current.
+            'mileage_updated_at' => isset($data['mileage']) ? now()->toDateString() : null,
         ]);
 
         return response()->json([
@@ -321,6 +358,7 @@ class DashboardController extends Controller
                 'plate'   => $vehicle->display_plate,
                 'color'   => $vehicle->color,
                 'type'    => $vehicle->vehicle_type,
+                'mileage' => $vehicle->mileage,
                 'primary' => (bool) $vehicle->is_primary,
             ]
         ]);
@@ -349,6 +387,12 @@ class DashboardController extends Controller
             'year'         => 'required|integer|min:1990|max:2100',
             'color'        => 'nullable|string|max:40',
             'vehicle_type' => 'nullable|in:car,motorcycle',
+
+            // Optional on purpose. Plenty of customers do not know their
+            // odometer reading, and maintenance reminders work on time
+            // intervals without it — asking would put a question they cannot
+            // answer in front of a form they are trying to finish.
+            'mileage'      => 'nullable|integer|min:0|max:2000000',
         ], [
             'plate.regex' => 'Enter a valid plate number (e.g. ABC 1234).',
         ]);
@@ -378,6 +422,16 @@ class DashboardController extends Controller
             'color'        => $data['color'] ?? '',
         ]);
 
+        // Only touched when a reading was actually submitted. A form saved
+        // with the mileage field left blank is someone editing their colour,
+        // not someone telling us their car has done zero kilometres.
+        if (array_key_exists('mileage', $data) && $data['mileage'] !== null) {
+            $vehicle->update([
+                'mileage'            => $data['mileage'],
+                'mileage_updated_at' => now()->toDateString(),
+            ]);
+        }
+
         return response()->json([
             'success' => true,
             'vehicle' => [
@@ -387,6 +441,7 @@ class DashboardController extends Controller
                 'plate'   => $vehicle->display_plate,
                 'color'   => $vehicle->color,
                 'type'    => $vehicle->vehicle_type,
+                'mileage' => $vehicle->mileage,
                 'primary' => (bool) $vehicle->is_primary,
             ],
         ]);

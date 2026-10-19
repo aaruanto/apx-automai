@@ -278,6 +278,12 @@ class BookingController extends Controller
         // twice. earnFor is idempotent, so this cannot mint on a re-save.
         if ($oldStatus !== 'completed' && $request->status === 'completed') {
             app(LoyaltyService::class)->earnFor($booking->fresh());
+
+            // Stamp the vehicle's service history. Maintenance reminders count
+            // forward from this date, so if it is never written the vehicle
+            // looks as though it has not been in since the day it was
+            // registered — and the customer is told so, repeatedly.
+            app(\App\Services\ServiceHistory::class)->recordCompletion($booking->fresh()->load('vehicle'));
         }
 
         if ($oldDate !== $booking->booking_date || $oldTime !== $booking->booking_time) {
