@@ -34,7 +34,21 @@ class ServiceSeeder extends Seeder
         ];
 
         foreach ($services as $s) {
+            // Create what is missing, never touch what is there.
+            //
+            // This was updateOrInsert, which overwrote price, duration,
+            // category and is_active on every run — and the Docker entrypoint
+            // runs this seeder on every container start. Render's free tier
+            // sleeps after fifteen minutes and restarts on the next request,
+            // so a price the shop corrected in Admin was silently reset to the
+            // seeded figure within the hour, and a service they switched off
+            // came back on. Seed data is a starting point, not the authority.
+            if (DB::table('services')->where('name', $s['name'])->exists()) {
+                continue;
+            }
+
             $row = [
+                'name'        => $s['name'],
                 'description' => $s['description'],
                 'price'       => $s['price'],
                 'duration'    => $s['duration'],
@@ -44,7 +58,7 @@ class ServiceSeeder extends Seeder
             if ($hasCategory) $row['category']  = $s['category'];
             if ($hasActive)   $row['is_active'] = true;
 
-            DB::table('services')->updateOrInsert(['name' => $s['name']], $row);
+            DB::table('services')->insert($row);
         }
     }
 }

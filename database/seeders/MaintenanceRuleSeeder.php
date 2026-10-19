@@ -60,14 +60,23 @@ class MaintenanceRuleSeeder extends Seeder
             $bundleName = $rule['bundle'];
             unset($rule['bundle']);
 
+            // Create what is missing, never touch what is there. The entrypoint
+            // runs this on every container start, and an interval the shop has
+            // tuned — or deliberately switched off — must survive a restart.
+            if (MaintenanceRule::where('name', $rule['name'])->exists()) {
+                $this->command?->info("Interval '{$rule['name']}' already exists — left as the shop has it.");
+
+                continue;
+            }
+
             $rule['bundle_id']    = $bundles[$bundleName] ?? null;
             $rule['vehicle_type'] = null;
             $rule['is_active']    = true;
 
-            MaintenanceRule::updateOrCreate(['name' => $rule['name']], $rule);
+            MaintenanceRule::create($rule);
 
             $this->command?->info(
-                "Maintenance rule '{$rule['name']}' set"
+                "Interval '{$rule['name']}' created"
                 .($rule['bundle_id'] ? " (recommends {$bundleName})" : ' (no package linked yet)')
             );
         }

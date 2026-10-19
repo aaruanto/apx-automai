@@ -50,6 +50,17 @@ class MaintenancePackageSeeder extends Seeder
         ];
 
         foreach ($packages as $package) {
+            // A package the shop already has is theirs, not ours. This used to
+            // updateOrCreate and re-sync the service list on every run, and the
+            // entrypoint runs this on every container start — so an adjusted
+            // price would have been reset, and a package the shop had tailored
+            // put back to the shipped contents, within the hour.
+            if (Bundle::where('name', $package['name'])->exists()) {
+                $this->command?->info("'{$package['name']}' already exists — left as the shop has it.");
+
+                continue;
+            }
+
             $services = Service::whereIn('name', $package['services'])->get();
 
             // A package missing its services would be a bundle of nothing,
@@ -78,14 +89,12 @@ class MaintenancePackageSeeder extends Seeder
                 continue;
             }
 
-            $bundle = Bundle::updateOrCreate(
-                ['name' => $package['name']],
-                [
-                    'description' => $package['description'],
-                    'price'       => $package['price'],
-                    'is_active'   => true,
-                ]
-            );
+            $bundle = Bundle::create([
+                'name'        => $package['name'],
+                'description' => $package['description'],
+                'price'       => $package['price'],
+                'is_active'   => true,
+            ]);
 
             $bundle->services()->sync($services->pluck('id')->all());
 
