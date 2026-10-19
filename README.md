@@ -7,6 +7,11 @@ Laravel 12 + Blade + Bootstrap. SQLite locally, PostgreSQL on Render.
 
 ## Working as a team
 
+**Setting up for the first time?** Follow
+[`docs/getting-started.md`](docs/getting-started.md) — every command in it was
+run against a clean clone, in that order, and ends with the full test suite
+passing.
+
 The code lives on GitHub. Everything else does not, and that is deliberate.
 
 ### What GitHub carries
@@ -157,6 +162,13 @@ composer install
 npm install && npm run build
 cp .env.example .env          # then fill in the values below
 php artisan key:generate
+
+# Create the SQLite file before migrating. It is gitignored, so a fresh
+# clone does not have one, and `migrate` fails with
+# "Database file at path [...] does not exist" rather than offering to
+# create it.
+touch database/database.sqlite        # Windows PowerShell: New-Item database/database.sqlite
+
 php artisan migrate
 
 # Reference data, not sample data. Without it the landing page, the booking
