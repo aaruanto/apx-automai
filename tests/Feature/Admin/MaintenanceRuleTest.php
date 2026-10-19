@@ -147,3 +147,47 @@ it('rejects a lead time longer than half a year', function () {
         'lead_days'       => 400,
     ])->assertSessionHasErrors('lead_days');
 });
+
+it('shows how many customers the next run would email', function () {
+    basicRuleForCount();
+
+    $customer = User::factory()->create(['role' => 'customer', 'is_active' => true]);
+
+    // Overdue, nothing booked: this one would be emailed.
+    App\Models\Vehicle::create([
+        'user_id' => $customer->id, 'make' => 'Toyota', 'model' => 'Vios', 'year' => 2020,
+        'plate_number' => 'DUE 1111', 'vehicle_type' => 'car',
+        'last_service_date' => now()->subYear()->toDateString(),
+    ]);
+
+    // Serviced last month: not due, must not be counted.
+    App\Models\Vehicle::create([
+        'user_id' => $customer->id, 'make' => 'Toyota', 'model' => 'Vios', 'year' => 2020,
+        'plate_number' => 'NOT 2222', 'vehicle_type' => 'car',
+        'last_service_date' => now()->subMonth()->toDateString(),
+    ]);
+
+    $this->actingAs(ruleAdmin())
+        ->get('/admin/maintenance')
+        ->assertOk()
+        ->assertSee('will be emailed on the next run');
+});
+
+it('says plainly when the next run would send nothing', function () {
+    basicRuleForCount();
+
+    $this->actingAs(ruleAdmin())
+        ->get('/admin/maintenance')
+        ->assertOk()
+        ->assertSee('the next run will send nothing');
+});
+
+function basicRuleForCount(): MaintenanceRule
+{
+    return MaintenanceRule::create([
+        'name'            => 'Basic PMS due',
+        'interval_months' => 6,
+        'lead_days'       => 14,
+        'is_active'       => true,
+    ]);
+}

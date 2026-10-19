@@ -26,6 +26,38 @@
         <a href="{{ route('admin.templates.index') }}" style="color:var(--info,#3B82F6);">Message Templates</a>.
     </div>
 
+    {{-- What the next run would actually do. A vehicle with no completed
+         booking counts from the day it was registered, so switching this on in
+         a shop with a year of existing records can mean a large batch of mail
+         at the next run. Better to see the number before it happens than to
+         find out when it lands. --}}
+    @php $dueTone = $dueNow > 20 ? 'warn' : 'calm'; @endphp
+    <div style="display:flex;align-items:center;gap:14px;border-radius:8px;padding:14px 16px;margin-bottom:20px;
+                background:{{ $dueTone === 'warn' ? 'var(--red-glow)' : 'var(--surface-2)' }};
+                border:1px solid {{ $dueTone === 'warn' ? 'var(--red)' : 'var(--border)' }};">
+        <div style="font-size:1.6rem;font-weight:700;font-variant-numeric:tabular-nums;
+                    color:{{ $dueTone === 'warn' ? 'var(--red)' : 'var(--text)' }};min-width:2ch;text-align:center;">
+            {{ $dueNow }}
+        </div>
+        <div style="font-size:.84rem;color:var(--text-muted);line-height:1.6;">
+            @if ($dueNow === 0)
+                No vehicles are due right now, so the next run will send nothing.
+            @else
+                {{ $dueNow }} {{ \Illuminate\Support\Str::plural('vehicle', $dueNow) }}
+                {{ $dueNow === 1 ? 'is' : 'are' }} due and
+                {{ $dueNow === 1 ? 'has' : 'have' }} nothing booked, so
+                {{ $dueNow === 1 ? 'that customer' : 'those customers' }}
+                will be emailed on the next run.
+                @if ($dueTone === 'warn')
+                    <strong style="color:var(--red);">That is a large batch.</strong>
+                    Switch the intervals off below if you would rather contact them yourself first.
+                @endif
+            @endif
+            <br>
+            <span style="color:var(--text-muted);">Service-due reminders run once a day at 8:00 AM.</span>
+        </div>
+    </div>
+
     <div class="card">
         <div class="card-header">
             <div class="card-header-title"><i class="fas fa-car-side"></i> Intervals</div>

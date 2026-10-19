@@ -7,6 +7,8 @@ use App\Models\AuditLog;
 use App\Models\Bundle;
 use App\Models\MaintenanceRule;
 use App\Models\Service;
+use App\Models\Vehicle;
+use App\Services\MaintenanceDue;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -24,16 +26,51 @@ use Illuminate\Validation\ValidationException;
  */
 class MaintenanceRuleController extends Controller
 {
-    public function index()
+    public function index(MaintenanceDue $due)
     {
+        $rules = MaintenanceRule::with(['bundle', 'service'])
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
         return view('admin.maintenance.index', [
-            'rules'    => MaintenanceRule::with(['bundle', 'service'])
-                ->orderBy('sort_order')
-                ->orderBy('name')
-                ->get(),
+            'rules'    => $rules,
             'bundles'  => Bundle::orderBy('name')->get(),
             'services' => Service::where('is_active', true)->orderBy('name')->get(),
+            'dueNow'   => $this->countDue($due, $rules->where('is_active', true)),
         ]);
+    }
+
+    /**
+     * How many customers the next run would actually email.
+     *
+     * Worth showing, because the answer is not guessable from the rules alone.
+     * A vehicle with no completed booking counts from the day it was
+     * registered, so switching this feature on in a shop with a year of
+     * existing records can mean a large batch of mail at the next run — and
+     * the first anyone would know is when it lands.
+     *
+     * Deliberately the same calculation the command uses, including the
+     * already-booked exclusion, rather than an approximation of it.
+     */
+    private function countDue(MaintenanceDue $due, $rules): int
+    {
+        if ($rules->isEmpty()) {
+            return 0;
+        }
+
+        $count = 0;
+
+        $vehicles = Vehicle::with('user')
+            ->whereHas('user', fn ($q) => $q->where('is_active', true)->where('role', 'customer'));
+
+        foreach ($vehicles->lazyById(200) as $vehicle) {
+            if ($due->forVehicle($vehicle, $rules)->isNotEmpty() && ! $due->hasUpcomingBooking($vehicle)) {
+                $count++;
+            }
+        }
+
+        return $count;
     }
 
     public function store(Request $request)
