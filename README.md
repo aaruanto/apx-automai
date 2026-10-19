@@ -67,6 +67,87 @@ confusing "column not found" error rather than a clear one.
 Render deploys automatically from `main`, so **a push to `main` goes live.**
 Agree on who does that, and run `php artisan test` first.
 
+### When Git goes wrong
+
+Git does not lose committed work. A bad pull or a conflict can make the
+working copy look wrong, but every commit still exists and can be recovered.
+The one way to genuinely lose work is to leave it **uncommitted** and then pull
+on top of it. So commit often, even if you are not ready to push.
+
+**Where conflicts actually happen here.** Three view files carry their own CSS
+and JavaScript inline and are over a thousand lines each:
+`resources/views/dashboard/customer-dashboard.blade.php`,
+`resources/views/index.blade.php` and `resources/views/layouts/admin.blade.php`.
+Two people in the same one on the same day will conflict. Two people in
+different files never will. Divide the work by file and most of this section
+never comes up.
+
+#### "I have unfinished changes and need to pull"
+
+```bash
+git stash          # put your changes aside
+git pull
+git stash pop      # put them back on top
+```
+
+#### "I got a conflict"
+
+Git names the files. Open each one and look for:
+
+```
+<<<<<<< HEAD
+your version
+=======
+their version
+>>>>>>> main
+```
+
+Keep what belongs — often both parts — and delete the three marker lines. Then:
+
+```bash
+git add .
+git commit         # finishes the merge
+```
+
+Nothing is lost here. Git stopped precisely so it would not have to guess.
+
+#### "This merge is a mess, I want out"
+
+```bash
+git merge --abort      # back to exactly before the pull
+```
+
+#### "I broke my working copy and want today's last commit back"
+
+```bash
+git checkout -- .      # discards UNCOMMITTED changes - they are gone
+```
+
+#### "I committed something broken"
+
+```bash
+git revert <commit>    # a new commit undoing it; safe once pushed
+```
+
+Avoid `git reset --hard` and `git push --force` on a shared branch. Both rewrite
+history that someone else may already have pulled, and that is the one way to
+make a mess that is genuinely hard to undo.
+
+#### "I think everything is lost"
+
+It is not. `git reflog` lists every commit your repository has pointed at,
+including ones no branch mentions any more. Find the commit from before things
+went wrong and `git checkout <hash>`. Ask before running anything destructive.
+
+#### Lock files
+
+A conflict in `composer.lock` or `package-lock.json` is not worth resolving by
+hand. Take one side and regenerate:
+
+```bash
+git checkout --theirs composer.lock && composer install
+```
+
 ---
 
 ## Local setup
