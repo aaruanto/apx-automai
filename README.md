@@ -5,6 +5,70 @@ Laravel 12 + Blade + Bootstrap. SQLite locally, PostgreSQL on Render.
 
 ---
 
+## Working as a team
+
+The code lives on GitHub. Everything else does not, and that is deliberate.
+
+### What GitHub carries
+
+Code, migrations, seeders, tests, docs. Clone it and follow **Local setup**
+above.
+
+### What GitHub does NOT carry, and must never
+
+| Not in the repo | Why | What to do |
+|---|---|---|
+| `.env` | Holds the SMTP password, the SMS key and the cron token | Copy `.env.example` and fill in your own |
+| `database/database.sqlite` | Everyone's local data is their own | `php artisan migrate` then the seeders |
+| `/vendor`, `/node_modules` | Rebuilt from lock files | `composer install`, `npm install` |
+| `/storage` contents | Logs and generated files | Created on first run |
+
+**Never put a real secret in the repo, in a chat, or in the paper** — not in
+`.env.example`, not in a screenshot, not in an appendix. `.env.example` holds
+variable *names* only. If a key is ever committed, say so immediately and
+rotate it: Git keeps history, so deleting the line later does not remove it.
+
+Each person gets their own local `.env`. Only the deployed environment needs
+the real production values, and those live in Render's **Environment** tab.
+
+### Day-to-day
+
+```bash
+git pull                 # before you start, every time
+# ...work...
+php artisan test         # must pass before you push
+git add -A
+git commit -m "what changed and why"
+git push
+```
+
+Two rules that prevent most of the pain:
+
+- **Pull before you start.** Most merge conflicts are two people editing from
+  different starting points.
+- **Small, frequent commits** beat one large one at the end of the week.
+
+If you both edited the same file, Git will say so on pull. Open the file, keep
+the correct version of the marked section, delete the `<<<<<<<` markers, then
+commit. Nothing is lost; Git stops rather than guessing.
+
+### After pulling someone else's work
+
+```bash
+composer install     # if composer.lock changed
+php artisan migrate  # if anyone added a migration
+```
+
+A new migration from a teammate will not apply itself, and the symptom is a
+confusing "column not found" error rather than a clear one.
+
+### Who deploys
+
+Render deploys automatically from `main`, so **a push to `main` goes live.**
+Agree on who does that, and run `php artisan test` first.
+
+---
+
 ## Local setup
 
 ```bash
@@ -13,9 +77,19 @@ npm install && npm run build
 cp .env.example .env          # then fill in the values below
 php artisan key:generate
 php artisan migrate
+
+# Reference data, not sample data. Without it the landing page, the booking
+# flow and the admin screens all come up empty and the app looks broken.
 php artisan db:seed --class=ServiceSeeder
+php artisan db:seed --class=MaintenancePackageSeeder
+php artisan db:seed --class=MaintenanceRuleSeeder
+
 php artisan serve
 ```
+
+`php artisan db:seed` runs all three in the right order if you prefer. Every
+seeder creates only what is missing and never overwrites a row that already
+exists, so running them again is always safe.
 
 There is no public route to an admin account by design. Create the first one
 from the environment:
@@ -30,14 +104,20 @@ Run the test suite with `php artisan test`.
 
 ## The scheduler
 
-Three jobs run on a schedule (see `routes/console.php`):
+Everything automatic in this app is a scheduled job (see `routes/console.php`):
 
 | Job | Frequency | What it does |
 |---|---|---|
-| `reminders:send` | every minute | booking reminders at 7d / 3d / 1d / 2h |
-| `bookings:cancel-no-shows` | every minute | cancels bookings past their grace period |
+| `reminders:send` | hourly | appointment reminders at 7d / 3d / 1d (2h is off by default) |
+| `reminders:maintenance` | daily, 08:00 | tells customers their vehicle is due for servicing |
+| `bookings:cancel-no-shows` | every 5 min | cancels bookings past their grace period |
 | `accounts:purge-expired` | daily, 03:00 | anonymises accounts past the 30-day deletion window |
-| heartbeat | every minute | records `scheduler_last_run` so the admin screen can report real status |
+| `loyalty:expire` | daily, 03:30 | retires loyalty points past their expiry date |
+| heartbeat | every 5 min | records `scheduler_last_run` so the admin screen reports real status |
+
+Nothing here is finer-grained than five minutes, because the production trigger
+fires on five-minute boundaries. `schedule:run` only runs jobs due in the
+*current minute*, so a job scheduled off those boundaries would never fire.
 
 **Nothing works unless something runs the scheduler.** Laravel does not run it
 for you.
@@ -58,30 +138,40 @@ Leave it running alongside `php artisan serve`.
 
 ### On Render
 
-Render does not run crontabs, so the line above does nothing there. Use a
-**Cron Job** service instead:
+Render's free tier has no cron jobs, no background workers and no shell, so
+neither of the above is available. Its paid **Cron Job** service would work,
+but is not necessary.
 
-1. Render dashboard → **New** → **Cron Job**.
-2. Point it at the same repository and `Dockerfile` as the web service.
-3. **Schedule:** `* * * * *` (every minute).
-4. **Command:** `php artisan schedule:run`
-5. Attach the **same environment variables and the same database** as the web
-   service, or it will run against nothing.
+Instead this app exposes a token-guarded endpoint that runs the scheduler, and
+a free external cron service calls it. Laravel still decides what is due, so
+the frequencies stay in `routes/console.php`.
 
-Cost: Render's Cron Jobs are a paid feature and are not included in the free
-tier. If you would rather not pay, the alternatives are to run
-`php artisan schedule:run` from any machine that is already online — a free
-third-party cron pinger hitting a dedicated route, or a laptop running
-`schedule:work` during a demo.
+```
+cron-job.org  ──every 5 min──▶  GET /cron/schedule?token=…  ──▶  schedule:run
+```
+
+1. Generate a secret: `php artisan apx:cron-token` (or use Render's **Generate**
+   button on the variable).
+2. Set it as `APX_CRON_TOKEN` in the Render **Environment** tab and redeploy.
+3. Create one job at [cron-job.org](https://cron-job.org), every 5 minutes,
+   pointing at `https://<your-app>.onrender.com/cron/schedule?token=<token>`.
+
+Without `APX_CRON_TOKEN` set the endpoint returns 404 rather than running, so a
+deploy that forgets the variable cannot leave an open way to make the app send
+mail. The token may also be passed as an `X-Cron-Token` header, which keeps it
+out of access logs.
+
+Check it worked under **Admin → Message Templates**: the Scheduler card reads a
+real heartbeat timestamp, so "Running" means something actually ran.
+
+Full detail, including why duplicate sends are not a worry, is in
+[`docs/scheduler-on-render.md`](docs/scheduler-on-render.md).
 
 ### Queue worker
 
-Not needed. No mailable or notification in this project implements
-`ShouldQueue`, so mail is sent during the request that triggers it. If anything
-is queued later, a Render **Background Worker** running `php artisan queue:work`
-would be required, and that is also a paid service.
-
----
+Not needed. Mail that would otherwise delay a response is sent with
+`dispatch(…)->afterResponse()`, which runs after the response is flushed in the
+same process — no worker to pay for or keep alive.
 
 ## Email
 
