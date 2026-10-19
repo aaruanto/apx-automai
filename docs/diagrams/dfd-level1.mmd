@@ -1,0 +1,70 @@
+%% APX AutoMai — Level 1 Data Flow Diagram
+flowchart TB
+    GUEST[Guest]
+    CUST[Customer]
+    ADMIN[Administrator]
+    CRON[Scheduler / Cron]
+    MAIL[Email Service]
+    SMSG[SMS Gateway]
+
+    P1["1.0<br/>Authentication and<br/>Role-Based Access"]
+    P2["2.0<br/>Vehicle<br/>Management"]
+    P3["3.0<br/>Booking and<br/>Scheduling"]
+    P4["4.0<br/>Booking<br/>Management"]
+    P5["5.0<br/>Notification and<br/>Reminders"]
+    P6["6.0<br/>Loyalty<br/>Points"]
+    P7["7.0<br/>Reporting and<br/>Dashboard"]
+
+    D1[(D1 users / customers)]
+    D2[(D2 vehicles)]
+    D3[(D3 services / bundles)]
+    D4[(D4 bookings + booking_service)]
+    D5[(D5 loyalty_ledger)]
+    D6[(D6 audit_logs)]
+    D7[(D7 sms_logs)]
+    D8[(D8 settings)]
+
+    CUST -->|credentials| P1
+    ADMIN -->|credentials| P1
+    P1 <-->|account record, role| D1
+    P1 -->|session for role| CUST
+    P1 -->|session for role| ADMIN
+
+    CUST -->|vehicle details| P2
+    P2 <-->|vehicle record| D2
+
+    GUEST -->|guest booking| P3
+    CUST -->|service or bundle, date, time, points to use| P3
+    P3 -->|read catalogue and prices| D3
+    P3 -->|read capacity and hours| D8
+    P3 -->|check existing slots| D4
+    P3 -->|save booking and price snapshots| D4
+    P3 -->|read owned vehicle| D2
+    P3 -->|deduct points| P6
+    P3 -->|reference number| CUST
+    P3 -->|reference number| GUEST
+    P3 -->|booking received email| MAIL
+
+    ADMIN -->|confirm, complete, cancel, assign mechanic| P4
+    P4 <-->|booking record| D4
+    P4 -->|who, what, why| D6
+    P4 -->|award or reverse points| P6
+    P4 -->|status change notice| MAIL
+
+    CRON -->|scheduled run| P5
+    P5 -->|find due bookings| D4
+    P5 -->|read template and triggers| D8
+    P5 -->|read contact details| D1
+    P5 -->|send email| MAIL
+    P5 -->|send SMS| SMSG
+    P5 -->|record every attempt| D7
+
+    P6 <-->|earn, redeem, expire, adjust| D5
+    P6 -->|balance and history| CUST
+    ADMIN -->|manual adjustment with reason| P6
+    P6 -->|adjustment record| D6
+
+    ADMIN -->|date range filter| P7
+    P7 -->|completed work and snapshots| D4
+    P7 -->|outstanding points liability| D5
+    P7 -->|figures and charts| ADMIN

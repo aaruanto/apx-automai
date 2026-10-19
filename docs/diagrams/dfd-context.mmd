@@ -1,0 +1,27 @@
+%% APX AutoMai — Context Diagram (Level 0 DFD)
+flowchart TB
+    GUEST[Guest Visitor]
+    CUST[Registered Customer]
+    ADMIN[Administrator]
+    CRON[Scheduler / Cron]
+
+    SYS(("APX AutoMai<br/>Unified Portal"))
+
+    MAIL[Email Service<br/>Brevo SMTP]
+    SMS[SMS Gateway<br/>Semaphore]
+
+    GUEST -->|booking request, vehicle details| SYS
+    SYS -->|booking reference, confirmation email| GUEST
+
+    CUST -->|registration, vehicle, booking, points redemption| SYS
+    SYS -->|booking history, points balance, reminders| CUST
+
+    ADMIN -->|status updates, cancellations with reason, services, bundles, settings| SYS
+    SYS -->|dashboard, schedule, customer records, reports| ADMIN
+
+    CRON -->|trigger scheduled run| SYS
+
+    SYS -->|reminder and confirmation messages| MAIL
+    SYS -->|reminder text messages| SMS
+    MAIL -->|delivery result| SYS
+    SMS -->|message id, delivery status| SYS

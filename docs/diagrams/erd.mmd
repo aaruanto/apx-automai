@@ -1,0 +1,137 @@
+%% APX AutoMai — Entity Relationship Diagram
+%% Reflects the schema as built. Key attributes only.
+%% Excalidraw note: erDiagram imports as an image, not editable shapes.
+%% Use erd-flowchart.mmd for an editable version.
+erDiagram
+    USERS ||--o| CUSTOMERS : "has profile"
+    USERS ||--o{ VEHICLES : owns
+    USERS ||--o{ BOOKINGS : places
+    USERS ||--o{ LOYALTY_LEDGER : earns
+    USERS ||--o{ AUDIT_LOGS : "acts in"
+    USERS ||--o| ACCOUNT_DELETIONS : requests
+
+    VEHICLES ||--o{ BOOKINGS : "serviced in"
+    MECHANICS ||--o{ BOOKINGS : "assigned to"
+    BUNDLES ||--o{ BOOKINGS : "sold as"
+
+    BOOKINGS ||--|{ BOOKING_SERVICE : contains
+    SERVICES ||--o{ BOOKING_SERVICE : "listed in"
+    BUNDLES ||--|{ BUNDLE_SERVICE : includes
+    SERVICES ||--o{ BUNDLE_SERVICE : "part of"
+
+    BOOKINGS ||--o{ LOYALTY_LEDGER : "moves points"
+    BOOKINGS ||--o{ SMS_LOGS : "triggers"
+
+    USERS {
+        int id PK
+        string name
+        string email UK
+        string phone
+        string role "admin or customer"
+        bool is_guest
+        bool is_active
+    }
+    CUSTOMERS {
+        int id PK
+        int user_id FK
+        string phone
+        string address
+        date dob
+    }
+    VEHICLES {
+        int id PK
+        int user_id FK
+        string plate_number UK
+        string make
+        string model
+        string vehicle_type "car or motorcycle"
+        bool is_primary
+    }
+    SERVICES {
+        int id PK
+        string name
+        string category
+        decimal price
+        int duration
+        bool is_active
+    }
+    BUNDLES {
+        int id PK
+        string name UK
+        decimal price
+        bool is_active
+        date starts_at
+        date ends_at
+        string vehicle_type
+    }
+    BUNDLE_SERVICE {
+        int bundle_id FK
+        int service_id FK
+    }
+    MECHANICS {
+        int id PK
+        string name UK
+        string contact_number
+        string specialty
+        string status
+    }
+    BOOKINGS {
+        int id PK
+        int user_id FK
+        int vehicle_id FK
+        int mechanic_id FK
+        int bundle_id FK
+        string reference_number UK
+        date booking_date
+        time booking_time
+        string status
+        decimal list_price "snapshot"
+        decimal discount_amount "snapshot"
+        decimal points_discount "snapshot"
+        int points_earned
+        int points_spent
+    }
+    BOOKING_SERVICE {
+        int booking_id FK
+        int service_id FK
+        decimal price "price snapshot"
+        int duration
+    }
+    LOYALTY_LEDGER {
+        int id PK
+        int user_id FK
+        int booking_id FK
+        int points "signed"
+        int remaining "unspent lot"
+        int balance_after
+        string reason
+        date expires_at
+    }
+    AUDIT_LOGS {
+        int id PK
+        int user_id FK
+        string actor_name
+        string action
+        json old_values
+        json new_values
+        string reason
+    }
+    SMS_LOGS {
+        int id PK
+        int booking_id FK
+        string recipient
+        string status
+        int segments
+        string trigger
+    }
+    ACCOUNT_DELETIONS {
+        int id PK
+        int user_id FK
+        datetime purge_at
+        datetime anonymized_at
+    }
+    SETTINGS {
+        int id PK
+        string key UK
+        string value
+    }
