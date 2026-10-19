@@ -1,5 +1,50 @@
 # Getting started
 
+## The daily routine
+
+Everyone works on `main`. No branches. Two commands to pick work up, four to
+hand it back.
+
+**CATCH — before you touch anything**
+
+```bash
+git pull
+php artisan migrate
+```
+
+Then say in the group chat which file you are opening. That one sentence
+prevents more conflicts than any Git command, because two people in different
+files cannot conflict at all.
+
+**THROW — when you stop, even if you are not finished**
+
+```bash
+php artisan test
+git add -A
+git commit -m "what you changed and why"
+git push
+```
+
+Then say in the chat what you changed.
+
+That is the whole routine. Three rules behind it:
+
+1. **Pull before you start.** Most conflicts are two people working from
+   different starting points, not two people editing the same line.
+2. **Push the same day.** A week of work lands as one enormous conflict; a
+   day's work lands cleanly.
+3. **Tests must pass before you push.** `main` deploys straight to the live
+   site, so a broken push is a broken demo.
+
+Two things that are easy to miss:
+
+- If `git pull` shows `composer.lock` changed, run `composer install`.
+- If it shows a new file in `database/migrations/`, you already ran
+  `php artisan migrate` above — that is why it is in the catch step. Skipping
+  it gives you a confusing "column not found" an hour later.
+
+---
+
 Written for: Galero, Guevarra and Pineda — first-time setup on your own machine.
 
 Every command below was run against a clean clone before this was written, so
