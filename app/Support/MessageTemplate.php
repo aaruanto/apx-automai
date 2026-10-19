@@ -76,19 +76,21 @@ class MessageTemplate
     public static function defaults(): array
     {
         return [
-            'email_subject'   => 'Reminder: Your {service} appointment is on {date}',
-            'email_preheader' => 'Hi {name}, just a reminder about your upcoming {service}.',
-            'email_body'      => '<p>Hi {name}, your {service} is on {date} at {time}.</p>',
-            'sms_body'        => 'Hi {name}! Reminder from APX AutoMai. Your {service} is on {date} at {time}. Ref: {reference}.',
+            'email_subject'   => 'Reminder: your {service} is on {date}',
+            'email_preheader' => 'Hi {first_name}, just a reminder about your upcoming {service}.',
+            'email_body'      => self::appointmentBody(),
+
+            // Kept to one segment deliberately. {branch} is not used here: the
+            // configured name carries an em-dash, which is outside GSM-7 and
+            // would push the whole message to 70 characters a segment.
+            'sms_body'        => 'Hi {first_name}! APX AutoMai: your {service} is on {date}, {time}. Ref {reference}. Please arrive 10 mins early.',
 
             // ── Maintenance ────────────────────────────────────────────────
             'maintenance_subject' => 'Your {vehicle} is due for servicing',
-            'maintenance_body'    => '<p>Hi {first_name},</p>'
-                .'<p>Our records show your {vehicle} ({plate}) is due for servicing on <strong>{due_date}</strong> — {reason}.</p>'
-                .'<p>We recommend booking <strong>{recommendation}</strong>. You can reserve a slot here: {booking_url}</p>'
-                .'<p>If you have had this done elsewhere, just ignore this message.</p>'
-                .'<p>— {branch}</p>',
-            'maintenance_sms'     => 'Hi {first_name}! Your {plate} is due for servicing on {due_date}. We suggest {recommendation}. Book at {branch} or call {contact}.',
+            'maintenance_body'    => self::maintenanceBody(),
+            // Also avoids {contact}, for the same reason as the email footer:
+            // unset, it left "Call APX AutoMai on  to book." going out by text.
+            'maintenance_sms'     => 'Hi {first_name}! Your {plate} is due for servicing on {due_date}. We suggest {recommendation}. Reply or drop by APX AutoMai to book.',
 
             'triggers' => [
                 'remind_7d'        => true,
@@ -104,5 +106,128 @@ class MessageTemplate
             'sender_name' => 'APX AutoMai',
             'reply_to'    => '',
         ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | The default email bodies
+    |--------------------------------------------------------------------------
+    |
+    | Sent with Mail::html(), which wraps the body in nothing at all, so each
+    | one has to stand on its own. Written as tables with inline styles because
+    | that is what Outlook and Gmail actually render: a flex or grid layout, an
+    | external stylesheet or a <style> block is stripped or ignored by at least
+    | one mail client that customers here really use.
+    |
+    | The appointment reminder used to be a single 56-character line with no
+    | branch, no plate and no reference — so a customer with two cars could not
+    | tell which one was booked, and had nothing to quote at the counter.
+    |
+    */
+
+    private static function shell(string $heading, string $inner): string
+    {
+        return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+            .'style="background:#f4f4f5;margin:0;padding:24px 0;font-family:Arial,Helvetica,sans-serif;">'
+            .'<tr><td align="center">'
+            .'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+            .'style="max-width:560px;background:#ffffff;border-radius:10px;overflow:hidden;">'
+
+            // Header band. A background colour with light text on it, so the
+            // shop is recognisable before a word is read.
+            .'<tr><td style="background:#1a1a1a;padding:20px 28px;">'
+            .'<div style="color:#ffffff;font-size:18px;font-weight:bold;letter-spacing:.5px;">APX AutoMai</div>'
+            .'<div style="color:#c8c8c8;font-size:12px;margin-top:3px;">{branch}</div>'
+            .'</td></tr>'
+
+            .'<tr><td style="padding:28px;">'
+            .'<div style="font-size:17px;font-weight:bold;color:#1a1a1a;margin-bottom:14px;">'.$heading.'</div>'
+            .$inner
+            .'</td></tr>'
+
+            // No {contact} here. APX_CONTACT_NUMBER is optional config, and
+            // when it is unset this read "Call us on  or just reply to this
+            // email." — a broken sentence in every message, caused by a
+            // variable nobody had been told to set. Replying always works, so
+            // the footer leans on that; the shop can add a phone number
+            // through the template editor once the variable is configured.
+            .'<tr><td style="background:#fafafa;border-top:1px solid #ececec;padding:18px 28px;'
+            .'font-size:12px;color:#777777;line-height:1.6;">'
+            .'Questions, or need to change this? Just reply to this email and we will sort it out.<br>'
+            .'{branch}'
+            .'</td></tr>'
+
+            .'</table></td></tr></table>';
+    }
+
+    /** One label/value row of the details block. */
+    private static function row(string $label, string $value): string
+    {
+        return '<tr>'
+            .'<td style="padding:7px 0;font-size:13px;color:#777777;width:38%;vertical-align:top;">'.$label.'</td>'
+            .'<td style="padding:7px 0;font-size:13px;color:#1a1a1a;font-weight:bold;">'.$value.'</td>'
+            .'</tr>';
+    }
+
+    private static function appointmentBody(): string
+    {
+        return self::shell(
+            'Your appointment is coming up',
+            '<p style="font-size:14px;color:#444444;line-height:1.6;margin:0 0 18px;">'
+            // {days_until} is deliberately not used. A flat template cannot
+            // pluralise, so it read "in 1 day(s)" — and the date and time are
+            // in the table immediately below anyway.
+            .'Hi {first_name}, this is a reminder about your upcoming booking with us.'
+            .'</p>'
+
+            .'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+            .'style="border-top:1px solid #ececec;border-bottom:1px solid #ececec;margin:0 0 18px;">'
+            .self::row('Service', '{service}')
+            .self::row('Date', '{date}')
+            .self::row('Time', '{time}')
+            // The plate matters: a customer with two cars cannot otherwise
+            // tell which one this is about.
+            .self::row('Vehicle', '{vehicle} &middot; {plate}')
+            .self::row('Reference', '{reference}')
+            .'</table>'
+
+            .'<p style="font-size:14px;color:#444444;line-height:1.6;margin:0 0 10px;">'
+            .'Please arrive about 10 minutes early and bring your reference number.'
+            .'</p>'
+            .'<p style="font-size:13px;color:#777777;line-height:1.6;margin:0;">'
+            .'If you can no longer make it, let us know as early as you can so we can offer the slot to someone else.'
+            .'</p>'
+        );
+    }
+
+    private static function maintenanceBody(): string
+    {
+        return self::shell(
+            'Your {vehicle} is due for servicing',
+            '<p style="font-size:14px;color:#444444;line-height:1.6;margin:0 0 18px;">'
+            .'Hi {first_name}, our records show your vehicle is due for its next service. '
+            .'Nothing is booked yet.'
+            .'</p>'
+
+            .'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+            .'style="border-top:1px solid #ececec;border-bottom:1px solid #ececec;margin:0 0 18px;">'
+            .self::row('Vehicle', '{vehicle} &middot; {plate}')
+            .self::row('Due', '{due_date}')
+            .self::row('Why', '{reason}')
+            .self::row('We recommend', '{recommendation}')
+            .'</table>'
+
+            // A plain anchor, styled to look like a button. A real button
+            // element or a background-image would not survive Outlook.
+            .'<p style="margin:0 0 20px;">'
+            .'<a href="{booking_url}" style="display:inline-block;background:#E8192C;color:#ffffff;'
+            .'text-decoration:none;font-size:14px;font-weight:bold;padding:11px 22px;border-radius:6px;">'
+            .'Book this service</a>'
+            .'</p>'
+
+            .'<p style="font-size:13px;color:#777777;line-height:1.6;margin:0;">'
+            .'Already had this done elsewhere? No action needed, just ignore this message.'
+            .'</p>'
+        );
     }
 }

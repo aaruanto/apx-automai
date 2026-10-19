@@ -130,7 +130,11 @@ class MessageTemplateController extends Controller
             $ok        = false;
             $results[] = ['channel' => 'SMS', 'ok' => false, 'message' => $reason];
         } else {
-            $body  = strtr($template['sms_body'], $this->sampleData());
+            // Counted on the text that will actually be sent, not the raw
+            // template: send() swaps typographic characters for their GSM-7
+            // equivalents, and measuring before that reported three segments
+            // for a message that costs one.
+            $body  = $sms->gsmSafe(strtr($template['sms_body'], $this->sampleData()));
             $parts = $sms->segments($body);
             $sent  = $sms->send($request->test_phone, $body, ['trigger' => 'test']);
 

@@ -117,6 +117,39 @@ class SmsService
      * message splits, because the concatenation header eats into every part.
      * UCS-2 is 70 and 67 respectively.
      */
+    /**
+     * Swap typographic characters for their GSM-7 equivalents.
+     *
+     * A single character outside the GSM-7 alphabet forces the whole message
+     * into UCS-2, which cuts a segment from 160 characters to 70. The branch
+     * name in config carries an em-dash, so every service-due text was being
+     * billed as three segments instead of one — triple cost, invisibly, on
+     * every send. A peso sign does the same, and a shop writing prices into a
+     * template would never guess why.
+     *
+     * Only characters that come from our own config and templates are mapped.
+     * Anything else is left exactly as written: a customer's name is worth
+     * more than a segment, so a message that genuinely needs Unicode still
+     * gets it.
+     */
+    public function gsmSafe(string $content): string
+    {
+        return strtr($content, [
+            '—' => '-',   // em-dash
+            '–' => '-',   // en-dash
+            '‑' => '-',   // non-breaking hyphen
+            '₱' => 'P',   // peso — "P1,350" is how a receipt would write it
+            '’' => "'",
+            '‘' => "'",
+            '“' => '"',
+            '”' => '"',
+            '…' => '...',
+            '•' => '*',
+            '·' => '.',
+            "\u{00A0}" => ' ', // non-breaking space
+        ]);
+    }
+
     public function segments(string $content): array
     {
         $unicode = ! $this->isGsm7($content);
@@ -184,6 +217,11 @@ class SmsService
         if ($reason = $this->unavailableReason()) {
             return $this->fail($reason, null, $content, $context, 'not_configured');
         }
+
+        // Done before anything measures or logs the message, so the length
+        // check, the stored sms_logs row and what Semaphore bills for are all
+        // the same text.
+        $content = $this->gsmSafe($content);
 
         $recipient = $this->normalise($to);
 

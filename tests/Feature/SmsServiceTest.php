@@ -262,3 +262,66 @@ it('returns null credits rather than failing when the balance cannot be read', f
 
     expect(sms()->credits())->toBeNull();
 });
+
+// ── Segment cost ──────────────────────────────────────────────────────────
+//
+// A single character outside GSM-7 drops a segment from 160 characters to 70,
+// so one em-dash in the branch name billed every service-due text as three
+// segments instead of one. Invisible, and triple the cost on every send.
+
+it('maps typographic characters to their GSM-7 equivalents', function () {
+    $sms = app(App\Services\SmsService::class);
+
+    expect($sms->gsmSafe('APX Motors — Tandang Sora'))->toBe('APX Motors - Tandang Sora');
+    expect($sms->gsmSafe('Only ₱1,350'))->toBe('Only P1,350');
+    expect($sms->gsmSafe('it’s a “deal”'))->toBe('it\'s a "deal"');
+    expect($sms->gsmSafe('wait…'))->toBe('wait...');
+});
+
+it('leaves genuine content alone rather than mangling it', function () {
+    $sms = app(App\Services\SmsService::class);
+
+    // A customer's name is worth more than a segment. A message that really
+    // needs Unicode still gets it.
+    expect($sms->gsmSafe('Hi Peñaflor'))->toBe('Hi Peñaflor');
+});
+
+it('turns a three-segment branch name into one segment', function () {
+    $sms = app(App\Services\SmsService::class);
+
+    $raw = 'Hi Juan! Your ABC 1234 is due for servicing on March 16, 2026. '
+        .'We suggest Standard Service. Book at APX Motors — Tandang Sora or call (02) 8123-4567.';
+
+    expect($sms->segments($raw)['encoding'])->toBe('UCS-2');
+    expect($sms->segments($raw)['segments'])->toBe(3);
+
+    expect($sms->segments($sms->gsmSafe($raw))['encoding'])->toBe('GSM-7');
+    expect($sms->segments($sms->gsmSafe($raw))['segments'])->toBe(1);
+});
+
+it('keeps both shipped SMS templates to one segment at worst case', function () {
+    $sms      = app(App\Services\SmsService::class);
+    $defaults = App\Support\MessageTemplate::defaults();
+
+    // The longest service name in the shipped catalogue, and a long first name.
+    $sample = [
+        '{first_name}'     => 'Maria Cristina',
+        '{service}'        => 'Automatic Transmission Service',
+        '{date}'           => 'September 30, 2026',
+        '{time}'           => '10:30 AM',
+        '{reference}'      => 'APX-10042',
+        '{plate}'          => 'ABC 1234',
+        '{due_date}'       => 'September 30, 2026',
+        '{recommendation}' => 'Standard Service',
+        '{contact}'        => '(02) 8123-4567',
+        '{branch}'         => config('apx.branch_name'),
+    ];
+
+    foreach (['sms_body', 'maintenance_sms'] as $key) {
+        $rendered = $sms->gsmSafe(strtr($defaults[$key], $sample));
+        $parts    = $sms->segments($rendered);
+
+        expect($parts['encoding'])->toBe('GSM-7');
+        expect($parts['segments'])->toBe(1, "{$key} rendered to {$parts['segments']} segments");
+    }
+});
