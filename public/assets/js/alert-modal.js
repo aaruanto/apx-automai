@@ -21,11 +21,21 @@
 (function (window, document) {
     'use strict';
 
+    // Font Awesome 5 names on purpose.
+    //
+    // This app loads two different majors: the admin layout pulls v6.3 and
+    // the public pages pull v5.10. These were v6-only names, so every icon
+    // here rendered in the admin panel and silently produced nothing on the
+    // landing page — an empty coloured circle beside the message, which is
+    // what "the pink circle is missing its icon" was.
+    //
+    // v6 keeps the v5 names as aliases, so the v5 spelling is the one that
+    // resolves under both and the dialog looks the same wherever it opens.
     var VARIANTS = {
-        success: { icon: 'fa-circle-check', color: 'var(--success)', bg: 'rgba(34,197,94,0.12)' },
-        error:   { icon: 'fa-circle-exclamation', color: 'var(--red)', bg: 'var(--red-glow, rgba(232,25,44,0.15))' },
-        info:    { icon: 'fa-circle-info', color: 'var(--info)', bg: 'var(--info-glow, rgba(59,130,246,0.15))' },
-        confirm: { icon: 'fa-triangle-exclamation', color: 'var(--warning)', bg: 'rgba(245,158,11,0.12)' }
+        success: { icon: 'fa-check-circle', color: 'var(--success)', bg: 'rgba(34,197,94,0.12)' },
+        error:   { icon: 'fa-exclamation-circle', color: 'var(--red)', bg: 'var(--red-glow, rgba(232,25,44,0.15))' },
+        info:    { icon: 'fa-info-circle', color: 'var(--info)', bg: 'var(--info-glow, rgba(59,130,246,0.15))' },
+        confirm: { icon: 'fa-exclamation-triangle', color: 'var(--warning)', bg: 'rgba(245,158,11,0.12)' }
     };
 
     var DEFAULT_ID = 'apx-alert-modal';
@@ -36,6 +46,19 @@
 
     function isDismissable(overlay) {
         return overlay.getAttribute('data-dismissable') !== 'false';
+    }
+
+    /**
+     * Close the dialog the way the Cancel button does.
+     *
+     * Backing out through the X or Escape means the same thing as pressing
+     * Cancel, so callers that clean up in onCancel — re-enabling a button
+     * they disabled, say — run either way and cannot be left half-done.
+     */
+    function dismiss(overlay) {
+        var onCancel = activeOnCancel;
+        hide(overlay.id);
+        if (onCancel) onCancel();
     }
 
     function hide(id) {
@@ -185,19 +208,32 @@
         document.querySelectorAll('.modal-overlay').forEach(function (overlay) {
             if (!overlay.querySelector('.apx-alert-title')) return; // not an alert-modal instance
 
+            // Clicking the backdrop is the one gesture still blocked on a
+            // confirm. It is easy to do by accident, and these dialogs can
+            // carry a typed cancellation reason that a stray click would bin.
             overlay.addEventListener('click', function (e) {
-                if (e.target === overlay && isDismissable(overlay)) hide(overlay.id);
+                if (e.target === overlay && isDismissable(overlay)) dismiss(overlay);
             });
+
+            // The X is not an accident. It used to be gated on the same
+            // data-dismissable flag as the backdrop, so on every confirm
+            // dialog — cancelling a booking among them — it did nothing at
+            // all: the one control that looks like it closes a window, and
+            // the window stayed open. It now behaves exactly like the Cancel
+            // button, which is what it looks like it should do.
             var closeBtn = overlay.querySelector('[data-apx-alert-close]');
             if (closeBtn) closeBtn.addEventListener('click', function () {
-                if (isDismissable(overlay)) hide(overlay.id);
+                dismiss(overlay);
             });
         });
 
+        // Escape is explicit too, and is how every other dialog on the web
+        // closes. Dismissing a confirm is the safe direction — it means the
+        // action does not happen — so there is nothing to protect here.
         document.addEventListener('keydown', function (e) {
             if (e.key !== 'Escape') return;
             document.querySelectorAll('.modal-overlay.open').forEach(function (overlay) {
-                if (overlay.querySelector('.apx-alert-title') && isDismissable(overlay)) hide(overlay.id);
+                if (overlay.querySelector('.apx-alert-title')) dismiss(overlay);
             });
         });
     });

@@ -51,7 +51,19 @@
     #{{ $id }} > .modal {
         position: static;
         display: block;
-        overflow: visible;
+        /* Bootstrap's .modal is `position:fixed; height:100%`. The overrides
+           below used to reset position, display, overflow and width but not
+           height, so on any page that loads Bootstrap this box stretched to
+           fill the overlay — 868px tall on a 900px screen, with the message
+           and the OK button at the top and roughly 670px of empty white
+           beneath them. Only the height was ever wrong; the content was fine.
+
+           max-height keeps a long message scrollable instead of letting the
+           dialog grow past the screen. */
+        height: auto;
+        max-height: 90vh;
+        overflow-x: hidden;
+        overflow-y: auto;
         width: 100%;
         max-width: 420px;
         background: var(--surface, #fff);
@@ -87,11 +99,16 @@
         <div class="modal-header">
             <div class="modal-title apx-alert-title"></div>
             <button type="button" class="modal-close" data-apx-alert-close aria-label="Close">
-                <i class="fas fa-xmark"></i>
+                {{-- fa-times, not fa-xmark. The admin layout loads Font
+                     Awesome 6 and the public pages load 5, and fa-xmark only
+                     exists in 6 — so on the landing page this close button
+                     rendered as an empty square. v6 keeps the v5 name as an
+                     alias, so this one resolves under both. --}}
+                <i class="fas fa-times"></i>
             </button>
         </div>
         <div class="modal-body" style="display:flex;gap:14px;align-items:flex-start;">
-            <div class="apx-alert-icon" aria-hidden="true"><i class="fas fa-circle-info"></i></div>
+            <div class="apx-alert-icon" aria-hidden="true"><i class="fas fa-info-circle"></i></div>
             {{-- pre-line so a multi-line message (e.g. one line per channel of
                  a test send) keeps its breaks. The message is set with
                  textContent, so markup is never interpreted. --}}
