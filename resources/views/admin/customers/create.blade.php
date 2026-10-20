@@ -52,11 +52,40 @@
                                        placeholder="09XXXXXXXXX" required />
                             </div>
                         </div>
+                        {{-- On an existing customer the address is shown, not
+                             offered for editing. It is the identity they sign
+                             in with and the one every booking confirmation and
+                             reminder is sent to, so changing it from here would
+                             quietly lock someone out of their own account.
+                             update() refuses the field regardless; this stops
+                             the form inviting an edit the server will reject.
+
+                             Rendered as plain text rather than a mailto link,
+                             so a stray click cannot open a mail client with a
+                             customer's address prefilled. Still selectable, so
+                             it can be copied when someone needs to write to
+                             them deliberately.
+
+                             Creating a customer still needs the input: there is
+                             no address yet to protect. --}}
                         <div class="form-group">
                             <label class="form-label">Email Address</label>
-                            <input class="form-control" type="email" name="email"
-                                   value="{{ $customer->email ?? '' }}"
-                                   placeholder="optional" />
+                            @if ($isEdit)
+                                <div class="form-control" aria-readonly="true"
+                                     style="background:var(--surface-2);color:var(--text-muted);
+                                            display:flex;align-items:center;gap:8px;cursor:default;
+                                            user-select:text;">
+                                    <i class="fas fa-lock" style="font-size:.72rem;opacity:.7;"></i>
+                                    <span>{{ $customer->email ?: '—' }}</span>
+                                </div>
+                                <div class="form-hint">
+                                    The customer changes this from their own account.
+                                </div>
+                            @else
+                                <input class="form-control" type="email" name="email"
+                                       value="{{ old('email') }}"
+                                       placeholder="optional" />
+                            @endif
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="form-label">Address</label>
