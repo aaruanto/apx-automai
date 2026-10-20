@@ -171,9 +171,13 @@
                 <div class="apx-sc-trust-val">{{ $services->count() }}</div>
                 <span class="apx-sc-trust-lbl">Services<br>Available</span>
             </div>
+            {{-- "With Any Service" is not decoration. Complimentary work is an
+                 add-on and a booking of only free services is refused, so a
+                 badge reading just "Free Vehicle Health Check" would promise
+                 something the booking form then declines to do. --}}
             <div class="apx-sc-trust-item">
                 <div class="apx-sc-trust-val">Free</div>
-                <span class="apx-sc-trust-lbl">Vehicle Health<br>Check</span>
+                <span class="apx-sc-trust-lbl">Health Check<br>With Any Service</span>
             </div>
         </div>
     </div>

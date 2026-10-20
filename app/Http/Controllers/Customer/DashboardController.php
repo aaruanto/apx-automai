@@ -13,6 +13,7 @@ use App\Services\AccountAnonymizer;
 use App\Services\BookingAvailability;
 use App\Services\BookingPricing;
 use App\Services\LoyaltyService;
+use App\Support\BookingPolicy;
 use App\Exceptions\SlotUnavailableException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -239,6 +240,16 @@ class DashboardController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'That bundle is for '.$bundle->vehicle_type.'s only.',
+            ], 422);
+        }
+
+        // Complimentary work accompanies paid work; it is not a booking of its
+        // own. Checked before reserve() so a refused booking never takes a slot
+        // and never has to be cleaned up afterwards.
+        if (! $bundle && BookingPolicy::isFreeOnly(Service::whereIn('id', $data['service_ids'])->get())) {
+            return response()->json([
+                'success' => false,
+                'message' => BookingPolicy::FREE_ONLY_MESSAGE,
             ], 422);
         }
 

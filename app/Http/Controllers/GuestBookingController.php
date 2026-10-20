@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\BookingPolicy;
 use App\Support\EmailRule;
 
 use App\Models\Bundle;
@@ -148,6 +149,16 @@ class GuestBookingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'One or more selected services could not be found. Please try again.',
+            ], 422);
+        }
+
+        // Complimentary work accompanies paid work; it is not a booking of its
+        // own. Checked here, after the services are resolved, so a bundle and a
+        // loose list of ids both go through the same rule.
+        if (BookingPolicy::isFreeOnly($services, $bundle)) {
+            return response()->json([
+                'success' => false,
+                'message' => BookingPolicy::FREE_ONLY_MESSAGE,
             ], 422);
         }
 
