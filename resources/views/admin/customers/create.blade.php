@@ -43,13 +43,13 @@
                                 <label class="form-label">Full Name <span style="color:var(--red)">*</span></label>
                                 <input class="form-control" type="text" name="name" id="custCreateName"
                                        value="{{ $customer->name ?? '' }}"
-                                       placeholder="e.g. Juan dela Cruz" required />
+                                       placeholder="e.g. Juan dela Cruz" required @if($isEdit) readonly @endif />
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Phone Number <span style="color:var(--red)">*</span></label>
                                 <input class="form-control" type="tel" name="phone" id="custCreatePhone"
                                        value="{{ $customer->phone ?? '' }}"
-                                       placeholder="09XXXXXXXXX" required />
+                                       placeholder="09XXXXXXXXX" required @if($isEdit) readonly @endif />
                             </div>
                         </div>
                         {{-- On an existing customer the address is shown, not
@@ -89,7 +89,7 @@
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="form-label">Address</label>
-                            <textarea class="form-control" name="address" rows="2" placeholder="Street, City">{{ $customer->address ?? '' }}</textarea>
+                            <textarea class="form-control" name="address" rows="2" placeholder="Street, City" @if($isEdit) readonly @endif>{{ $customer->address ?? '' }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -106,20 +106,20 @@
                                 <input class="form-control" type="text" name="plate" id="custCreatePlate"
                                        value="{{ $customer->vehicle->plate_number ?? '' }}"
                                        placeholder="e.g. ABC 1234" required
-                                       style="letter-spacing:.08em;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;" />
+                                       style="letter-spacing:.08em;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;" @if($isEdit) readonly @endif />
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Car Color</label>
                                 <input class="form-control" type="text" name="color"
                                        value="{{ $customer->vehicle->color ?? '' }}"
-                                       placeholder="e.g. White" />
+                                       placeholder="e.g. White" @if($isEdit) readonly @endif />
                             </div>
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="form-label">Car Model</label>
                             <input class="form-control" type="text" name="car_model"
                                    value="{{ $customer->vehicle->model ?? '' }}"
-                                   placeholder="e.g. Toyota Vios 2021" />
+                                   placeholder="e.g. Toyota Vios 2021" @if($isEdit) readonly @endif />
                         </div>
 
                         {{-- The list view shows a count rather than one plate,
@@ -160,7 +160,7 @@
                     <div class="card-body">
                         <div class="form-group" style="margin-bottom:0;">
                             <textarea class="form-control" name="notes" rows="4"
-                                      placeholder="Internal notes about this customer...">{{ $customer->notes ?? '' }}</textarea>
+                                      placeholder="Internal notes about this customer..." @if($isEdit) readonly @endif>{{ $customer->notes ?? '' }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -168,13 +168,20 @@
                 <!-- Submit -->
                 <div class="card" style="background:var(--surface-2);">
                     <div class="card-body">
+                        {{-- No Save on an existing customer. update() accepts
+                             no fields at all, so the button submitted a form
+                             that could only ever come back with "these details
+                             are read-only" — an admin typing into seven fields
+                             and losing the lot. Offering it was the bug. --}}
+                        @if (! $isEdit)
                         <button type="submit" class="btn btn-primary" id="customerSubmitBtn" style="width:100%;justify-content:center;padding:12px;">
-                            <i class="fas fa-{{ $isEdit ? 'floppy-disk' : 'plus' }}"></i>
-                            {{ $isEdit ? 'Save Changes' : 'Add Customer' }}
+                            <i class="fas fa-plus"></i>
+                            Add Customer
                         </button>
+                        @endif
                         <a href="{{ route('admin.customers.index') }}" class="btn btn-ghost"
-                           style="width:100%;justify-content:center;margin-top:8px;">
-                            Cancel
+                           style="width:100%;justify-content:center;{{ $isEdit ? '' : 'margin-top:8px;' }}">
+                            {{ $isEdit ? 'Back to Customers' : 'Cancel' }}
                         </a>
                         @if($isEdit)
                         <hr style="border-color:var(--border);margin:12px 0;" />

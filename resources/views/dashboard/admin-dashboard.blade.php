@@ -35,6 +35,31 @@
     }
     .welcome-text h2 span { color: var(--red); }
     .welcome-text p { font-size: .83rem; color: var(--text-muted); margin: 0; }
+
+    /* Both of these were inline repeat(3,1fr) and 2fr 1fr with no breakpoint,
+       so on a phone three stat cards stayed in one row and pushed the page
+       80px wider than the screen.
+
+       minmax(0,1fr) rather than plain 1fr: a grid item is min-width:auto by
+       default, so a track will refuse to shrink below its content and blow
+       the grid out sideways — which is what happened here even before the
+       breakpoint ran out. */
+    .dash-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .dash-split {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+    @media (max-width: 768px) {
+        .dash-stat-grid,
+        .dash-split { grid-template-columns: 1fr; }
+    }
 </style>
 @endpush
 
@@ -140,7 +165,7 @@
          preselects, so a card opens that list already filtered instead of
          showing everything. The Completed card used to link to
          status=confirmed, which is a different status entirely. --}}
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
+    <div class="dash-stat-grid">
         @php
             $cards = [
                 [
@@ -208,7 +233,7 @@
     </div>
 
 <!-- CHARTS -->
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-bottom:24px;">
+    <div class="dash-split">
         <div class="card">
             <div class="card-header">
                 <div class="card-header-title"><i class="fas fa-chart-area"></i> Bookings Over Time</div>
