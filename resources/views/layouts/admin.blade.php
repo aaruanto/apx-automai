@@ -1158,9 +1158,41 @@
         // ── Sidebar toggle ──
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('mainContent');
+        // Two different behaviours share one button. On a wide screen the
+        // sidebar narrows to an icon rail (.collapsed) and the content widens
+        // to meet it (.expanded). Under 768px it is pushed off-canvas by a
+        // transform and the only thing that brings it back is .mobile-open.
+        //
+        // This toggled .collapsed at every width, so on a phone it set a class
+        // that breakpoint has no rule for: the sidebar shifted from -230px to
+        // -60px, stayed off-screen, and the menu button appeared dead.
+        const MOBILE_BREAKPOINT = 768;
+
         document.getElementById('sidebarToggle').addEventListener('click', () => {
+            if (window.innerWidth <= MOBILE_BREAKPOINT) {
+                sidebar.classList.toggle('mobile-open');
+                return;
+            }
+
             sidebar.classList.toggle('collapsed');
             mainContent.classList.toggle('expanded');
+        });
+
+        // Tapping the page behind an open menu should close it — on a phone
+        // the sidebar covers most of the screen and there is no other obvious
+        // way out.
+        mainContent.addEventListener('click', () => {
+            if (window.innerWidth <= MOBILE_BREAKPOINT) {
+                sidebar.classList.remove('mobile-open');
+            }
+        });
+
+        // Leaving mobile with the drawer open would otherwise strand the class
+        // on the sidebar, where the desktop rules render it as a normal panel.
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > MOBILE_BREAKPOINT) {
+                sidebar.classList.remove('mobile-open');
+            }
         });
 
         // ── Sub-nav toggle ──

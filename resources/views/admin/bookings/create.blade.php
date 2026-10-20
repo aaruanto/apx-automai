@@ -59,6 +59,25 @@
     </div>
     @endif
 
+    {{-- The server validates this form and redirects back on failure, and
+         nothing here ever rendered what it objected to. A rejected booking
+         returned a blank form with no explanation, so the only way to find
+         out what was wrong was to guess. The client-side checks above should
+         now catch the common cases first; this is the backstop for everything
+         they do not, such as a plate already registered to someone else. --}}
+    @if ($errors->any())
+        <div class="alert alert-danger" role="alert"
+             style="background:var(--red-glow);border:1px solid var(--red);color:var(--text);
+                    border-radius:8px;padding:12px 16px;margin-bottom:18px;font-size:.86rem;line-height:1.6;">
+            <strong style="display:block;margin-bottom:4px;">This booking could not be saved.</strong>
+            <ul style="margin:0;padding-left:18px;">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <form method="POST" id="bookingForm" action="{{ $isEdit ? route('admin.bookings.update', $booking->id) : route('admin.bookings.store') }}">
         @csrf
         @if($isEdit) @method('PUT') @endif
@@ -230,6 +249,10 @@
                             <input type="hidden" name="booking_date" id="adminBookingDate" value="{{ $prefillDate }}" required />
                             <input type="hidden" name="booking_time" id="adminBookingTime" value="{{ $prefillTime }}" required />
                             <x-availability-picker id="adminAvp" />
+                            {{-- Same .fv-error pattern the rest of the form
+                                 uses, so it reads as a field error rather than
+                                 a new kind of message. --}}
+                            <div class="fv-error" id="slotError">Pick a date and a time from the calendar above.</div>
                             <div class="form-hint">Mon–Fri 9:00 AM – 9:00 PM &middot; Sat–Sun 9:00 AM – 12:00 PM</div>
                         </div>
                     </div>
@@ -444,6 +467,21 @@ document.getElementById('bookingForm').addEventListener('submit', function (e) {
         e.stopImmediatePropagation();
         document.getElementById('serviceError').classList.add('show');
         document.getElementById('servicePicker').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+
+    // The date and time live in hidden inputs that the picker fills in, and a
+    // `required` attribute on a hidden input is ignored by the browser. So a
+    // form with no slot chosen submitted happily, failed validation on the
+    // server, and bounced back to a blank page whose only visible message was
+    // "Please choose at least one service" — left over from the wiped form,
+    // and about the wrong field entirely. There was no way to work out what
+    // was actually wrong.
+    if (!document.getElementById('adminBookingDate').value || !document.getElementById('adminBookingTime').value) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        document.getElementById('slotError').classList.add('show');
+        document.getElementById('adminAvp').scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 }, true);
 </script>
