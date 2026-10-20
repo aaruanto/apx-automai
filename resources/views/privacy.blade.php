@@ -232,7 +232,7 @@
                     <p class="mb-0">For any question about this policy, or to exercise any of the rights
                         above, contact APX Motors and Services at 5 Glenn St., Quezon City, by phone on
                         <a href="tel:+639544888850">+63 9544 8888 50</a>, or by email at
-                        <a href="mailto:hello@apxautomai.com">hello@apxautomai.com</a>.</p>
+                        <a href="mailto:apxautomai@gmail.com">apxautomai@gmail.com</a>.</p>
                 </div>
             </div>
         </div>
@@ -247,7 +247,7 @@
                     <h4 class="text-light mb-4">APX Automai</h4>
                     <p class="mb-2"><i class="fa fa-map-marker-alt me-3"></i>5 Glenn St., Quezon City</p>
                     <p class="mb-2"><i class="fa fa-phone-alt me-3"></i>+63 9544 8888 50</p>
-                    <p class="mb-2"><i class="fa fa-envelope me-3"></i>hello@apxautomai.com</p>
+                    <p class="mb-2"><i class="fa fa-envelope me-3"></i>apxautomai@gmail.com</p>
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <h4 class="text-light mb-4">Opening Hours</h4>
@@ -262,7 +262,7 @@
             <div class="copyright">
                 <div class="row">
                     <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                        &copy; 2025 <a class="border-bottom" href="/">APX Automai</a>. All Rights Reserved.
+                        &copy; {{ date('Y') }} <a class="border-bottom" href="/">APX Automai</a>. All Rights Reserved.
                     </div>
                     <div class="col-md-6 text-center text-md-end">
                         <div class="footer-menu">

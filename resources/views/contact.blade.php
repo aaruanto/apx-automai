@@ -127,7 +127,7 @@
                         <div class="col-md-4">
                             <div class="bg-light d-flex flex-column justify-content-center p-4">
                                 <h5 class="text-uppercase">// Email Us //</h5>
-                                <p class="m-0"><i class="fa fa-envelope-open text-primary me-2"></i>hello@apxautomai.com</p>
+                                <p class="m-0"><i class="fa fa-envelope-open text-primary me-2"></i>apxautomai@gmail.com</p>
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -172,7 +172,7 @@
                     <h4 class="text-light mb-4">Address</h4>
                     <p class="mb-2"><i class="fa fa-map-marker-alt me-3"></i>5 Glenn, Quezon City</p>
                     <p class="mb-2"><i class="fa fa-phone-alt me-3"></i>+63 9544 8888 50</p>
-                    <p class="mb-2"><i class="fa fa-envelope me-3"></i>hello@apxautomai.com</p>
+                    <p class="mb-2"><i class="fa fa-envelope me-3"></i>apxautomai@gmail.com</p>
                     <div class="d-flex pt-2">
                     </div>
                 </div>
@@ -198,7 +198,7 @@
             <div class="copyright">
                 <div class="row">
                     <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                        &copy; 2025 <a class="border-bottom" href="/">APX Automai</a>. All Rights Reserved.
+                        &copy; {{ date('Y') }} <a class="border-bottom" href="/">APX Automai</a>. All Rights Reserved.
                     </div>
                     <div class="col-md-6 text-center text-md-end">
                         <div class="footer-menu">

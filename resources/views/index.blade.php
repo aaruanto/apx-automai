@@ -157,14 +157,23 @@
         <button class="apx-sc-btn" onclick="apxStickyBook()">
             Check Prices For Free &nbsp;›
         </button>
+        {{-- These two were "4.8/5 from 500+ Reviews" and "5,000+ Happy
+             Customers", inherited from the template. There is no review
+             system, and the figures were invented — sitting beside real
+             photographs of the shop, they read as claims about APX Motors
+             rather than as filler.
+
+             Both are now counted from the service catalogue at render time,
+             so they cannot drift out of true or be contradicted by the page
+             below them. --}}
         <div class="apx-sc-trust">
             <div class="apx-sc-trust-item">
-                <div class="apx-sc-trust-val"><i class="fa fa-star"></i> 4.8<span style="font-size:0.7rem;color:#aaa;">/5</span></div>
-                <span class="apx-sc-trust-lbl">Based on 500+<br>Reviews</span>
+                <div class="apx-sc-trust-val">{{ $services->count() }}</div>
+                <span class="apx-sc-trust-lbl">Services<br>Available</span>
             </div>
             <div class="apx-sc-trust-item">
-                <div class="apx-sc-trust-val">5,000+</div>
-                <span class="apx-sc-trust-lbl">Happy<br>Customers</span>
+                <div class="apx-sc-trust-val">Free</div>
+                <span class="apx-sc-trust-lbl">Vehicle Health<br>Check</span>
             </div>
         </div>
     </div>
@@ -745,9 +754,15 @@
                              unreadable and set two pieces of typography
                              fighting in one frame. This block has neither. --}}
                         <img class="position-absolute img-fluid w-100 h-100" src="/assets/img/storefront.jpg" style="object-fit: cover;" alt="The APX Motors Service Center sign on Tandang Sora, Quezon City">
-                        <div class="position-absolute top-0 end-0 mt-n4 me-n4 py-4 px-5" style="background: rgba(0, 0, 0, .08);">
-                            <h1 class="display-4 text-white mb-0">15 <span class="fs-4">Years</span></h1>
-                            <h4 class="text-white">Experience</h4>
+                        {{-- A "15 Years Experience" badge sat here, from the
+                             template. It was overlapping the shop's own sign
+                             and asserting a figure nobody had verified. Any
+                             replacement number would be the same mistake, so
+                             what it says now is true of the shop whatever year
+                             it opened: it takes both kinds of vehicle. --}}
+                        <div class="position-absolute top-0 end-0 mt-n4 me-n4 py-4 px-5" style="background: rgba(0, 0, 0, .35);">
+                            <h4 class="text-white mb-0">Cars &amp;</h4>
+                            <h4 class="text-white mb-0">Motorcycles</h4>
                         </div>
                     </div>
                 </div>
@@ -869,7 +884,7 @@
                     <h4 class="text-light mb-4">APX Automai</h4>
                     <p class="mb-2"><i class="fa fa-map-marker-alt me-3"></i>5 Glenn St., Quezon City</p>
                     <p class="mb-2"><i class="fa fa-phone-alt me-3"></i>+63 9544 8888 50</p>
-                    <p class="mb-2"><i class="fa fa-envelope me-3"></i>hello@apxautomai.com</p>
+                    <p class="mb-2"><i class="fa fa-envelope me-3"></i>apxautomai@gmail.com</p>
                     <div class="d-flex pt-2">
                     </div>
                 </div>
@@ -886,7 +901,7 @@
             <div class="copyright">
                 <div class="row">
                     <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                        &copy; 2025 <a class="border-bottom" href="#home">APX Automai</a>. All Rights Reserved.
+                        &copy; {{ date('Y') }} <a class="border-bottom" href="#home">APX Automai</a>. All Rights Reserved.
                     </div>
                     <div class="col-md-6 text-center text-md-end">
                         <div class="footer-menu">

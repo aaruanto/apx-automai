@@ -379,8 +379,8 @@
             <div class="row gx-5">
                 <div class="col-lg-6 py-5">
                     <div class="py-5">
-                        <h1 class="text-white mb-4">Certified and Award Winning Car Repair Service Provider</h1>
-                        <p class="text-white mb-0">Eirmod sed tempor lorem ut dolores. Aliquyam sit sadipscing kasd ipsum. Dolor ea et dolore et at sea ea at dolor, justo ipsum duo rebum sea invidunt voluptua. Eos vero eos vero ea et dolore eirmod et. Dolores diam duo invidunt lorem. Elitr ut dolores magna sit. Sea dolore sanctus sed et. Takimata takimata sanctus sed.</p>
+                        <h1 class="text-white mb-4">Car and Motorcycle Service in Quezon City</h1>
+                        <p class="text-white mb-0">APX Motors Service Center on Tandang Sora handles routine maintenance, engine and CVT work, brakes, suspension and tires &mdash; for cars and motorcycles alike. Book a slot online and we will confirm it, or walk in during opening hours.</p>
                     </div>
                 </div>
                 <div class="col-lg-6">
@@ -434,7 +434,7 @@
             <div class="copyright">
                 <div class="row">
                     <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                        &copy; 2025 <a class="border-bottom" href="/">APX Automai</a>. All Rights Reserved.
+                        &copy; {{ date('Y') }} <a class="border-bottom" href="/">APX Automai</a>. All Rights Reserved.
                     </div>
                     <div class="col-md-6 text-center text-md-end">
                         <div class="footer-menu">
