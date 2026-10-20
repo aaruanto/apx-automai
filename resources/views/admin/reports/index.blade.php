@@ -10,6 +10,22 @@
      the report itself, not a screenshot of the app. --}}
 @push('styles')
 <style>
+/* Chart.js keeps the canvas's width:height ratio, and these two declared their
+   ratio through a height attribute. Fine on a wide screen, useless on a phone:
+   at 375px the revenue chart came out 177x38 and the service chart 124x49,
+   where an axis label has nowhere to go.
+
+   With maintainAspectRatio off, Chart.js sizes the canvas to its parent, so
+   the height lives here. The desktop values are the heights these two already
+   rendered at, so nothing above the breakpoint moves. */
+.apx-chart-box { position: relative; width: 100%; }
+#revenueChartBox          { height: 156px; }
+#revenueByServiceChartBox { height: 213px; }
+
+@media (max-width: 768px) {
+    #revenueChartBox,
+    #revenueByServiceChartBox { height: 240px; }
+}
 @media print {
     .topnav, .sidebar, .page-header .filter-select,
     .page-header .btn, .btn, .breadcrumb { display: none !important; }
@@ -152,7 +168,7 @@
                 <span style="font-size:.75rem;color:var(--text-muted);">Selected period</span>
             </div>
             <div class="card-body">
-                <canvas id="revenueChart" height="65"></canvas>
+                <div class="apx-chart-box" id="revenueChartBox"><canvas id="revenueChart"></canvas></div>
             </div>
         </div>
 
@@ -162,7 +178,16 @@
                 <div class="card-header-title"><i class="fas fa-chart-pie"></i> Booking Status</div>
             </div>
             <div class="card-body" style="display:flex;flex-direction:column;align-items:center;gap:16px;">
-                <canvas id="statusDonut" width="180" height="180" style="max-width:180px;"></canvas>
+                {{-- The donut was width="180" height="180" with
+                     responsive:false, so it stayed 180px wide however narrow
+                     the card got. At 375px its column is only 106px, and the
+                     chart hung 37px past the edge and was clipped. It now
+                     scales with its container and simply stops growing at the
+                     180px it used to be fixed at, so the desktop size is
+                     unchanged. --}}
+                <div style="width:100%;max-width:180px;">
+                    <canvas id="statusDonut"></canvas>
+                </div>
                 <div style="width:100%;display:flex;flex-direction:column;gap:6px;">
                     @php
                         $statusBreakdown = [
@@ -222,7 +247,7 @@
                 <div class="card-header-title"><i class="fas fa-chart-bar"></i> Revenue by Service</div>
             </div>
             <div class="card-body">
-                <canvas id="revenueByServiceChart" height="120"></canvas>
+                <div class="apx-chart-box" id="revenueByServiceChartBox"><canvas id="revenueByServiceChart"></canvas></div>
             </div>
         </div>
     </div>
@@ -298,7 +323,9 @@ new Chart(rCtx, {
         }]
     },
     options:{
-        responsive:true, legend:{display:false},
+        // maintainAspectRatio off so the height set on the wrapper governs;
+        // see the .apx-chart-box rules at the top of this file.
+        responsive:true, maintainAspectRatio:false, legend:{display:false},
         scales:{
             xAxes:[{gridLines:{color:'rgba(0,0,0,.04)'},ticks:{fontColor:'#888'}}],
             yAxes:[{gridLines:{color:'rgba(0,0,0,.04)'},ticks:{fontColor:'#888',beginAtZero:true,callback:v=>'₱'+v.toLocaleString()}}]
@@ -324,7 +351,11 @@ new Chart(document.getElementById('statusDonut'), {
         }]
     },
     options:{
-        responsive:false, cutoutPercentage:72,
+        // maintainAspectRatio keeps it a circle while responsive lets it
+        // follow the 180px-capped container above.
+        // aspectRatio 1 explicitly: Chart.js defaults to 2, which turned the
+        // donut into a 70x35 ellipse once it started following its container.
+        responsive:true, maintainAspectRatio:true, aspectRatio:1, cutoutPercentage:72,
         legend:{display:false},
         tooltips:{callbacks:{label:function(i,d){return d.labels[i.index]+': '+d.datasets[0].data[i.index];}}}
     }
@@ -342,7 +373,9 @@ new Chart(document.getElementById('revenueByServiceChart'), {
         }]
     },
     options:{
-        responsive:true, legend:{display:false},
+        // maintainAspectRatio off so the height set on the wrapper governs;
+        // see the .apx-chart-box rules at the top of this file.
+        responsive:true, maintainAspectRatio:false, legend:{display:false},
         scales:{
             xAxes:[{gridLines:{display:false},ticks:{fontColor:'#888'}}],
             yAxes:[{gridLines:{color:'rgba(0,0,0,.04)'},ticks:{fontColor:'#888',beginAtZero:true,callback:v=>'₱'+(v/1000).toFixed(0)+'k'}}]

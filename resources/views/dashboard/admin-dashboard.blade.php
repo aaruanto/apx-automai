@@ -5,6 +5,36 @@
 @push('styles')
 <style>
     .dash-f-label { display:block; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:4px; }
+
+    /* The customer dashboard greets the person by name in a banner; this one
+       showed only the product name, so the two halves of the app addressed
+       the same user in completely different ways. These rules are copied from
+       .welcome-banner in customer-dashboard.css, which the admin layout does
+       not load, so the two banners match in card treatment, font, size and
+       the red name. Both render the same x-greeting component, so the
+       wording and the weekday can only ever come from one place. */
+    .welcome-banner {
+        background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--red);
+        border-radius: 10px;
+        padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+    }
+    .welcome-text h2 {
+        font-family: 'Barlow Condensed', sans-serif;
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin: 0 0 4px;
+        color: var(--text);
+    }
+    .welcome-text h2 span { color: var(--red); }
+    .welcome-text p { font-size: .83rem; color: var(--text-muted); margin: 0; }
 </style>
 @endpush
 
@@ -22,6 +52,19 @@
         <div style="font-size:.83rem;color:var(--text-muted);">
             <i class="far fa-calendar" style="margin-right:6px;color:var(--red);"></i>
             {{ now()->format('l, F j, Y') }}
+        </div>
+    </div>
+
+    {{-- The same banner the customer dashboard opens with, rendering the same
+         x-greeting component, so both sides of the app greet the person the
+         same way rather than one saying "Happy Tuesday, Gelo" and the other
+         showing only the product name. --}}
+    <div class="welcome-banner">
+        <div class="welcome-text">
+            <x-greeting :name="Auth::user()->name" />
+            <p>
+                {{ $pending }} booking{{ $pending !== 1 ? 's' : '' }} awaiting confirmation.
+            </p>
         </div>
     </div>
 
