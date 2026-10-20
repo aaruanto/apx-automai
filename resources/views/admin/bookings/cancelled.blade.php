@@ -64,8 +64,12 @@
                 </thead>
                 <tbody id="tableBody">
                 @forelse($cancelled as $b)
+                {{-- data-date is the raw YYYY-MM-DD, matching what an
+                     <input type="date"> reports, so the filter below compares
+                     the two as strings and needs no date parsing at all. --}}
                 <tr id="row-{{ $b->id }}"
                     data-search="{{ strtolower(($b->customer->name ?? '').' '.$b->reference_number) }}"
+                    data-date="{{ $b->booking_date }}"
                     data-service="{{ $b->services->pluck('name')->implode('|') }}">
                     <td>
                         <div class="primary-col">{{ $b->customer->name ?? 'N/A' }}</div>
@@ -208,13 +212,25 @@ function confirmDelete() {
 function applyFilters() {
     const search  = document.getElementById('searchInput').value.toLowerCase();
     const service = document.getElementById('filterService').value;
+    // Read nowhere before this. The two date inputs were rendered and reset by
+    // clearFilters(), so they looked wired, but a date typed into them changed
+    // nothing — the same omission as the main bookings list.
+    const from    = document.getElementById('filterDateFrom').value;
+    const to      = document.getElementById('filterDateTo').value;
     const rows    = document.querySelectorAll('#tableBody tr');
     let visible   = 0;
     rows.forEach(row => {
         const ms = !search  || (row.dataset.search || '').includes(search);
         const mv = !service || (row.dataset.service || '').split('|').includes(service);
-        row.style.display = ms && mv ? '' : 'none';
-        if(ms && mv) visible++;
+        // Both sides are YYYY-MM-DD, so string comparison orders them correctly
+        // and avoids a Date() parse that would read the value in the browser's
+        // timezone and shift the boundary by a day.
+        const date = row.dataset.date || '';
+        const mf = !from || (date && date >= from);
+        const mt = !to   || (date && date <= to);
+        const show = ms && mv && mf && mt;
+        row.style.display = show ? '' : 'none';
+        if(show) visible++;
     });
     document.getElementById('rowCount').textContent = visible + ' records';
     document.getElementById('footerCount').textContent = visible + ' cancelled bookings';

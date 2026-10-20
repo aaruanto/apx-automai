@@ -101,7 +101,10 @@
                 </thead>
                 <tbody id="tableBody">
                 @forelse($bookings as $b)
-                <tr data-mechanic="{{ $b->mechanic_id ?? '__unassigned' }}" data-status="{{ $b->status }}" data-service="{{ $b->services->pluck('name')->implode('|') }}" data-search="{{ strtolower(($b->customer->name ?? '').' '.$b->reference_number) }}">
+                {{-- data-date is the raw YYYY-MM-DD, which is the same shape an
+                     <input type="date"> reports, so the filter below compares
+                     the two as strings and needs no date parsing at all. --}}
+                <tr data-mechanic="{{ $b->mechanic_id ?? '__unassigned' }}" data-status="{{ $b->status }}" data-service="{{ $b->services->pluck('name')->implode('|') }}" data-date="{{ $b->booking_date }}" data-search="{{ strtolower(($b->customer->name ?? '').' '.$b->reference_number) }}">
                     <td>
                         <div class="primary-col">{{ $b->customer->name ?? 'N/A' }}</div>
                         <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;">{{ $b->reference_number }}</div>
@@ -280,6 +283,11 @@ function applyFilters() {
     const status  = document.getElementById('filterStatus').value;
     const service = document.getElementById('filterService').value;
     const mechanic = document.getElementById('filterMechanic').value;
+    // These two were read nowhere. The inputs were rendered, bound to the same
+    // change handler as every other filter and reset by clearFilters(), so they
+    // looked wired — but a date typed into them changed nothing at all.
+    const from    = document.getElementById('filterDateFrom').value;
+    const to      = document.getElementById('filterDateTo').value;
     const rows    = document.querySelectorAll('#tableBody tr');
     let visible   = 0;
     rows.forEach(row => {
@@ -288,7 +296,13 @@ function applyFilters() {
         // A booking can carry several services; match if any of them is the one picked.
         const matchService = !service || (row.dataset.service || '').split('|').includes(service);
         const matchMechanic = !mechanic || row.dataset.mechanic === mechanic;
-        const show = matchSearch && matchStatus && matchService && matchMechanic;
+        // Both sides are YYYY-MM-DD, so comparing them as strings orders them
+        // correctly and avoids a Date() parse that would read the value in the
+        // browser's timezone and shift the boundary by a day.
+        const date = row.dataset.date || '';
+        const matchFrom = !from || (date && date >= from);
+        const matchTo   = !to   || (date && date <= to);
+        const show = matchSearch && matchStatus && matchService && matchMechanic && matchFrom && matchTo;
         row.style.display = show ? '' : 'none';
         if(show) visible++;
     });
