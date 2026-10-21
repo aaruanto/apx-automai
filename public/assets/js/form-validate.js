@@ -16,13 +16,50 @@
 
     var registry = new WeakMap(); // fieldEl -> { rules, errorEl, revalidateOnInput }
 
+    /**
+     * What the error message should be placed after.
+     *
+     * A field is often wrapped — .input-wrap on the auth pages, .m-input-wrap
+     * in the dashboard modals, .pw-field around a password and its eye — and
+     * those wrappers position their icons at top:50% of themselves. Putting
+     * the message after the *input* puts it inside that wrapper, which makes
+     * the wrapper taller, which slides the lock and the eye down the field.
+     * Measured on /register: the wrapper went 41px -> 73px and both icons
+     * dropped 16px the moment a field failed.
+     *
+     * After the wrapper instead, so the message sits below the whole field and
+     * the wrapper's own height never changes.
+     */
+    function errorAnchor(fieldEl) {
+        return (fieldEl.closest && fieldEl.closest('.input-wrap, .m-input-wrap, .pw-field')) || fieldEl;
+    }
+
     function getErrorEl(fieldEl, explicitErrorEl) {
         if (explicitErrorEl) return explicitErrorEl;
-        var next = fieldEl.nextElementSibling;
+
+        var anchor = errorAnchor(fieldEl);
+
+        // Look for the existing message where this function now puts it. The
+        // lookup and the insertion have to agree: if one moved and the other
+        // did not, every register() call would add another message element.
+        var next = anchor.nextElementSibling;
         if (next && next.classList && next.classList.contains('fv-error')) return next;
+
+        // An older message still sitting inside the wrapper, from markup or
+        // from a page that ran against the previous behaviour. Reuse it rather
+        // than adding a second one, and move it out so it stops inflating the
+        // wrapper.
+        if (anchor !== fieldEl) {
+            var stale = anchor.querySelector(':scope > .fv-error');
+            if (stale) {
+                anchor.insertAdjacentElement('afterend', stale);
+                return stale;
+            }
+        }
+
         var el = document.createElement('div');
         el.className = 'fv-error';
-        fieldEl.insertAdjacentElement('afterend', el);
+        anchor.insertAdjacentElement('afterend', el);
         return el;
     }
 

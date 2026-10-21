@@ -1199,13 +1199,19 @@
             color: var(--text-muted);
         }
         .m-input-wrap { position: relative; }
-        .m-input-wrap i {
+        /* Direct child only. This used to be a bare descendant selector, which
+           was fine while the leading lock/key was the wrapper's only <i> — but
+           the password eye lives in a .pw-toggle button inside the same
+           wrapper, and it was being absolutely positioned at left:11px on top
+           of the lock and turned red on focus with it. The eye is a control,
+           not part of the field's decoration, so it keeps its own styling. */
+        .m-input-wrap > i {
             position: absolute; left: 11px; top: 50%;
             transform: translateY(-50%);
             color: var(--text-muted); font-size: 0.78rem; pointer-events: none;
             transition: color 0.2s;
         }
-        .m-input-wrap:focus-within i { color: var(--red); }
+        .m-input-wrap:focus-within > i { color: var(--red); }
         .m-control {
             width: 100%;
             background: var(--surface-3);

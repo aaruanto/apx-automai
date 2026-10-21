@@ -7,10 +7,25 @@
     <meta name="csrf-token" content="{{ csrf_token() }}" />
     <title>My Dashboard — APX AutoMai</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
-    <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
     <link href="{{ asset('assets/css/design-tokens.css') }}" rel="stylesheet" />
     <link href="{{ asset('assets/css/customer-dashboard.css') }}" rel="stylesheet" />
     <link href="{{ asset('assets/css/availability-picker.css') }}" rel="stylesheet" />
+    {{-- Before first paint. The theme used to be applied by the script at the
+         bottom of this file, which was invisible only because the stylesheet's
+         own default — dark — matched the fallback. Now that the fallback is
+         light, waiting until the end of the body would paint the page dark and
+         repaint it light on every first visit.
+
+         The block below only adds the class; the script at the bottom still
+         owns the toggle, the stored value and the icon. --}}
+    <script>
+        (function () {
+            var theme = 'light';
+            try { theme = localStorage.getItem('apx-theme') || 'light'; } catch (e) {}
+            if (theme !== 'dark') document.documentElement.classList.add('light-mode');
+        })();
+    </script>
     <style>
         .theme-toggle { background: none; border: none; cursor: pointer; padding: 0; line-height: 1; }
         *, *::before, *::after { transition: background-color 0.25s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease; }
@@ -165,17 +180,62 @@
         .rw-section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 0.95rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text); display: flex; align-items: center; gap: 8px; }
         .rw-section-title i { color: var(--red); }
         .promos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-        .promo-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; transition: border-color 0.2s, transform 0.15s; }
+        /* Column, so the footer can be pushed to the bottom. The grid already
+           stretches every card in a row to the same height, but the body was
+           block-flow, so the price row sat wherever the description happened to
+           end. One description wrapping to an extra line dropped that card's
+           price 19px below its neighbours' — measured at 1180px, where
+           Standard Service's longer text turns three lines into four. */
+        .promo-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; transition: border-color 0.2s, transform 0.15s; display: flex; flex-direction: column; }
         .promo-card:hover { border-color: rgba(232,25,44,0.35); transform: translateY(-2px); }
         .promo-card-accent { height: 4px; }
-        .promo-card-body { padding: 16px 18px 14px; }
+        .promo-card-body { padding: 16px 18px 14px; display: flex; flex-direction: column; flex: 1; }
         .promo-tag { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
         .promo-tag i { font-size: 0.6rem; }
         .promo-title { font-family: 'Barlow Condensed', sans-serif; font-size: 1rem; font-weight: 800; letter-spacing: 0.02em; color: var(--text); margin-bottom: 4px; line-height: 1.25; }
         .promo-desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px; }
-        .promo-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 12px; border-top: 1px solid var(--border); }
+        /* margin-top:auto is what actually levels the footers; everything above
+           it takes its natural height and the gap lands in the middle. */
+        .promo-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 12px; border-top: 1px solid var(--border); margin-top: auto; }
         .promo-expiry { font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
         .promo-expiry i { color: var(--red); font-size: 0.66rem; }
+
+        /* ── BUNDLE STRIP (Book a Service) ──
+           A rail of the same .promo-card used in Promos & Offers, in its
+           compact form. Same builder, same classes: the two panels cannot
+           show different prices for the same bundle. */
+        .bundle-strip { margin-bottom: 18px; }
+        .bundle-strip[hidden] { display: none; }
+        .bundle-strip-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+        .bundle-strip-title { font-family: 'Barlow Condensed', sans-serif; font-size: 0.95rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text); display: flex; align-items: center; gap: 8px; }
+        .bundle-strip-title i { color: #16a34a; }
+        .bundle-strip-all { font-size: 0.76rem; color: var(--text-muted); text-decoration: none; white-space: nowrap; cursor: pointer; }
+        .bundle-strip-all:hover { color: var(--red); }
+
+        /* Scrolls sideways rather than wrapping, so the strip stays one row
+           tall however many bundles the shop is running and never pushes the
+           service grid off the first screen. */
+        .bundle-strip-rail {
+            display: flex;
+            gap: 14px;
+            overflow-x: auto;
+            scroll-snap-type: x proximity;
+            padding-bottom: 4px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .bundle-strip-rail > .promo-card { flex: 0 0 272px; scroll-snap-align: start; }
+        .bundle-strip-rail::-webkit-scrollbar { height: 6px; }
+        .bundle-strip-rail::-webkit-scrollbar-thumb { background: var(--border-hover, rgba(128,128,128,0.35)); border-radius: 3px; }
+
+        .promo-card--compact .promo-card-body { padding: 13px 15px 12px; }
+        .promo-card--compact .promo-desc { margin-bottom: 12px; }
+
+        /* A phone has no room for a 272px card plus a peek of the next one,
+           so the cards take most of the width and the rail snaps card to card. */
+        @media (max-width: 520px) {
+            .bundle-strip-rail { scroll-snap-type: x mandatory; }
+            .bundle-strip-rail > .promo-card { flex: 0 0 85%; }
+        }
         .promo-code-wrap { display: flex; align-items: center; gap: 6px; }
         .promo-code { font-family: monospace; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; background: var(--surface-3); border: 1px solid var(--border); color: var(--text); padding: 4px 10px; border-radius: 5px; }
         .btn-copy-code { background: none; border: 1px solid var(--border); color: var(--text-muted); width: 28px; height: 28px; border-radius: 5px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.72rem; transition: color 0.2s, border-color 0.2s, background 0.2s; flex-shrink: 0; }
@@ -473,6 +533,21 @@
                         <button type="button" class="view-toggle-btn" id="viewToggleList" title="List view" onclick="setServicesView('list')"><i class="fas fa-list"></i></button>
                     </div>
                 </div>
+
+                {{-- Bundles, where a customer is actually choosing what to book.
+                     They were only ever shown under Promos & Offers, a tab you
+                     reach after you have already picked a service. Rendered by
+                     the same builder as that panel, and hidden while a search or
+                     a category filter is narrowing the list, because a bundle
+                     that ignores the filter reads like a bug. --}}
+                <div class="bundle-strip" id="bundleStrip" hidden>
+                    <div class="bundle-strip-head">
+                        <div class="bundle-strip-title"><i class="fas fa-boxes-stacked"></i> Save with a bundle</div>
+                        <a class="bundle-strip-all" onclick="switchSection(event, 'promos')">See all bundles</a>
+                    </div>
+                    <div class="bundle-strip-rail" id="bundleStripRail"></div>
+                </div>
+
                 <div class="category-filters">
                     <button class="cat-filter active" data-cat="all" onclick="setCat(this)">All Services</button>
                     <button class="cat-filter" data-cat="engine" onclick="setCat(this)">Engine & Oil</button>
@@ -880,14 +955,14 @@
                             <div class="m-form-group">
                                 <label class="m-label">New password</label>
                                 <div class="m-input-wrap"><i class="fas fa-key"></i>
-                                    <input class="m-control" id="cpNew" type="password" autocomplete="new-password" />
+                                    <input class="m-control" id="cpNew" type="password" data-pw-group="new" autocomplete="new-password" />
                                 </div>
                                 <div class="m-hint">At least 8 characters, with upper and lower case, a number and a symbol.</div>
                             </div>
                             <div class="m-form-group">
                                 <label class="m-label">Confirm new password</label>
                                 <div class="m-input-wrap"><i class="fas fa-key"></i>
-                                    <input class="m-control" id="cpConfirm" type="password" autocomplete="new-password" />
+                                    <input class="m-control" id="cpConfirm" type="password" data-pw-group="new" autocomplete="new-password" />
                                 </div>
                             </div>
                             <button class="btn-avf-save" onclick="submitPasswordChange()">
@@ -1088,6 +1163,7 @@
 <script src="{{ asset('assets/js/availability-picker.js') }}"></script>
 <script src="{{ asset('assets/js/form-validate.js') }}"></script>
 <script src="{{ asset('assets/js/plate-mask.js') }}"></script>
+<script src="{{ asset('assets/js/password-toggle.js') }}"></script>
 <script src="{{ asset('assets/js/live-refresh.js') }}"></script>
 <script src="{{ asset('assets/js/notification-bell.js') }}"></script>
 <script>
@@ -1367,6 +1443,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
 
     function filterServices() {
         currentSvcSearch = document.getElementById('serviceSearch').value.toLowerCase();
+        renderBundleStrip();
         const grid = document.getElementById('servicesGrid');
         const filtered = SERVICES.filter(s => {
             const matchCat    = currentCat === 'all' || s.cat === currentCat;
@@ -1700,11 +1777,61 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
        A customer copying one of those codes had nowhere to use it. */
     const BUNDLES = @json($bundlesJs ?? []);
 
+    /* One card, two panels.
+       Promos & Offers shows the full card; the strip above the service grid
+       shows a compact one. Both are built here so the saving, the price and
+       the vehicle restriction can never read differently in the two places
+       for the same bundle — the earlier strip-shaped duplicate of this markup
+       is exactly how that drift starts.
+
+       Vehicle restriction is on both: it decides whether the customer can
+       book the bundle at all, so a card that leaves it out is a card that
+       sends them to a modal that rejects them. */
+    function bundleCard(b, opts) {
+        const compact = !!(opts && opts.compact);
+
+        const count   = b.includes.length + (b.includes.length === 1 ? ' service' : ' services');
+        const vehicle = b.vehicle ? esc(b.vehicle.charAt(0).toUpperCase() + b.vehicle.slice(1)) + 's only' : '';
+
+        const detail = compact
+            ? `${count}${vehicle ? ' · <em>' + vehicle + '</em>' : ''}`
+            : `${b.description ? esc(b.description) + '<br>' : ''}` +
+              `<strong>Includes:</strong> ${b.includes.map(esc).join(' + ')}` +
+              `${vehicle ? '<br><em>' + vehicle + '</em>' : ''}`;
+
+        // Above the footer, not below it: anything after the footer would sit
+        // at a different height on a card that has no end date, which undoes
+        // the levelling margin-top:auto does.
+        const ends = b.ends
+            ? `<div style="font-size:.72rem;color:var(--text-muted);margin-bottom:10px;"><i class="fas fa-clock"></i> Until ${esc(b.ends)}</div>`
+            : '';
+
+        return `
+            <div class="promo-card${compact ? ' promo-card--compact' : ''}">
+                <div class="promo-card-accent" style="background:#16a34a;"></div>
+                <div class="promo-card-body">
+                    <div class="promo-tag" style="color:#16a34a;">
+                        <i class="fas fa-boxes-stacked"></i>Save ${peso(b.saves)} (${b.percent}%)
+                    </div>
+                    <div class="promo-title">${esc(b.name)}</div>
+                    <div class="promo-desc">${detail}</div>
+                    ${ends}
+                    <div class="promo-card-footer">
+                        <span class="promo-expiry">
+                            <s style="color:var(--text-muted);">${peso(b.list)}</s>
+                            <strong style="color:var(--text);margin-left:6px;font-size:1rem;">${peso(b.price)}</strong>
+                        </span>
+                        <button class="btn-book-service" onclick="bookBundle(${b.id})">
+                            <i class="fas fa-calendar-plus"></i> Book
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+    }
+
     function renderPromos() {
         const grid = document.getElementById('promosGrid');
         if (!grid) return;
-
-        const peso = n => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
         document.getElementById('promoCount').textContent =
             BUNDLES.length + (BUNDLES.length === 1 ? ' bundle' : ' bundles');
@@ -1718,31 +1845,23 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             return;
         }
 
-        grid.innerHTML = BUNDLES.map(b => `
-            <div class="promo-card">
-                <div class="promo-card-accent" style="background:#16a34a;"></div>
-                <div class="promo-card-body">
-                    <div class="promo-tag" style="color:#16a34a;">
-                        <i class="fas fa-boxes-stacked"></i>Save ${peso(b.saves)} (${b.percent}%)
-                    </div>
-                    <div class="promo-title">${b.name}</div>
-                    <div class="promo-desc">
-                        ${b.description ? b.description + '<br>' : ''}
-                        <strong>Includes:</strong> ${b.includes.join(' + ')}
-                        ${b.vehicle ? '<br><em>' + b.vehicle.charAt(0).toUpperCase() + b.vehicle.slice(1) + 's only</em>' : ''}
-                    </div>
-                    <div class="promo-card-footer">
-                        <span class="promo-expiry">
-                            <s style="color:var(--text-muted);">${peso(b.list)}</s>
-                            <strong style="color:var(--text);margin-left:6px;font-size:1rem;">${peso(b.price)}</strong>
-                        </span>
-                        <button class="btn-book-service" onclick="bookBundle(${b.id})">
-                            <i class="fas fa-calendar-plus"></i> Book
-                        </button>
-                    </div>
-                    ${b.ends ? '<div style="font-size:.72rem;color:var(--text-muted);margin-top:8px;"><i class="fas fa-clock"></i> Until ' + b.ends + '</div>' : ''}
-                </div>
-            </div>`).join('');
+        grid.innerHTML = BUNDLES.map(b => bundleCard(b)).join('');
+    }
+
+    /* The bundle strip above the service grid.
+       Only while the customer is looking at the whole list: a bundle sitting
+       under "Brakes & Pipes", or above "no services match your search",
+       looks like the filter is broken. */
+    function renderBundleStrip() {
+        const strip = document.getElementById('bundleStrip');
+        const rail  = document.getElementById('bundleStripRail');
+        if (!strip || !rail) return;
+
+        const show = BUNDLES.length && currentCat === 'all' && !currentSvcSearch;
+        strip.hidden = !show;
+        if (!show) { rail.innerHTML = ''; return; }
+
+        rail.innerHTML = BUNDLES.map(b => bundleCard(b, { compact: true })).join('');
     }
 
     /* Booking a bundle reuses the service modal: the bundle's first service
@@ -2316,6 +2435,7 @@ document.addEventListener('click', function(e) {
     renderBookings();
     filterServices();
     renderPromos();
+    renderBundleStrip();
 
     const themeToggle = document.getElementById('themeToggle');
     const themeIcon   = document.getElementById('themeIcon');
@@ -2333,7 +2453,11 @@ document.addEventListener('click', function(e) {
         }
     }
 
-    const savedTheme = localStorage.getItem('apx-theme') || 'dark';
+    // Light, matching the admin panel and the sign-in pages. A customer used
+    // to cross from a light landing page, through sign-in, into a dark
+    // dashboard. Anyone who has actually chosen dark keeps it — only a first
+    // visit is affected.
+    const savedTheme = localStorage.getItem('apx-theme') || 'light';
     applyTheme(savedTheme);
 
     themeToggle.addEventListener('click', () => {

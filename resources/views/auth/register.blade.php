@@ -6,9 +6,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>Create Account — APX AutoMai</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
-    <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
     <link href="{{ asset('assets/css/design-tokens.css') }}" rel="stylesheet" />
     <link href="{{ asset('assets/css/auth.css') }}" rel="stylesheet" />
+    {{-- Before first paint, deliberately. Setting the class from a script
+         at the end of the body would render the page dark and then repaint
+         it light, which is a white flash for a returning dark user and a
+         dark one for everybody else.
+
+         Light unless the customer has chosen otherwise, and the key and its
+         two values are the same ones the dashboard and the admin panel use,
+         so a choice made in any of them carries to the rest. --}}
+    <script>
+        (function () {
+            var theme = 'light';
+            try { theme = localStorage.getItem('apx-theme') || 'light'; } catch (e) {}
+            if (theme !== 'dark') document.documentElement.classList.add('light-mode');
+        })();
+    </script>
 </head>
 <body>
 
@@ -89,7 +104,7 @@
                             <label class="form-label" for="inputPassword">Password</label>
                             <div class="input-wrap">
                                 <i class="fas fa-lock input-icon"></i>
-                                <input class="form-control" id="inputPassword" name="password" type="password" 
+                                <input class="form-control" id="inputPassword" name="password" type="password" data-pw-group="new" 
                                     placeholder="••••••••" required oninput="checkStrength(this.value)" />
                                 <button type="button" class="pw-toggle">
                                     <i class="fas fa-eye"></i>
@@ -101,7 +116,7 @@
                             <label class="form-label" for="inputPasswordConfirm">Confirm Password</label>
                             <div class="input-wrap">
                                 <i class="fas fa-lock input-icon"></i>
-                                <input class="form-control" id="inputPasswordConfirm" name="password_confirmation" 
+                                <input class="form-control" id="inputPasswordConfirm" name="password_confirmation" data-pw-group="new" 
                                     type="password" placeholder="••••••••" required />
                                 <button type="button" class="pw-toggle">
                                     <i class="fas fa-eye"></i>

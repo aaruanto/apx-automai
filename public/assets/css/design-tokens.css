@@ -58,6 +58,7 @@
     display: block;
 }
 .pw-field > input,
+.m-input-wrap > input,
 .input-wrap > input.form-control {
     width: 100%;
     padding-right: 40px;
@@ -97,5 +98,6 @@
         right: 2px;
     }
     .pw-field > input,
+    .m-input-wrap > input,
     .input-wrap > input.form-control { padding-right: 52px; }
 }

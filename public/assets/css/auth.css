@@ -10,6 +10,38 @@
             --text-muted: #888888;
         }
 
+        /* Light is what these pages open in now, so a customer goes from a
+           light landing page to a light sign-in to a light dashboard instead
+           of being flashed dark in the middle.
+
+           Values copied from the dashboard's own html.light-mode block rather
+           than picked fresh, so the two pages are the same light — a customer
+           crossing from here to the dashboard should not see the greys shift.
+           --border-hover has no counterpart there; it is the dark value's
+           inverse at the same weight. */
+        html.light-mode {
+            --black:        #f4f5f7;
+            --surface:      #ffffff;
+            --surface-2:    #f0f1f3;
+            --surface-3:    #e6e8ec;
+            --border:       rgba(0,0,0,0.09);
+            --border-hover: rgba(0,0,0,0.18);
+            --text:         #1a1d23;
+            --text-muted:   #6b7280;
+            --red-glow:     rgba(232,25,44,0.10);
+        }
+
+        /* The dark card is lifted off a near-black page by a heavy shadow and
+           a white hairline. Both read as grime on white, so light gets a
+           shallower shadow and a dark hairline instead. */
+        html.light-mode .auth-card {
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+        }
+
+        /* Native controls — the date/time picker, the autofill dropdown and
+           the scrollbar — follow this rather than staying dark on a light page. */
+        html.light-mode { color-scheme: light; }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
@@ -179,6 +211,34 @@
         .form-control:focus {
             border-color: var(--red);
             box-shadow: 0 0 0 3px var(--red-glow);
+        }
+
+        /* Chrome paints an autofilled field its own pale blue and will not let
+           background-color be set back on it. The way round is an inset shadow
+           thick enough to stand in for the background, with
+           -webkit-text-fill-color for the text, which Chrome does respect.
+
+           Both values come from the same tokens the field already uses, so
+           this follows the theme instead of hardcoding a colour — light and
+           dark are both right without a second rule. */
+        .form-control:-webkit-autofill,
+        .form-control:-webkit-autofill:hover,
+        .form-control:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 1000px var(--surface-3) inset;
+                    box-shadow: 0 0 0 1000px var(--surface-3) inset;
+            -webkit-text-fill-color: var(--text);
+            caret-color: var(--text);
+        }
+
+        /* The focus ring above is itself a box-shadow, and a shadow property
+           replaces rather than adds. An autofilled field that is also focused
+           therefore needs both in one declaration, or filling it would wipe
+           the ring off. */
+        .form-control:-webkit-autofill:focus {
+            -webkit-box-shadow: 0 0 0 3px var(--red-glow), 0 0 0 1000px var(--surface-3) inset;
+                    box-shadow: 0 0 0 3px var(--red-glow), 0 0 0 1000px var(--surface-3) inset;
+            -webkit-text-fill-color: var(--text);
+            caret-color: var(--text);
         }
         .form-control:focus + .input-icon,
         .input-wrap:focus-within .input-icon { color: var(--red); }

@@ -202,11 +202,11 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">New Password <span style="color:var(--red)">*</span></label>
-                    <input class="form-control" type="password" name="password" required />
+                    <input class="form-control" type="password" name="password" data-pw-group="new" required />
                 </div>
                 <div class="form-group" style="margin-bottom:0;">
                     <label class="form-label">Confirm New Password <span style="color:var(--red)">*</span></label>
-                    <input class="form-control" type="password" name="password_confirmation" required />
+                    <input class="form-control" type="password" name="password_confirmation" data-pw-group="new" required />
                 </div>
             </div>
             <div class="modal-footer">
