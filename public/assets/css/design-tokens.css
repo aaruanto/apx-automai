@@ -15,6 +15,12 @@
     --info:        #3B82F6;
     --info-dark:   #2563EB;
     --info-glow:   rgba(59, 130, 246, 0.18);
+    /* A glow is a focus ring (see .fv-invalid), not a surface. At 18% it
+       is too heavy to put text on: --info-dark on it measures 4.2:1 and
+       fails AA. This is the tint to fill an informational panel with —
+       the blue counterpart of the #fff5f5 the landing page used for red —
+       and --info-dark on it measures 4.7:1. */
+    --info-surface: rgba(59, 130, 246, 0.08);
 
     --success:     #22C55E;
     --success-dark:#16A34A;

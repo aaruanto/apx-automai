@@ -140,6 +140,55 @@
         @media (max-width: 1200px) {
             .apx-sticky-card { display: none; }
         }
+
+        /* ---- MOBILE BOOKING CTA ----
+           The sticky card is display:none below 1200px, and correctly so: a
+           300px fixed rail with three selects would swallow a phone screen.
+           But that left phones with no call to action at all — nothing
+           tappable in the first 986px, and nothing persistent over a 12,000px
+           page. This is the same job in the shape a phone can carry.
+
+           Shown at exactly the breakpoint that hides .apx-sticky-card, so the
+           two can never appear together. */
+        .apx-mobile-cta { display: none; }
+
+        @media (max-width: 1200px) {
+            .apx-mobile-cta {
+                display: block;
+                position: fixed;
+                left: 0; right: 0; bottom: 0;
+                /* The landing page overflows 12px at phone width (known,
+                   from the templates corner badges). A fixed box with
+                   left:0;right:0 sizes to that wider document and ends up
+                   12px past the screen, shifting the button off-centre.
+                   Clamped to the viewport so this bar is right whether or
+                   not the overflow is ever fixed. */
+                max-width: 100vw;
+                /* Under Bootstrap's modal layers (1050+) so the booking dialog
+                   covers it, above the page. */
+                z-index: 1039;
+                background: #fff;
+                border-top: 1px solid rgba(0,0,0,.08);
+                box-shadow: 0 -4px 16px rgba(0,0,0,.10);
+                /* The home indicator occupies the bottom ~34px on a modern
+                   iPhone; without this the button sits under it. */
+                padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+            }
+            .apx-mobile-cta .btn {
+                width: 100%;
+                /* 48px: comfortably above the 44px minimum touch target. */
+                min-height: 48px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+            }
+
+            /* The bar would otherwise sit on top of the last of the footer,
+               and on top of the back-to-top button at bottom-right. */
+            body { padding-bottom: 76px; }
+            .back-to-top { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+        }
     </style>
     <div class="apx-sticky-card">
         <h5>Experience The Best<br>Auto Service In QC</h5>
@@ -284,21 +333,21 @@
                 <a href="{{ route(Auth::user()->dashboardRoute()) }}"
                    class="btn btn-primary d-lg-none mt-3 d-flex align-items-center justify-content-center"
                    style="min-height:48px;">
-                    <i class="fa fa-gauge me-2"></i> My Dashboard
+                    <i class="fa fa-tachometer-alt me-2"></i> My Dashboard
                 </a>
                 <form method="POST" action="{{ route('logout') }}" class="d-lg-none mt-2">
                     @csrf
                     <button type="submit"
                             class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center"
                             style="min-height:48px;">
-                        <i class="fa fa-right-from-bracket me-2"></i> Log out
+                        <i class="fa fa-sign-out-alt me-2"></i> Log out
                     </button>
                 </form>
                 @else
                 <a href="{{ route('login') }}"
                    class="btn btn-primary d-lg-none mt-3 d-flex align-items-center justify-content-center"
                    style="min-height:48px;">
-                    <i class="fa fa-right-to-bracket me-2"></i> Login
+                    <i class="fa fa-sign-in-alt me-2"></i> Login
                 </a>
                 @endauth
             </div>
@@ -310,7 +359,7 @@
                 <form method="POST" action="{{ route('logout') }}" class="m-0">
                     @csrf
                     <button type="submit" class="btn btn-light py-4 px-4" title="Log out">
-                        <i class="fa fa-right-from-bracket"></i>
+                        <i class="fa fa-sign-out-alt"></i>
                     </button>
                 </form>
             </div>
@@ -334,6 +383,11 @@
                             <div class="col-10 col-lg-7 text-center text-lg-start">
                                 <h6 class="text-white text-uppercase mb-3 animated slideInDown">APX Automai</h6>
                                 <h1 class="display-3 text-white mb-4 pb-3 animated slideInDown">Your Trusted Auto Service Center in Quezon City</h1>
+                                <a href="#" class="btn btn-primary py-3 px-5 fw-bold animated slideInDown"
+                                   data-bs-toggle="modal" data-bs-target="#bookingModal">
+                                    <i class="fas fa-calendar-plus me-2"></i>Book a Service
+                                </a>
+
                             </div>
                         </div>
                     </div>
@@ -347,6 +401,11 @@
                             <div class="col-10 col-lg-7 text-center text-lg-start">
                                 <h6 class="text-white text-uppercase mb-3 animated slideInDown">APX Automai</h6>
                                 <h1 class="display-3 text-white mb-4 pb-3 animated slideInDown">Engine Care, CVT Service & More — Done Right, Every Time</h1>
+                                <a href="#" class="btn btn-primary py-3 px-5 fw-bold animated slideInDown"
+                                   data-bs-toggle="modal" data-bs-target="#bookingModal">
+                                    <i class="fas fa-calendar-plus me-2"></i>Book a Service
+                                </a>
+
                             </div>
                         </div>
                     </div>
@@ -924,6 +983,13 @@
 
 
     <!-- Back to Top -->
+    {{-- Phones and tablets only; see .apx-mobile-cta. --}}
+    <div class="apx-mobile-cta">
+        <button class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#bookingModal">
+            <i class="fas fa-calendar-plus"></i> Book a Service
+        </button>
+    </div>
+
     <a href="#" class="btn btn-lg btn-primary btn-lg-square back-to-top"><i class="bi bi-arrow-up"></i></a>
 
 
@@ -1103,18 +1169,30 @@
         .apx-confirm-total { display:flex; justify-content:space-between; font-size:0.85rem; padding:8px 0 0; border-top:1.5px solid #ddd; margin-top:4px; }
         .apx-confirm-total span:last-child { font-weight:700; color:#e63946; }
 
-        /* ---- membership nudge ---- */
-        .apx-member-card { border:2px solid #e63946; border-radius:12px; padding:14px 16px; background:#fff5f5; margin-bottom:12px; }
+        /* ---- membership nudge ----
+           Blue, not red. design-tokens.css reserves --red for errors and
+           destructive actions; this is a neutral upsell at the end of a
+           SUCCESSFUL booking, and it sat in the same #e63946 as the Confirm
+           button beside it, so the two competed for the same click.
+
+           Fills use --info-dark rather than --info: white on --info measures
+           3.7:1, which fails AA for the 10px badge and the 13px button label.
+           On --info-dark it is 5.2:1. The lighter --info is kept for the
+           border and the perk dots, where nothing sits on top of it. */
+        .apx-member-card { border:2px solid var(--info); border-radius:12px; padding:14px 16px; background:var(--info-surface); margin-bottom:12px; }
         .apx-member-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
-        .apx-member-badge { font-size:10px; font-weight:700; background:#e63946; color:#fff; padding:3px 9px; border-radius:4px; letter-spacing:0.03em; }
-        .apx-member-title { font-size:0.88rem; font-weight:700; color:#c0392b; margin:0 0 2px; }
-        .apx-member-sub { font-size:0.75rem; color:#e63946; margin:0; }
+        .apx-member-badge { font-size:10px; font-weight:700; background:var(--info-dark); color:#fff; padding:3px 9px; border-radius:4px; letter-spacing:0.03em; }
+        .apx-member-title { font-size:0.88rem; font-weight:700; color:var(--info-dark); margin:0 0 2px; }
+        .apx-member-sub { font-size:0.75rem; color:var(--info-dark); margin:0; }
         .apx-member-perks { display:grid; grid-template-columns:1fr 1fr; gap:5px 12px; margin-bottom:12px; }
-        .apx-member-perk { display:flex; align-items:center; gap:6px; font-size:0.78rem; color:#c0392b; }
-        .apx-perk-dot { width:5px; height:5px; border-radius:50%; background:#e63946; flex-shrink:0; }
-        .apx-btn-member { width:100%; padding:9px; font-size:0.83rem; font-weight:700; background:#e63946; color:#fff; border:none; border-radius:8px; cursor:pointer; font-family:'Ubuntu',sans-serif; letter-spacing:0.02em; transition:background 0.2s; }
-        .apx-btn-member:hover { background:#c0392b; }
-        .apx-btn-skip { display:block; text-align:center; font-size:0.75rem; color:#e63946; margin-top:7px; cursor:pointer; background:none; border:none; width:100%; font-family:'Ubuntu',sans-serif; }
+        .apx-member-perk { display:flex; align-items:center; gap:6px; font-size:0.78rem; color:var(--info-dark); }
+        .apx-perk-dot { width:5px; height:5px; border-radius:50%; background:var(--info); flex-shrink:0; }
+        .apx-btn-member { width:100%; padding:9px; font-size:0.83rem; font-weight:700; background:var(--info-dark); color:#fff; border:none; border-radius:8px; cursor:pointer; font-family:'Ubuntu',sans-serif; letter-spacing:0.02em; transition:filter 0.2s; }
+        /* Darkened rather than swapped to another token: --info-dark is already
+           the darker of the pair, so the usual base-to-dark hover has nowhere
+           left to go without inventing a hex value. */
+        .apx-btn-member:hover { filter:brightness(0.9); }
+        .apx-btn-skip { display:block; text-align:center; font-size:0.75rem; color:var(--info-dark); margin-top:7px; cursor:pointer; background:none; border:none; width:100%; font-family:'Ubuntu',sans-serif; }
 
         /* ---- modal footer buttons ---- */
         .apx-modal .btn-apx-back { background:none; border:none; color:#888; font-size:0.85rem; cursor:pointer; padding:0; font-family:'Ubuntu',sans-serif; }
@@ -1169,7 +1247,7 @@
                             <p class="apx-path-sub">Choose the option that best describes what you need. Not sure? That's okay.</p>
 
                             <button type="button" class="apx-path-card" onclick="apxChoosePath('checkup')">
-                                <span class="apx-path-icon"><i class="fas fa-magnifying-glass"></i></span>
+                                <span class="apx-path-icon"><i class="fas fa-search"></i></span>
                                 <span class="apx-path-text">
                                     <span class="apx-path-title">General Check-up / Inspection</span>
                                     <span class="apx-path-desc">Something seems wrong, or I want my car checked.</span>
@@ -1255,7 +1333,7 @@
                              and something is selected, so the nudge quotes a
                              real figure rather than an abstract percentage. --}}
                         <div id="apx-acct-nudge" class="apx-acct-nudge" style="display:none;">
-                            <i class="fas fa-circle-info"></i>
+                            <i class="fas fa-info-circle"></i>
                             <span id="apx-acct-nudge-text"></span>
                             <a href="{{ route('register') }}">Create an account</a>
                         </div>
@@ -1506,7 +1584,7 @@
             if (idx >= 0) selected.add(idx);
 
             document.getElementById('apx-checkup-note').innerHTML =
-                '<i class="fas fa-circle-info" style="color:#3B82F6;margin-right:5px;"></i>'
+                '<i class="fas fa-info-circle" style="color:#3B82F6;margin-right:5px;"></i>'
                 + 'We will book a <strong>' + (GUIDED.checkupName || 'general inspection')
                 + '</strong>. If the mechanic finds something, they will talk you through it before any work starts.';
 
