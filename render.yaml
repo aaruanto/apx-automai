@@ -63,9 +63,11 @@ services:
       - key: MAIL_FROM_ADDRESS
         sync: false
       # Semaphore. The key is prompted for in the dashboard; with SEMAPHORE_KEY
-      # unset the app simply skips the SMS channel. The sender name is optional
-      # and is therefore not listed — unset, Semaphore uses the account default,
-      # which reaches every Philippine network without registration.
+      # unset the app simply skips the SMS channel. SEMAPHORE_SENDER_NAME is
+      # deliberately not listed: unset, Semaphore uses the sender name
+      # registered to the account, which is what we want. That registration is
+      # not automatic — an account with no approved sender name cannot send at
+      # all, however many credits it holds. Apply once, in their dashboard.
       - key: SEMAPHORE_BASE_URL
         value: https://api.semaphore.co/api/v4
       - key: SEMAPHORE_KEY

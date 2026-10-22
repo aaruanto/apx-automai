@@ -260,7 +260,11 @@ class SmsService
                     // leading plus; we keep E.164 for the log and strip it here.
                     'number'     => ltrim($recipient, '+'),
                     'message'    => $content,
-                    'sendername' => (string) config('services.semaphore.sender_name'),
+                    // Trimmed, because array_filter below rejects '' and null
+                    // but not ' '. A stray space typed into the host's env UI
+                    // would send a blank sender name and come back as "No active
+                    // sender name found" — while the variable still looks empty.
+                    'sendername' => trim((string) config('services.semaphore.sender_name')),
                 ], fn ($value) => $value !== '' && $value !== null));
         } catch (\Throwable $e) {
             return $this->fail(

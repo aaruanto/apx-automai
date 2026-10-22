@@ -83,14 +83,19 @@ class MessageTemplate
             // Kept to one segment deliberately. {branch} is not used here: the
             // configured name carries an em-dash, which is outside GSM-7 and
             // would push the whole message to 70 characters a segment.
-            'sms_body'        => 'Hi {first_name}! APX AutoMai: your {service} is on {date}, {time}. Ref {reference}. Please arrive 10 mins early.',
+            //
+            // "APX Motors", not "APX AutoMai": the Semaphore sender name is
+            // APXMOTORS, and a text whose sender and body disagree about who
+            // sent it reads like a scam. Email keeps the portal name — it has
+            // no sender-ID approval to satisfy and shows a full from-address.
+            'sms_body'        => 'Hi {first_name}! APX Motors: your {service} is on {date}, {time}. Ref {reference}. Please arrive 10 mins early.',
 
             // ── Maintenance ────────────────────────────────────────────────
             'maintenance_subject' => 'Your {vehicle} is due for servicing',
             'maintenance_body'    => self::maintenanceBody(),
             // Also avoids {contact}, for the same reason as the email footer:
             // unset, it left "Call APX AutoMai on  to book." going out by text.
-            'maintenance_sms'     => 'Hi {first_name}! Your {plate} is due for servicing on {due_date}. We suggest {recommendation}. Reply or drop by APX AutoMai to book.',
+            'maintenance_sms'     => 'Hi {first_name}! Your {plate} is due for servicing on {due_date}. We suggest {recommendation}. Reply or drop by APX Motors to book.',
 
             'triggers' => [
                 'remind_7d'        => true,

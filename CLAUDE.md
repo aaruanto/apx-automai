@@ -66,6 +66,16 @@ a five-minute boundary or it will never fire.
 array, and **silently discards any message starting with "TEST"** — reporting
 success and delivering nothing.
 
+**A Semaphore account cannot send without an approved sender name.** Credits
+and sender names are separate things; topping up grants nothing. With none
+registered, every call fails with HTTP 500 and `No active sender name found`,
+which reads like a key or billing problem and is neither. Leaving
+`SEMAPHORE_SENDER_NAME` unset is correct — Semaphore then uses the name
+registered to the account — but *some* name has to be approved there first.
+The first one is free, is applied for in their dashboard, and **cannot be
+changed afterwards**. Ours is `APXMOTORS`, which is why the SMS bodies say
+"APX Motors" while the email branding stays "APX AutoMai".
+
 **One non-GSM-7 character triples SMS cost.** An em-dash or a `₱` forces the
 whole message to UCS-2, cutting a segment from 160 characters to 70. The
 configured branch name contains an em-dash. `SmsService::gsmSafe()` maps the
