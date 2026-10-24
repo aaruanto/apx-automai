@@ -48,7 +48,7 @@ Two things that are easy to miss:
 Written for: Galero, Guevarra and Pineda — first-time setup on your own machine.
 
 Every command below was run against a clean clone before this was written, so
-the order is the order that actually works. It ends with 517 passing tests.
+the order is the order that actually works. It ends with 551 passing tests.
 
 Do it once. After that, skip to **Every time you sit down**.
 
@@ -139,7 +139,7 @@ php artisan apx:ensure-admin --email=you@example.com --password='PickAStrongOne1
 php artisan test
 ```
 
-Expect **517 passed**. If they pass, your setup is correct — that is the whole
+Expect **551 passed**. If they pass, your setup is correct — that is the whole
 point of running them now rather than later.
 
 ### 8. Run it
@@ -179,7 +179,7 @@ confusing "column not found" error later instead of a clear one.
 php artisan test
 ```
 
-All 517 must pass. `main` deploys straight to the live site, so a broken push
+All 551 must pass. `main` deploys straight to the live site, so a broken push
 is a broken demo.
 
 ```bash
