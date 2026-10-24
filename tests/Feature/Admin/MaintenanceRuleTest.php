@@ -58,7 +58,8 @@ it('creates an interval', function () {
 });
 
 it('refuses an interval that can never fall due', function () {
-    // Neither months nor kilometres: the rule would sit in the list looking
+    // No interval at all. Months is the only one there is now, and it is
+    // required: without it the rule would sit in the list looking
     // configured and never produce a single reminder.
     $this->actingAs(ruleAdmin())->post('/admin/maintenance', [
         'name'      => 'Nothing at all',
@@ -68,14 +69,41 @@ it('refuses an interval that can never fall due', function () {
     expect(MaintenanceRule::count())->toBe(0);
 });
 
-it('accepts a distance-only interval', function () {
+it('accepts a months-only interval', function () {
+    $this->actingAs(ruleAdmin())->post('/admin/maintenance', [
+        'name'            => 'Tyre rotation',
+        'interval_months' => 10,
+        'lead_days'       => 0,
+    ])->assertRedirect();
+
+    expect(MaintenanceRule::where('name', 'Tyre rotation')->sole()->interval_months)->toBe(10);
+});
+
+it('refuses an interval given only a distance', function () {
+    // What the previous version of this test asserted was accepted.
     $this->actingAs(ruleAdmin())->post('/admin/maintenance', [
         'name'        => 'Tyre rotation',
         'interval_km' => 10000,
         'lead_days'   => 0,
+    ])->assertSessionHasErrors('interval_months');
+
+    expect(MaintenanceRule::count())->toBe(0);
+});
+
+it('ignores a distance a stale form still posts', function () {
+    // A browser holding a cached copy of the old form will keep sending
+    // interval_km. It is not validated and the column is gone, so it must
+    // fall on the floor rather than reach the model and throw.
+    $this->actingAs(ruleAdmin())->post('/admin/maintenance', [
+        'name'            => 'Tyre rotation',
+        'interval_months' => 10,
+        'interval_km'     => 10000,
+        'lead_days'       => 0,
     ])->assertRedirect();
 
-    expect(MaintenanceRule::where('name', 'Tyre rotation')->sole()->interval_km)->toBe(10000);
+    $rule = MaintenanceRule::where('name', 'Tyre rotation')->sole();
+    expect($rule->interval_months)->toBe(10);
+    expect($rule->getAttribute('interval_km'))->toBeNull();
 });
 
 it('refuses two intervals with the same name', function () {

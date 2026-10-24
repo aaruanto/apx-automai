@@ -20,8 +20,9 @@
     <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.22);border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:.84rem;color:var(--text-muted);line-height:1.6;">
         <i class="fas fa-circle-info" style="color:var(--info,#3B82F6);margin-right:6px;"></i>
         These decide when a customer is told their vehicle is due for servicing. A vehicle is counted
-        from its last completed booking. Time and distance can both be set — whichever comes first wins,
-        and distance is only ever used for customers who have given us a mileage reading.
+        from its last completed booking, in months — every interval needs one. Distance is not used:
+        the system cannot read an odometer, so the only figure it would ever have is one the customer
+        typed at some point.
         Edit the wording of the message itself under
         <a href="{{ route('admin.templates.index') }}" style="color:var(--info,#3B82F6);">Message Templates</a>.
     </div>
@@ -92,14 +93,7 @@
                                 @endif
                             </td>
                             <td style="font-variant-numeric:tabular-nums;">
-                                @if ($r->interval_months && $r->interval_km)
-                                    {{ $r->interval_months }} months<br>
-                                    <span style="font-size:.74rem;color:var(--text-muted);">or {{ number_format($r->interval_km) }} km</span>
-                                @elseif ($r->interval_months)
-                                    {{ $r->interval_months }} months
-                                @else
-                                    {{ number_format($r->interval_km) }} km
-                                @endif
+                                {{ $r->interval_months }} {{ \Illuminate\Support\Str::plural('month', $r->interval_months) }}
                             </td>
                             <td style="font-variant-numeric:tabular-nums;">
                                 {{ $r->lead_days }} {{ \Illuminate\Support\Str::plural('day', $r->lead_days) }}
@@ -126,7 +120,6 @@
                                         data-name="{{ $r->name }}"
                                         data-description="{{ $r->description }}"
                                         data-months="{{ $r->interval_months }}"
-                                        data-km="{{ $r->interval_km }}"
                                         data-lead="{{ $r->lead_days }}"
                                         data-vtype="{{ $r->vehicle_type }}"
                                         data-bundle="{{ $r->bundle_id }}"
@@ -187,36 +180,32 @@
                            placeholder="e.g. Engine oil, oil filter and a general inspection." />
                 </div>
 
+                {{-- Months and lead days paired: both are how the timing works.
+                     The km field used to sit beside months, and removing it
+                     left months alone in a two-column grid with an empty half. --}}
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="form-group">
-                        <label class="form-label">Every (months)</label>
+                        <label class="form-label">Every (months) <span style="color:var(--red);">*</span></label>
                         <input class="form-control" type="number" name="interval_months" id="ruleMonths"
-                               min="1" max="120" placeholder="6" />
+                               min="1" max="120" placeholder="6" required />
+                        <div class="form-hint">Counted from the last completed booking.</div>
                         <div class="fv-error" data-for="interval_months"></div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Or every (km)</label>
-                        <input class="form-control" type="number" name="interval_km" id="ruleKm"
-                               min="100" max="200000" placeholder="5000" />
-                        <div class="form-hint">Only used when the customer has given a reading.</div>
-                    </div>
-                </div>
-
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="form-group">
                         <label class="form-label">Warn ahead (days) <span style="color:var(--red);">*</span></label>
                         <input class="form-control" type="number" name="lead_days" id="ruleLead"
                                min="0" max="180" value="14" required />
                         <div class="form-hint">Enough notice to book.</div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Applies to</label>
-                        <select class="form-control" name="vehicle_type" id="ruleVtype">
-                            <option value="">All vehicles</option>
-                            <option value="car">Cars only</option>
-                            <option value="motorcycle">Motorcycles only</option>
-                        </select>
-                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Applies to</label>
+                    <select class="form-control" name="vehicle_type" id="ruleVtype">
+                        <option value="">All vehicles</option>
+                        <option value="car">Cars only</option>
+                        <option value="motorcycle">Motorcycles only</option>
+                    </select>
                 </div>
 
                 {{-- A reminder that names a package the customer can actually
@@ -273,7 +262,6 @@ function openAddRule() {
     document.getElementById('ruleName').value        = '';
     document.getElementById('ruleDescription').value = '';
     document.getElementById('ruleMonths').value      = '';
-    document.getElementById('ruleKm').value          = '';
     document.getElementById('ruleLead').value        = 14;
     document.getElementById('ruleVtype').value       = '';
     document.getElementById('ruleBundle').value      = '';
@@ -289,7 +277,6 @@ function openEditRule(btn) {
     document.getElementById('ruleName').value        = btn.dataset.name;
     document.getElementById('ruleDescription').value = btn.dataset.description;
     document.getElementById('ruleMonths').value      = btn.dataset.months;
-    document.getElementById('ruleKm').value          = btn.dataset.km;
     document.getElementById('ruleLead').value        = btn.dataset.lead;
     document.getElementById('ruleVtype').value       = btn.dataset.vtype;
     document.getElementById('ruleBundle').value      = btn.dataset.bundle;

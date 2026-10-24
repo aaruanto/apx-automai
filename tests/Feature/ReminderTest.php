@@ -253,43 +253,43 @@ it('stays quiet when the customer already has work booked in', function () {
     expect(sentMail())->toHaveCount(0);
 });
 
-it('brings a service forward when the vehicle has covered the distance', function () {
-    basicRule(['interval_km' => 5000]);
+it('is not brought forward by distance, however far the vehicle has gone', function () {
+    // This used to be the opposite assertion: 6,000 km in a month fired a
+    // 5,000 km rule even though the vehicle was serviced four weeks ago.
+    // Distance is gone, so the calendar is the only thing that decides.
+    basicRule();
     $user = reminderCustomer();
 
-    // Serviced only a month ago, so nowhere near due on time — but 6,000 km
-    // in that month is.
     reminderVehicle($user, [
-        'last_service_date'       => Carbon::today()->subMonth()->toDateString(),
-        'mileage_at_last_service' => 24000,
-        'mileage'                 => 30000,
+        'last_service_date' => Carbon::today()->subMonth()->toDateString(),
+        'mileage'           => 300000,
     ]);
 
     $this->artisan('reminders:maintenance');
 
-    expect(sentMail())->toHaveCount(1);
+    expect(sentMail())->toHaveCount(0);
 });
 
-it('ignores mileage when the customer has not given a reading', function () {
-    MaintenanceRule::create([
-        'name'        => 'Distance only',
-        'interval_km' => 5000,
-        'lead_days'   => 14,
-        'is_active'   => true,
-    ]);
-
+it('treats a vehicle with a reading exactly like one without', function () {
+    // The spirit of the old "ignores mileage when the customer has not given
+    // a reading" test, widened: mileage must not affect due-ness in EITHER
+    // direction now. Two vehicles, same service date, one with an odometer
+    // reading and one without, must get the same answer.
+    basicRule();
     $user = reminderCustomer();
-    reminderVehicle($user, [
-        'last_service_date' => Carbon::today()->subMonths(18)->toDateString(),
-        'mileage'           => null,
-    ]);
 
-    $this->artisan('reminders:maintenance');
+    $serviced = Carbon::today()->subMonths(18)->toDateString();
+    $withReading    = reminderVehicle($user, ['last_service_date' => $serviced, 'mileage' => 95000]);
+    $withoutReading = reminderVehicle($user, ['last_service_date' => $serviced, 'mileage' => null]);
 
-    // A distance-only rule has nothing to say about a vehicle with no
-    // odometer reading. Most customers do not know theirs, so this must be
-    // silence rather than a guess.
-    expect(sentMail())->toHaveCount(0);
+    $due = app(MaintenanceDue::class);
+
+    expect($due->forVehicle($withReading->refresh())->count())
+        ->toBe($due->forVehicle($withoutReading->refresh())->count());
+
+    // And both are due on time alone, so this is not two empty collections
+    // agreeing with each other.
+    expect($due->forVehicle($withReading->refresh())->count())->toBeGreaterThan(0);
 });
 
 it('does not declare a newly registered vehicle overdue', function () {
@@ -388,7 +388,9 @@ it('stamps the vehicle service date when a booking completes', function () {
 
     $vehicle->refresh();
     expect($vehicle->last_service_date->toDateString())->toBe(Carbon::today()->toDateString());
-    expect($vehicle->mileage_at_last_service)->toBe(42000);
+    // The odometer is no longer frozen at completion — nothing reads it.
+    // The reading the customer gave is left exactly as they gave it.
+    expect($vehicle->mileage)->toBe(42000);
 });
 
 it('never rewinds the service date', function () {

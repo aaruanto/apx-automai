@@ -54,8 +54,7 @@ erDiagram
         string vehicle_type "car or motorcycle"
         bool is_primary
         date last_service_date "set when a booking completes"
-        int mileage "optional, customer supplied"
-        int mileage_at_last_service
+        int mileage "optional, customer supplied, not used for reminders"
     }
     SERVICES {
         int id PK
@@ -150,8 +149,7 @@ erDiagram
         string name
         int bundle_id FK "what to recommend booking"
         int service_id FK
-        int interval_months "null when distance only"
-        int interval_km "null when time only"
+        int interval_months "required, the only interval"
         int lead_days "how far ahead to warn"
         string vehicle_type "null applies to all"
         bool is_active

@@ -599,14 +599,16 @@
                             <div class="m-input-wrap"><i class="fas fa-palette"></i><input class="m-control" id="avfColor" type="text" placeholder="e.g. Matte Black" /></div>
                         </div>
                         {{-- Optional, and said so on the label. Plenty of
-                             customers do not know their odometer reading, and
-                             service reminders work on time intervals without
-                             it — this only lets us tell them sooner when they
-                             drive more than average. --}}
+                             customers do not know their odometer reading.
+                             It is a record for the shop and nothing more:
+                             reminders are time-only, so this changes nothing
+                             about when anyone is told. The hint used to
+                             promise "sooner when a service is due", which
+                             stopped being true when distance rules went. --}}
                         <div class="m-form-group">
                             <label class="m-label">Mileage <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
                             <div class="m-input-wrap"><i class="fas fa-gauge"></i><input class="m-control" id="avfMileage" type="number" min="0" max="2000000" placeholder="e.g. 42000" /></div>
-                            <div class="m-hint">Helps us tell you sooner when a service is due. Leave blank if you are not sure.</div>
+                            <div class="m-hint">Kept with your vehicle's record for the shop. Leave blank if you are not sure.</div>
                         </div>
                     </div>
                     <div class="avf-actions">
@@ -2044,8 +2046,8 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
     const color = document.getElementById('avfColor').value.trim();
 
     // Blank means "I do not know", which must reach the server as null and
-    // not as 0 — a vehicle recorded at zero kilometres would look brand new
-    // to every distance-based service rule.
+    // not as 0 — a vehicle recorded at zero kilometres reads as a brand new
+    // one to anyone at the shop looking at its history.
     const mileageRaw = document.getElementById('avfMileage').value.trim();
     const mileage    = mileageRaw === '' ? null : parseInt(mileageRaw, 10);
 

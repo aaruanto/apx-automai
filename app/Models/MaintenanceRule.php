@@ -8,14 +8,13 @@ class MaintenanceRule extends Model
 {
     protected $fillable = [
         'name', 'description', 'bundle_id', 'service_id',
-        'interval_months', 'interval_km', 'lead_days',
+        'interval_months', 'lead_days',
         'vehicle_type', 'is_active', 'sort_order',
     ];
 
     protected $casts = [
         'is_active'       => 'boolean',
         'interval_months' => 'integer',
-        'interval_km'     => 'integer',
         'lead_days'       => 'integer',
     ];
 

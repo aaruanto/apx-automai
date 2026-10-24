@@ -18,6 +18,18 @@ use Illuminate\Support\Collection;
  * It computes and reports. It sends nothing and writes nothing, so it can be
  * asserted against directly in a test and reused by the customer dashboard to
  * show the same answer on screen that the email will give.
+ *
+ * TIME ONLY. Rules used to come due by distance as well — interval_km against
+ * the odometer frozen at the last completed booking — and that is gone. The
+ * system has no way to read a vehicle's mileage: the only number it ever has
+ * is one the customer typed into a form, whenever they last happened to. One
+ * vehicle in seventeen had a reading at all, and a distance rule fired on a
+ * figure months stale would have told someone their car was overdue on the
+ * strength of a guess. The calendar is something we actually know.
+ *
+ * The trade-off is real and accepted: a customer who drives hard may need the
+ * work before the calendar says so. vehicles.mileage is still recorded for the
+ * shop to read; nothing is decided from it.
  */
 class MaintenanceDue
 {
@@ -38,37 +50,17 @@ class MaintenanceDue
             return collect();
         }
 
-        $sinceLastService = $vehicle->mileage !== null && $vehicle->mileage_at_last_service !== null
-            ? max(0, $vehicle->mileage - $vehicle->mileage_at_last_service)
-            : null;
-
         return $rules
             ->filter(fn (MaintenanceRule $rule) => $rule->appliesTo($vehicle))
-            ->map(function (MaintenanceRule $rule) use ($baseline, $asOf, $sinceLastService) {
-                $dueDate = $rule->interval_months
-                    ? $baseline->copy()->addMonthsNoOverflow($rule->interval_months)
-                    : null;
-
-                // Distance can bring a service forward but never push it back:
-                // a car driven hard needs the work sooner, and one barely
-                // driven still needs it on time, because oil ages in the sump.
-                $dueByDistance = $rule->interval_km
-                    && $sinceLastService !== null
-                    && $sinceLastService >= $rule->interval_km;
-
-                if (! $dueDate && ! $dueByDistance) {
+            ->map(function (MaintenanceRule $rule) use ($baseline, $asOf) {
+                // Time is the only interval. A rule with no interval_months
+                // has nothing to count, so it is skipped rather than reaching
+                // the null-date arithmetic below.
+                if (! $rule->interval_months) {
                     return null;
                 }
 
-                if ($dueByDistance) {
-                    return [
-                        'rule'     => $rule,
-                        'due_date' => $dueDate && $dueDate->lt($asOf) ? $dueDate : $asOf->copy(),
-                        'reason'   => number_format($sinceLastService).' km since the last service',
-                        'overdue'  => true,
-                    ];
-                }
-
+                $dueDate    = $baseline->copy()->addMonthsNoOverflow($rule->interval_months);
                 $tellThemOn = $dueDate->copy()->subDays($rule->lead_days);
 
                 if ($asOf->lt($tellThemOn)) {

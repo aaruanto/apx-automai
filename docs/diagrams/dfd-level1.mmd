@@ -53,7 +53,7 @@ flowchart TB
     P4 -->|who, what, why| D6
     P4 -->|award or reverse points| P6
     P4 -->|status change notice| MAIL
-    P4 -->|stamp last service date and mileage| D2
+    P4 -->|stamp last service date| D2
 
     %% 5.0 — you have an appointment coming up.
     CRON -->|scheduled tick| P5
@@ -69,7 +69,7 @@ flowchart TB
     %% triggers this; only the passage of time, which is why it is scheduled.
     CRON -->|scheduled tick| P8
     P8 -->|read service intervals| D9
-    P8 -->|read last service date and mileage| D2
+    P8 -->|read last service date| D2
     P8 -->|skip if work already booked| D4
     P8 -->|read template and triggers| D8
     P8 -->|claim once per interval| D10

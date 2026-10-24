@@ -39,13 +39,11 @@ class ServiceHistory
 
         $vehicle->last_service_date = $serviced->toDateString();
 
-        // Freeze the odometer as it stood, so "distance since the last
-        // service" is a subtraction rather than a guess about how far this
-        // customer drives in a month. Null stays null: most customers do not
-        // know their mileage, and the reminder works on time alone without it.
-        if ($vehicle->mileage !== null) {
-            $vehicle->mileage_at_last_service = $vehicle->mileage;
-        }
+        // The odometer is no longer frozen here. It existed so "distance
+        // since the last service" could be a subtraction, and nothing asks
+        // that question any more — MaintenanceDue is time-only. vehicles.mileage
+        // is still whatever the customer last typed; the shop reads it, the
+        // system decides nothing from it.
 
         $vehicle->save();
     }

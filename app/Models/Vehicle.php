@@ -12,7 +12,7 @@ class Vehicle extends Model
 
     protected $fillable = [
         'user_id', 'make', 'model', 'plate_number', 'vehicle_type', 'year', 'color', 'is_primary',
-        'last_service_date', 'mileage', 'mileage_updated_at', 'mileage_at_last_service',
+        'last_service_date', 'mileage', 'mileage_updated_at',
     ];
 
     // Without this, is_primary reads back as 1/0, which is why callers were
@@ -22,7 +22,6 @@ class Vehicle extends Model
         'last_service_date'       => 'date',
         'mileage_updated_at'      => 'date',
         'mileage'                 => 'integer',
-        'mileage_at_last_service' => 'integer',
     ];
 
     public function user()

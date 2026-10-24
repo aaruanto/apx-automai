@@ -11,7 +11,6 @@ use App\Models\Vehicle;
 use App\Services\MaintenanceDue;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 /**
  * The service intervals that decide when a vehicle is due.
@@ -78,7 +77,7 @@ class MaintenanceRuleController extends Controller
         $rule = MaintenanceRule::create($this->validated($request) + ['is_active' => true]);
 
         AuditLog::record('maintenance_rule.created', $rule, [], $rule->only([
-            'name', 'interval_months', 'interval_km', 'lead_days', 'vehicle_type',
+            'name', 'interval_months', 'lead_days', 'vehicle_type',
         ]), label: $rule->name);
 
         return back()->with('success', 'Service interval added.');
@@ -88,12 +87,12 @@ class MaintenanceRuleController extends Controller
     {
         $rule = MaintenanceRule::findOrFail($id);
 
-        $before = $rule->only(['name', 'interval_months', 'interval_km', 'lead_days', 'vehicle_type']);
+        $before = $rule->only(['name', 'interval_months', 'lead_days', 'vehicle_type']);
 
         $rule->update($this->validated($request, $id));
 
         AuditLog::record('maintenance_rule.updated', $rule, $before, $rule->only([
-            'name', 'interval_months', 'interval_km', 'lead_days', 'vehicle_type',
+            'name', 'interval_months', 'lead_days', 'vehicle_type',
         ]), label: $rule->name);
 
         return back()->with('success', 'Service interval updated.');
@@ -136,22 +135,16 @@ class MaintenanceRuleController extends Controller
             'description'     => ['nullable', 'string', 'max:255'],
             'bundle_id'       => ['nullable', 'integer', 'exists:bundles,id'],
             'service_id'      => ['nullable', 'integer', 'exists:services,id'],
-            'interval_months' => ['nullable', 'integer', 'min:1', 'max:120'],
-            'interval_km'     => ['nullable', 'integer', 'min:100', 'max:200000'],
+            // Required now that time is the only interval: a rule without
+            // one can never come due, and would sit in the list looking
+            // configured while doing nothing.
+            'interval_months' => ['required', 'integer', 'min:1', 'max:120'],
             'lead_days'       => ['required', 'integer', 'min:0', 'max:180'],
             'vehicle_type'    => ['nullable', 'in:car,motorcycle'],
             'sort_order'      => ['nullable', 'integer', 'min:0', 'max:999'],
         ], [
             'name.unique' => 'There is already an interval by that name.',
         ]);
-
-        // A rule with neither interval can never come due, so it would sit in
-        // the list looking configured and do nothing at all.
-        if (empty($data['interval_months']) && empty($data['interval_km'])) {
-            throw ValidationException::withMessages([
-                'interval_months' => 'Give a time interval, a distance interval, or both — a rule with neither can never fall due.',
-            ]);
-        }
 
         $data['sort_order'] = $data['sort_order'] ?? 0;
 

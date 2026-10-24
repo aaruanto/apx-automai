@@ -21,16 +21,15 @@ was last serviced, and nothing that could decide a vehicle was due.
 
 **What was built:**
 
-- `maintenance_rules` — service intervals in months and/or kilometres, each
+- `maintenance_rules` — service intervals in months, each
   pointing at the PMS package to recommend, with a lead time for how far ahead
   to warn.
 - `vehicles.last_service_date` — stamped automatically whenever a booking for
   that vehicle is marked completed, so it is correct without anyone maintaining
   it. It only ever moves forward, so a backdated walk-in cannot rewind a
   vehicle's history.
-- `vehicles.mileage` / `mileage_at_last_service` — **optional**. Distance since
-  the last service is a subtraction rather than a guess about how far the
-  customer drives. A vehicle with no reading is still reminded, on time alone.
+- `vehicles.mileage` — **optional**, and not used for reminders. See §9: the
+  intervals were built to run on distance as well and that was removed.
 - `reminders:maintenance` — one message per vehicle per interval, for the most
   urgent rule outstanding. A car behind on three things gets one email, not
   three.
@@ -38,14 +37,12 @@ was last serviced, and nothing that could decide a vehicle was due.
   the screen and the inbox cannot disagree.
 
 The paper's claim now holds. Three default rules ship seeded: Basic PMS at
-6 months / 5,000 km, Standard at 12 months / 10,000 km, Major at 24 months /
-40,000 km.
+6 months, Standard at 12 months, Major at 24 months.
 
 **One design choice worth defending at the panel:** the system never *requires*
 mileage. Most customers do not know their odometer reading, and a form that
-demands it is a form they abandon. Time intervals always apply; distance only
-ever brings a service forward, never pushes it back, because oil ages in the
-sump whether the car is driven or not.
+demands it is a form they abandon. The seeded intervals originally paired each
+with a distance — see §9 for why that went.
 
 ---
 
@@ -178,6 +175,49 @@ the system records prices, and money changes hands at the counter.
 
 ---
 
+## 9. Service intervals are time-only — AMEND THE PAPER
+
+**The paper said:** intervals run on time *and* distance — "5,000 km or six
+months, whichever comes first" — with the system bringing a service forward for
+a vehicle that has covered the distance early.
+
+**What was built, and then removed:** it worked exactly as described. A rule
+carried `interval_km` alongside `interval_months`; `ServiceHistory` froze the
+odometer into `vehicles.mileage_at_last_service` whenever a booking completed,
+and `MaintenanceDue` subtracted one from the other.
+
+**Why it is gone:** the system cannot read a vehicle's mileage. The only figure
+it ever had was one the customer had typed into a form, whenever they last
+happened to — and almost nobody does. One vehicle in seventeen on the
+development database had a reading at all. A distance rule firing on a number
+months out of date would tell a customer their car was overdue on the strength
+of a guess, and the shop would have had to defend that to them. The calendar is
+something we actually know: `last_service_date` is stamped by the system itself
+when a booking is marked completed, and it cannot go stale.
+
+**What the panel may ask:** *"Doesn't a customer who drives a lot need the
+service sooner?"* Yes, and that is the accepted cost. The honest answer is that
+the system has no way to know they drive a lot — it would be acting on a number
+the customer supplied and may never have revisited. A reminder that is
+sometimes early for heavy drivers is better than one that is confidently wrong.
+The shop still sees the recorded mileage on the vehicle and can advise.
+
+**What changed:**
+
+- `maintenance_rules.interval_km` — dropped. `interval_months` is now
+  **required**: a rule without one can never come due, and the admin form
+  rejects it rather than letting it sit in the list looking configured.
+- `vehicles.mileage_at_last_service` — dropped. With distance gone it had no
+  reader, and a column nothing reads is the start of the list in §8.
+- `vehicles.mileage` / `mileage_updated_at` — **kept**. Customers still record
+  an odometer reading if they know it, and the shop still sees it on the
+  vehicle. It simply decides nothing.
+
+Figures affected: the ERD (both forms) and the Level-1 DFD, where processes 4.0
+and 8.0 no longer stamp or read mileage.
+
+---
+
 ## Figures to regenerate
 
 All four diagrams in [`docs/diagrams/`](diagrams/) have been updated to match
@@ -190,3 +230,9 @@ the system as it now stands, including `maintenance_rules`, `reminders`,
 | `erd-flowchart.mmd` | Same relationships in flowchart syntax. **Use this for Excalidraw** — it imports as editable shapes, whereas `erDiagram` imports as a flat image. |
 | `dfd-context.mmd` | Level 0. |
 | `dfd-level1.mmd` | Level 1. Process 8.0 (Maintenance Due Detection) is new. |
+
+**Re-export three of them if you have already placed them in the manuscript.**
+`erd.mmd`, `erd-flowchart.mmd` and `dfd-level1.mmd` changed with §9: the ERDs
+no longer carry `interval_km` or `mileage_at_last_service`, and in the DFD
+processes 4.0 and 8.0 no longer stamp or read mileage. `dfd-context.mmd` is
+unaffected.

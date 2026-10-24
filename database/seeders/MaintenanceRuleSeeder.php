@@ -15,7 +15,11 @@ use Illuminate\Database\Seeder;
  * real to recommend rather than a vague "come in sometime".
  *
  * Intervals follow the usual owner's-manual guidance for Philippine city
- * driving: 5,000 km or six months on engine oil, whichever comes first.
+ * driving, taken as time alone: six months on engine oil, twelve for a
+ * standard service, twenty-four for a major one. The manual pairs each with
+ * a distance — 5,000 km on oil — and the system used to as well, but it has
+ * no way to read an odometer, so the figure was only ever one a customer had
+ * typed at some point. See MaintenanceDue for why that went.
  */
 class MaintenanceRuleSeeder extends Seeder
 {
@@ -32,7 +36,6 @@ class MaintenanceRuleSeeder extends Seeder
                 'description'     => 'Engine oil, oil filter and a general inspection.',
                 'bundle'          => 'Basic Service',
                 'interval_months' => 6,
-                'interval_km'     => 5000,
                 'lead_days'       => 14,
                 'sort_order'      => 10,
             ],
@@ -41,7 +44,6 @@ class MaintenanceRuleSeeder extends Seeder
                 'description'     => 'Basic PMS plus air and fuel filters, and a brake inspection.',
                 'bundle'          => 'Standard Service',
                 'interval_months' => 12,
-                'interval_km'     => 10000,
                 'lead_days'       => 21,
                 'sort_order'      => 20,
             ],
@@ -50,7 +52,6 @@ class MaintenanceRuleSeeder extends Seeder
                 'description'     => 'Full service including transmission fluid and coolant.',
                 'bundle'          => 'Major Service',
                 'interval_months' => 24,
-                'interval_km'     => 40000,
                 'lead_days'       => 30,
                 'sort_order'      => 30,
             ],

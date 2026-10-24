@@ -313,9 +313,9 @@ class DashboardController extends Controller
             'vehicle_type' => 'nullable|in:car,motorcycle',
 
             // Optional on purpose. Plenty of customers do not know their
-            // odometer reading, and maintenance reminders work on time
-            // intervals without it — asking would put a question they cannot
-            // answer in front of a form they are trying to finish.
+            // odometer reading, and nothing depends on it: maintenance
+            // reminders are time-only. It is kept because the shop finds the
+            // record useful, not because the system reads it.
             'mileage'      => 'nullable|integer|min:0|max:2000000',
         ], [
             'plate.regex' => 'Enter a valid plate number (e.g. ABC 1234).',
@@ -400,9 +400,9 @@ class DashboardController extends Controller
             'vehicle_type' => 'nullable|in:car,motorcycle',
 
             // Optional on purpose. Plenty of customers do not know their
-            // odometer reading, and maintenance reminders work on time
-            // intervals without it — asking would put a question they cannot
-            // answer in front of a form they are trying to finish.
+            // odometer reading, and nothing depends on it: maintenance
+            // reminders are time-only. It is kept because the shop finds the
+            // record useful, not because the system reads it.
             'mileage'      => 'nullable|integer|min:0|max:2000000',
         ], [
             'plate.regex' => 'Enter a valid plate number (e.g. ABC 1234).',
