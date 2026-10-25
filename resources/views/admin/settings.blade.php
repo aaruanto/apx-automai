@@ -434,6 +434,7 @@
                                     data-action="{{ route('admin.settings.services.update', $service->id) }}"
                                     data-name="{{ $service->name }}"
                                     data-category="{{ $service->category }}"
+                                    data-vehicle-type="{{ $service->vehicle_type }}"
                                     data-duration="{{ $service->duration }}"
                                     data-price="{{ $service->price }}"
                                     data-description="{{ $service->description }}"><i class="fas fa-pen"></i></button>
@@ -492,6 +493,16 @@
                     <label class="form-label">Price (₱) <span style="color:var(--red)">*</span></label>
                     <input class="form-control" type="number" name="price" placeholder="0.00" min="0" step="0.01" required />
                 </div>
+                <div class="form-group">
+                    <label class="form-label">Applies to</label>
+                    <select class="form-control" name="vehicle_type">
+                        <option value="">Any vehicle</option>
+                        <option value="car">Car only</option>
+                        <option value="motorcycle">Motorcycle only</option>
+                    </select>
+                    <div class="form-hint">A motorcycle has no aircon and most cars are not CVT. Services set to one
+                        type are not offered for the other, on the website and when a booking is submitted.</div>
+                </div>
                 <div class="form-group" style="margin-bottom:0;">
                     <label class="form-label">Description</label>
                     <textarea class="form-control" name="description" rows="2" placeholder="Brief description of the service..."></textarea>
@@ -538,6 +549,16 @@
                 <div class="form-group">
                     <label class="form-label">Price (₱) <span style="color:var(--red)">*</span></label>
                     <input class="form-control" type="number" name="price" id="editServicePrice" min="0" step="0.01" required />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Applies to</label>
+                    <select class="form-control" name="vehicle_type" id="editServiceVehicleType">
+                        <option value="">Any vehicle</option>
+                        <option value="car">Car only</option>
+                        <option value="motorcycle">Motorcycle only</option>
+                    </select>
+                    <div class="form-hint">A motorcycle has no aircon and most cars are not CVT. Services set to one
+                        type are not offered for the other, on the website and when a booking is submitted.</div>
                 </div>
                 <div class="form-group" style="margin-bottom:0;">
                     <label class="form-label">Description</label>
@@ -594,6 +615,7 @@ function openEditService(btn) {
     document.getElementById('editServiceForm').action        = btn.dataset.action;
     document.getElementById('editServiceName').value         = btn.dataset.name;
     document.getElementById('editServiceCategory').value     = btn.dataset.category;
+    document.getElementById('editServiceVehicleType').value  = btn.dataset.vehicleType || '';
     document.getElementById('editServiceDuration').value     = btn.dataset.duration;
     document.getElementById('editServicePrice').value        = btn.dataset.price;
     document.getElementById('editServiceDescription').value  = btn.dataset.description;

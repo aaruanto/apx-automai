@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class MaintenanceRule extends Model
 {
+    use \App\Models\Concerns\AppliesToVehicleType;
+
     protected $fillable = [
         'name', 'description', 'bundle_id', 'service_id',
         'interval_months', 'lead_days',
@@ -39,12 +41,6 @@ class MaintenanceRule extends Model
      * A null vehicle_type means the rule applies to everything, which is the
      * normal case — an oil change is an oil change.
      */
-    public function appliesTo(Vehicle $vehicle): bool
-    {
-        return $this->vehicle_type === null
-            || $this->vehicle_type === ''
-            || $this->vehicle_type === $vehicle->vehicle_type;
-    }
 
     /** What the customer should book to satisfy this rule, if anything. */
     public function recommendation(): ?string

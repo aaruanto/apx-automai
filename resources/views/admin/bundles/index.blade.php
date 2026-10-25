@@ -302,5 +302,17 @@ document.addEventListener('DOMContentLoaded', function () {
     @endforeach
 });
 @endif
+
+{{-- A bundle narrower than something it contains is unbookable by any
+     vehicle: the bundle gate lets a motorcycle through and the service
+     gate turns it away. BundleController flashes this on save. Shown
+     through the shared alert modal, the same way Settings reports a save. --}}
+@if (session('warning'))
+    ApxAlertModal.show({
+        variant: 'info',
+        title:   'Check this bundle',
+        message: @json(session('warning')),
+    });
+@endif
 </script>
 @endpush

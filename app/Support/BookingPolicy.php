@@ -44,4 +44,37 @@ class BookingPolicy
 
         return $services->every(fn ($service) => (float) $service->price <= 0);
     }
+
+    /**
+     * The chosen services that are not offered for this vehicle.
+     *
+     * services.vehicle_type follows the same convention as bundles and
+     * maintenance rules — null applies to everything — and the comparison
+     * itself lives in one place, AppliesToVehicleType.
+     *
+     * Both booking paths hide these in the UI, which is presentation, not
+     * enforcement: the browser decides what to post and is not trusted.
+     * A null type means no vehicle has been identified yet, so there is
+     * nothing to check against and nothing is refused here.
+     *
+     * @return Collection<int, \App\Models\Service>
+     */
+    public static function servicesNotFor(Collection $services, ?string $vehicleType): Collection
+    {
+        if ($vehicleType === null || $vehicleType === '') {
+            return collect();
+        }
+
+        return $services->reject(fn ($service) => $service->suitsVehicleType($vehicleType))->values();
+    }
+
+    /** Names the work rather than the rule, so the customer knows what to drop. */
+    public static function wrongVehicleMessage(Collection $offending, ?string $vehicleType): string
+    {
+        $kind = $vehicleType === 'motorcycle' ? 'motorcycles' : 'cars';
+
+        return $offending->pluck('name')->join(', ', ' and ')
+            .($offending->count() === 1 ? ' is' : ' are')
+            .' not offered for '.$kind.'. Please remove it and try again.';
+    }
 }

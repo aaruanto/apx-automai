@@ -32,7 +32,8 @@ class BundleController extends Controller
             label: $bundle->name,
         );
 
-        return back()->with('success', 'Bundle created.');
+        return back()->with('success', 'Bundle created.')
+            ->with('warning', $this->vehicleTypeClash($bundle));
     }
 
     public function update(Request $request, int $id)
@@ -55,7 +56,8 @@ class BundleController extends Controller
             );
         }
 
-        return back()->with('success', 'Bundle updated.');
+        return back()->with('success', 'Bundle updated.')
+            ->with('warning', $this->vehicleTypeClash($bundle->fresh('services')));
     }
 
     /**
@@ -109,5 +111,37 @@ class BundleController extends Controller
         $data['is_active'] = $request->boolean('is_active', true);
 
         return $data;
+    }
+
+    /**
+     * A bundle narrower than something it contains.
+     *
+     * Both bundles and services carry a vehicle_type, and nothing stops them
+     * disagreeing: a motorcycle bundle can be given a car-only service, and
+     * then no vehicle on earth can book it — the bundle gate lets a bike
+     * through and the service gate turns it away.
+     *
+     * Surfaced rather than blocked. The shop may be mid-edit, or may know
+     * something the catalogue does not, and refusing the save would leave
+     * them nowhere. Null returns nothing, so no banner appears.
+     */
+    private function vehicleTypeClash(Bundle $bundle): ?string
+    {
+        if (! $bundle->vehicle_type) {
+            return null;
+        }
+
+        $clashing = $bundle->services->reject(
+            fn (Service $service) => $service->suitsVehicleType($bundle->vehicle_type)
+        );
+
+        if ($clashing->isEmpty()) {
+            return null;
+        }
+
+        return 'This bundle is for '.$bundle->vehicle_type.'s, but '
+            .$clashing->pluck('name')->join(', ', ' and ')
+            .($clashing->count() === 1 ? ' is' : ' are')
+            .' not. Nobody will be able to book it until they agree.';
     }
 }

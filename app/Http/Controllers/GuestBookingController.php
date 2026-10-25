@@ -152,6 +152,22 @@ class GuestBookingController extends Controller
             ], 422);
         }
 
+        // Not every service suits every vehicle — a motorcycle has no aircon.
+        // The modal hides these, but the browser chooses what to post, so the
+        // answer has to be given again here. A bundle is exempt: it carries its
+        // own vehicle_type, already checked above, and its contents are the
+        // shop's choice rather than the customer's.
+        if (! $bundle) {
+            $wrongVehicle = BookingPolicy::servicesNotFor($services, $request->vehicle_type);
+
+            if ($wrongVehicle->isNotEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => BookingPolicy::wrongVehicleMessage($wrongVehicle, $request->vehicle_type),
+                ], 422);
+            }
+        }
+
         // Complimentary work accompanies paid work; it is not a booking of its
         // own. Checked here, after the services are resolved, so a bundle and a
         // loose list of ids both go through the same rule.

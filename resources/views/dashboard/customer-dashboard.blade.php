@@ -1270,7 +1270,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             { match: /free.*inspect|basic.*inspect/i, cat:'free',       catLabel:'Free Service',       icon:'fa-clipboard-check',    duration:'20–30 min', free:true  },
         ];
         const defaults = { cat:'inspection', catLabel:'Inspection', icon:'fa-wrench', duration:'30–60 min', free:false };
-        const dbServices = {!! json_encode($services->map(fn($s) => ['id'=>$s->id,'name'=>$s->name,'desc'=>$s->description??'','duration'=>$s->duration,'price'=>(float)$s->price])->values()) !!};
+        const dbServices = {!! json_encode($services->map(fn($s) => ['id'=>$s->id,'name'=>$s->name,'desc'=>$s->description??'','duration'=>$s->duration,'price'=>(float)$s->price,'vehicle'=>$s->vehicle_type])->values()) !!};
         return dbServices.map((s, i) => {
             const meta = META_MAP.find(m => m.match.test(s.name)) || defaults;
             let dur = meta.duration;
@@ -1280,6 +1280,8 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             }
             return { id:'svc-'+String(i+1).padStart(2,'0'), dbId:s.id, name:s.name, cat:meta.cat, catLabel:meta.catLabel, icon:meta.icon, desc:s.desc||meta.catLabel+' service.', duration:dur, free:meta.free,
                      // Raw values, for summing across several services.
+                     // null means every vehicle, same convention as bundles.
+                     vehicle:s.vehicle ?? null,
                      priceValue:s.price||0, durationValue:parseInt(s.duration)||0,
                      price:(s.price ? '₱'+Number(s.price).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}) : 'Free') };
         });
@@ -1448,12 +1450,19 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         renderBundleStrip();
         const grid = document.getElementById('servicesGrid');
         const filtered = SERVICES.filter(s => {
+            // Only what at least one of their own vehicles could actually have.
+            // A customer with nothing but motorcycles is not offered an aircon
+            // service. With no vehicles registered yet nothing is narrowed —
+            // they are browsing, and the server checks again at booking.
+            const matchVehicle = !s.vehicle
+                || !MY_VEHICLES.length
+                || MY_VEHICLES.some(v => (v.type || 'car') === s.vehicle);
             const matchCat    = currentCat === 'all' || s.cat === currentCat;
             const matchSearch = !currentSvcSearch ||
                 s.name.toLowerCase().includes(currentSvcSearch) ||
                 s.desc.toLowerCase().includes(currentSvcSearch) ||
                 s.catLabel.toLowerCase().includes(currentSvcSearch);
-            return matchCat && matchSearch;
+            return matchVehicle && matchCat && matchSearch;
         });
         document.getElementById('serviceCount').textContent = filtered.length;
         if (!filtered.length) {
@@ -1663,6 +1672,28 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             opt.textContent = 'No vehicles registered — add one in My Vehicles';
             sel.appendChild(opt);
         }
+
+        // The service is chosen before the vehicle here, so a customer with
+        // both a car and a bike can pick car-only work and then select the
+        // bike. Say so at that moment rather than letting them fill in the
+        // date, the time and the notes first and be refused at the end.
+        sel.onchange = function () {
+            if (!selectedService || !selectedService.vehicle) return;
+
+            const chosen = MY_VEHICLES.find(v => String(v.id) === String(sel.value));
+            if (!chosen) return;
+
+            if ((chosen.type || 'car') !== selectedService.vehicle) {
+                apxDialog({
+                    type: 'warning',
+                    title: 'Not offered for that vehicle',
+                    msg: selectedService.name + ' is only offered for '
+                         + (selectedService.vehicle === 'motorcycle' ? 'motorcycles' : 'cars')
+                         + '. Please choose a different vehicle or a different service.',
+                    confirmLabel: 'OK',
+                });
+            }
+        };
         document.getElementById('bookingModal').classList.add('open');
         document.body.style.overflow = 'hidden';
     }

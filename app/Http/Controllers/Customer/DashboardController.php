@@ -243,6 +243,22 @@ class DashboardController extends Controller
             ], 422);
         }
 
+        // Not every service suits every vehicle. Checked against the vehicle
+        // already fetched above, which is proven to belong to this customer,
+        // rather than against anything the request said about it. A bundle
+        // carries its own vehicle_type and was checked a few lines up.
+        if (! $bundle) {
+            $chosen       = Service::whereIn('id', $data['service_ids'])->get();
+            $wrongVehicle = BookingPolicy::servicesNotFor($chosen, $vehicle->vehicle_type);
+
+            if ($wrongVehicle->isNotEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => BookingPolicy::wrongVehicleMessage($wrongVehicle, $vehicle->vehicle_type),
+                ], 422);
+            }
+        }
+
         // Complimentary work accompanies paid work; it is not a booking of its
         // own. Checked before reserve() so a refused booking never takes a slot
         // and never has to be cleaned up afterwards.

@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class Bundle extends Model
 {
-    use HasFactory, SoftDeletes;
+    use \App\Models\Concerns\AppliesToVehicleType, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'name', 'description', 'price', 'is_active',
@@ -81,11 +81,6 @@ class Bundle extends Model
         }
 
         return ! ($this->ends_at && $today->gt($this->ends_at));
-    }
-
-    public function suitsVehicleType(?string $type): bool
-    {
-        return $this->vehicle_type === null || $this->vehicle_type === $type;
     }
 
     /** Bundles a customer may book today. */

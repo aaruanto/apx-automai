@@ -1433,6 +1433,8 @@
                 'name'     => $s->name,
                 'tag'      => \Illuminate\Support\Str::slug($s->category ?? 'general'),
                 'category' => $s->category ?? 'General',
+                // Null means every vehicle, same convention as bundles.
+                'vehicle'  => $s->vehicle_type,
                 'price'    => (float) $s->price,
             ];
         })->values();
@@ -1674,6 +1676,10 @@
                 // The maintenance screen offers packages only.
                 if (showBundles) return;
 
+                // Cars do not need a CVT service and bikes have no aircon.
+                // Same rule as the bundle filter above: null means all.
+                if (s.vehicle && s.vehicle !== vtype) return;
+
                 if (pathView === 'browse') {
                     if (catFilter && s.category !== catFilter) return;
                     if (search && (s.name + ' ' + s.category).toLowerCase().indexOf(search) === -1) return;
@@ -1806,6 +1812,30 @@
             // applies rather than letting the server refuse it later.
             var b = currentBundle();
             if (b && b.vehicle && b.vehicle !== vtype) { selectedBundle = null; }
+
+            // Services need the same treatment, and more urgently: the type
+            // toggle is on step 2 but services are chosen on step 1, so a
+            // customer can pick car-only work and then say motorcycle. Drop
+            // those rather than letting the server refuse the whole booking
+            // after they have filled in everything else.
+            var dropped = [];
+            Array.from(selected).forEach(function (i) {
+                var svc = SERVICES[i];
+                if (svc && svc.vehicle && svc.vehicle !== vtype) {
+                    selected.delete(i);
+                    dropped.push(svc.name);
+                }
+            });
+
+            if (dropped.length) {
+                ApxAlertModal.show({
+                    variant: 'info',
+                    title:   dropped.length === 1 ? 'One service removed' : 'Some services removed',
+                    message: dropped.join(', ') + (dropped.length === 1 ? ' is' : ' are')
+                             + ' not offered for a ' + (vtype === 'car' ? 'car' : 'motorcycle')
+                             + ', so it has been taken off your booking.',
+                });
+            }
             buildGrid();
             apxUpdateEst();
             document.getElementById('apx-vtype-car').className = 'apx-vtype-btn'+(t==='car'?' active':'');
