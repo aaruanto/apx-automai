@@ -365,15 +365,17 @@ new Chart(areaCtx, {
         },
         scales: {
             xAxes: [{ gridLines: { color: 'rgba(0,0,0,0.05)' }, ticks: { fontColor: '#888' } }],
-            // Bookings are whole things. Without stepSize the axis split a
-            // range of 0-1 into 0.1, 0.2, ... The callback drops any
-            // fractional tick Chart.js still generates at larger ranges.
+            // Bookings are whole things. Without this the axis split a range
+            // of 0-1 into 0.1, 0.2, ... precision rather than stepSize, for
+            // the reason given on the revenue chart below: stepSize: 1 is one
+            // gridline per booking, which is survivable at four a day and a
+            // solid grey block on a busy month.
             yAxes: [{
                 gridLines: { color: 'rgba(0,0,0,0.05)' },
                 ticks: {
                     fontColor: '#888',
                     beginAtZero: true,
-                    stepSize: 1,
+                    precision: 0,
                     callback: v => (Number.isInteger(v) ? v : undefined),
                 }
             }]
@@ -411,7 +413,15 @@ new Chart(barCtx, {
                     beginAtZero: true,
                     // Whole pesos only: with no revenue yet Chart.js falls back
                     // to a 0-1 range, which rendered as ₱0.9, ₱0.8 and so on.
-                    stepSize: 1,
+                    //
+                    // precision, not stepSize. stepSize: 1 meant one gridline
+                    // and one label PER PESO, which was invisible while revenue
+                    // was zero and drew about 3,800 of each the day a ₱3,800
+                    // booking was completed — the axis became a grey smear and
+                    // the gridlines filled the plot area solid. precision fixes
+                    // the decimal places and leaves Chart.js to choose a sane
+                    // interval, which is all the 0-1 range ever needed.
+                    precision: 0,
                     callback: v => (Number.isInteger(v) ? '₱' + Number(v).toLocaleString('en-PH') : undefined),
                 }
             }]
