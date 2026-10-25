@@ -707,8 +707,7 @@
                     @media (max-width: 820px) { .profile-layout { grid-template-columns: 1fr; } }
                     .profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px 24px; text-align: center; position: relative; overflow: hidden; }
                     .profile-card::before { content: 'APX'; position: absolute; right: -10px; top: -10px; font-family: 'Barlow Condensed', sans-serif; font-size: 5.5rem; font-weight: 800; color: rgba(232,25,44,0.05); line-height: 1; pointer-events: none; }
-                    .profile-avatar-ring { width: 88px; height: 88px; border-radius: 50%; background: linear-gradient(135deg, var(--red-dark), var(--red)); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; font-family: 'Barlow Condensed', sans-serif; font-size: 2.2rem; font-weight: 800; color: #fff; letter-spacing: 0.04em; position: relative; }
-                    .profile-avatar-badge { position: absolute; bottom: 0; right: 0; width: 24px; height: 24px; background: var(--surface); border: 2px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: var(--red); cursor: pointer; }
+                    .profile-avatar-ring { width: 88px; height: 88px; border-radius: 50%; background: linear-gradient(135deg, var(--red-dark), var(--red)); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; font-family: 'Barlow Condensed', sans-serif; font-size: 2.2rem; font-weight: 800; color: #fff; letter-spacing: 0.04em; }
                     .profile-name { font-family: 'Barlow Condensed', sans-serif; font-size: 1.35rem; font-weight: 800; letter-spacing: 0.03em; color: var(--text); margin-bottom: 4px; }
                     .profile-email { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 16px; word-break: break-all; }
                     .profile-stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-top: 1px solid var(--border); margin-top: 20px; padding-top: 18px; }
@@ -745,7 +744,6 @@
                         <div class="profile-card">
                             <div class="profile-avatar-ring">
                                 {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
-                                <div class="profile-avatar-badge"><i class="fas fa-camera"></i></div>
                             </div>
                             <div class="profile-name">{{ Auth::user()->name }}</div>
                             <div class="profile-email">{{ Auth::user()->email }}</div>
