@@ -42,10 +42,30 @@ class NewPasswordController extends Controller
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function (User $user) use ($request) {
-                $user->forceFill([
+                $fields = [
                     'password' => Hash::make($request->password),
                     'remember_token' => Str::random(60),
-                ])->save();
+                ];
+
+                // This is where a guest becomes a real customer.
+                //
+                // A guest booking creates a users row with is_guest = true and a
+                // random password nobody has seen, then emails a link here so they
+                // can set one (GuestBookingController, GuestAccountCreated). Setting
+                // the password used to be all this did, which let them sign in but
+                // left is_guest true forever — and BookingPricing refuses the account
+                // discount to a guest, so they stayed a second-class account having
+                // done everything asked of them, and were never told why.
+                //
+                // Reaching this callback means the token in their inbox was valid,
+                // which is proof they own the address. Nothing is migrated: the
+                // bookings are already on this row, so their history simply becomes
+                // visible to them once they can sign in.
+                if ($user->is_guest) {
+                    $fields['is_guest'] = false;
+                }
+
+                $user->forceFill($fields)->save();
 
                 event(new PasswordReset($user));
             }
