@@ -21,8 +21,9 @@
          owns the toggle, the stored value and the icon. --}}
     <script>
         (function () {
-            var theme = 'light';
-            try { theme = localStorage.getItem('apx-theme') || 'light'; } catch (e) {}
+            // The shop-wide default, from Settings. A stored choice wins.
+            var theme = '{{ $defaultTheme ?? 'light' }}';
+            try { theme = localStorage.getItem('apx-theme') || theme; } catch (e) {}
             if (theme !== 'dark') document.documentElement.classList.add('light-mode');
         })();
     </script>
@@ -2488,7 +2489,7 @@ document.addEventListener('click', function(e) {
     // to cross from a light landing page, through sign-in, into a dark
     // dashboard. Anyone who has actually chosen dark keeps it — only a first
     // visit is affected.
-    const savedTheme = localStorage.getItem('apx-theme') || 'light';
+    const savedTheme = localStorage.getItem('apx-theme') || '{{ $defaultTheme ?? 'light' }}';
     applyTheme(savedTheme);
 
     themeToggle.addEventListener('click', () => {

@@ -11,6 +11,22 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
     <link href="{{ asset('assets/css/design-tokens.css') }}" rel="stylesheet" />
     <link href="{{ asset('assets/css/dashboard.css') }}" rel="stylesheet" />
+
+    {{-- Theme before first paint.
+
+         The toggle at the bottom of this file is what owns the stored value
+         and the icon, but it runs after the page has already been drawn. With
+         light as the only default that was invisible; now that the shop can
+         set dark, an admin would watch a white page repaint itself on every
+         navigation. This adds the class only — the script below still does
+         everything else, and reads the same two sources in the same order. --}}
+    <script>
+        (function () {
+            var theme = '{{ $defaultTheme ?? 'light' }}';
+            try { theme = localStorage.getItem('apx-theme') || theme; } catch (e) {}
+            if (theme === 'dark') document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
     @stack('styles')
     <style>
         /* ═══════════════════════════════════════════════════
@@ -1254,8 +1270,8 @@
                 themeToggle.title = 'Switch to dark mode';
             }
         }
-        // Default = light
-        const savedTheme = localStorage.getItem('apx-theme') || 'light';
+        // Falls back to the shop-wide default from Settings; a stored choice wins.
+        const savedTheme = localStorage.getItem('apx-theme') || '{{ $defaultTheme ?? 'light' }}';
         applyTheme(savedTheme);
 
         themeToggle.addEventListener('click', () => {

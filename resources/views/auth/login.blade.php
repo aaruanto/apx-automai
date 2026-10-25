@@ -19,8 +19,9 @@
          so a choice made in any of them carries to the rest. --}}
     <script>
         (function () {
-            var theme = 'light';
-            try { theme = localStorage.getItem('apx-theme') || 'light'; } catch (e) {}
+            // The shop-wide default, from Settings. A stored choice wins.
+            var theme = '{{ $defaultTheme ?? 'light' }}';
+            try { theme = localStorage.getItem('apx-theme') || theme; } catch (e) {}
             if (theme !== 'dark') document.documentElement.classList.add('light-mode');
         })();
     </script>

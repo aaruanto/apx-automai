@@ -308,7 +308,7 @@
                         <div class="setting-row">
                             <div class="setting-info">
                                 <div class="label">Default Theme</div>
-                                <div class="hint">Light mode is the default for all admin sessions</div>
+                                <div class="hint">The theme everyone starts on, staff and customers alike. Anyone who uses the light/dark toggle keeps their own choice.</div>
                             </div>
                             <select class="filter-select @error('default_theme') fv-invalid @enderror" style="width:auto;" name="default_theme" id="defaultThemeSetting">
                                 <option value="light" {{ old('default_theme', $settings['default_theme'] ?? 'light') === 'light' ? 'selected' : '' }}>Light</option>
