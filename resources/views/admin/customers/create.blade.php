@@ -105,7 +105,7 @@
                                 <label class="form-label">Plate Number <span style="color:var(--red)">*</span></label>
                                 <input class="form-control" type="text" name="plate" id="custCreatePlate"
                                        value="{{ $customer->vehicle->plate_number ?? '' }}"
-                                       placeholder="e.g. ABC 1234" required
+                                       placeholder="ABC 1234, 123 ABC or AB 12345" required
                                        style="letter-spacing:.08em;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;" @if($isEdit) readonly @endif />
                             </div>
                             <div class="form-group">
@@ -225,7 +225,7 @@
 
 @push('scripts')
 <script>
-PlateMask.attach(document.getElementById('custCreatePlate'));
+PlateInput.attach(document.getElementById('custCreatePlate'));
 FormValidate.register(document.getElementById('custCreateName'), { rules: [FormValidate.rules.required('Full name is required.')] });
 FormValidate.register(document.getElementById('custCreatePhone'), { rules: [FormValidate.rules.required('Phone number is required.'), FormValidate.rules.phonePH()] });
 FormValidate.register(document.getElementById('custCreatePlate'), { rules: [FormValidate.rules.required('Plate number is required.'), FormValidate.rules.plate()] });

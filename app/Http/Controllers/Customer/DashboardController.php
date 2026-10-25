@@ -14,6 +14,7 @@ use App\Services\BookingAvailability;
 use App\Services\BookingPricing;
 use App\Services\LoyaltyService;
 use App\Support\BookingPolicy;
+use App\Support\PlateNumber;
 use App\Exceptions\SlotUnavailableException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -320,10 +321,15 @@ class DashboardController extends Controller
             $request->merge($json);
         }
 
+        // Normalised before validating, not after: the rules reject a leading,
+        // trailing or doubled space, so cleaning has to happen first or a
+        // customer typing "abc 1234 " is refused rather than tidied.
+        $request->merge(['plate' => PlateNumber::normalise($request->input('plate'))]);
+
         $data = $request->validate([
             'brand'        => 'required|string|max:100',
             'model'        => 'nullable|string|max:100',
-            'plate'        => ['required', 'string', 'max:20', 'regex:/^[A-Z]{3} \d{3,4}$/i'],
+            'plate'        => PlateNumber::rules(),
             'year'         => 'required|integer|min:1990|max:2100',
             'color'        => 'nullable|string|max:40',
             'vehicle_type' => 'nullable|in:car,motorcycle',
@@ -334,10 +340,10 @@ class DashboardController extends Controller
             // record useful, not because the system reads it.
             'mileage'      => 'nullable|integer|min:0|max:2000000',
         ], [
-            'plate.regex' => 'Enter a valid plate number (e.g. ABC 1234).',
+            ...PlateNumber::messages('plate'),
         ]);
 
-        $plate = strtoupper(trim($data['plate']));
+        $plate = PlateNumber::normalise($data['plate']);
 
         // Scoped to the current user — this used to purge any soft-deleted row
         // with a matching plate, which let one customer permanently destroy
@@ -407,10 +413,15 @@ class DashboardController extends Controller
 
         $vehicle = Vehicle::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
 
+        // Normalised before validating, not after: the rules reject a leading,
+        // trailing or doubled space, so cleaning has to happen first or a
+        // customer typing "abc 1234 " is refused rather than tidied.
+        $request->merge(['plate' => PlateNumber::normalise($request->input('plate'))]);
+
         $data = $request->validate([
             'brand'        => 'required|string|max:100',
             'model'        => 'nullable|string|max:100',
-            'plate'        => ['required', 'string', 'max:20', 'regex:/^[A-Z]{3} \d{3,4}$/i'],
+            'plate'        => PlateNumber::rules(),
             'year'         => 'required|integer|min:1990|max:2100',
             'color'        => 'nullable|string|max:40',
             'vehicle_type' => 'nullable|in:car,motorcycle',
@@ -421,10 +432,10 @@ class DashboardController extends Controller
             // record useful, not because the system reads it.
             'mileage'      => 'nullable|integer|min:0|max:2000000',
         ], [
-            'plate.regex' => 'Enter a valid plate number (e.g. ABC 1234).',
+            ...PlateNumber::messages('plate'),
         ]);
 
-        $plate = strtoupper(trim($data['plate']));
+        $plate = PlateNumber::normalise($data['plate']);
 
         // Plates are unique across the system, since a plate identifies one
         // real vehicle. The vehicle's own current plate is allowed through so

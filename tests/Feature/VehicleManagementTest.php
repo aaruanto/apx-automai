@@ -73,14 +73,29 @@ it('refuses a plate another vehicle already has', function () {
     expect($mine->refresh()->plate_number)->toBe('AAA 1111');
 });
 
-it('rejects a malformed plate', function (string $plate) {
+it('rejects a plate that is not a plate', function (string $plate) {
     $user    = owner();
     $vehicle = vehicleFor($user, 'AAA 1111');
 
     $this->actingAs($user)->patchJson("/customer/vehicles/{$vehicle->id}", [
         'brand' => 'Toyota', 'plate' => $plate, 'year' => 2020,
     ])->assertStatus(422);
-})->with(['', '12345', 'AB 1234', 'ABCD 1234', 'ABC 12345']);
+})->with(['', 'A', 'ABC!1234', 'ABC/1234', 'ABCDEFGHIJKLMNOPQRST']);
+
+it('accepts the formats the old rule refused', function (string $plate) {
+    // 12345, AB 1234, ABCD 1234 and ABC 12345 were all rejected by the
+    // previous /^[A-Z]{3} \d{3,4}$/ rule, which only described a car plate.
+    // Motorcycle, trailer and special plates do not look like that, and a
+    // wrong rejection stops a real booking.
+    $user    = owner();
+    $vehicle = vehicleFor($user, 'AAA 1111');
+
+    $this->actingAs($user)->patchJson("/customer/vehicles/{$vehicle->id}", [
+        'brand' => 'Toyota', 'plate' => $plate, 'year' => 2020,
+    ])->assertOk();
+
+    expect($vehicle->refresh()->plate_number)->toBe($plate);
+})->with(['12345', 'AB 1234', 'ABCD 1234', 'ABC 12345', '123 ABC']);
 
 it('will not let a customer edit somebody elses vehicle', function () {
     // Scoped by owner, so another customer's id is a 404, not an edit.

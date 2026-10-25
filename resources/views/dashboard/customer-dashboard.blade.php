@@ -592,7 +592,7 @@
                         </div>
                         <div class="m-form-group">
                             <label class="m-label">Plate / Unit No.</label>
-                            <div class="m-input-wrap"><i class="fas fa-id-card"></i><input class="m-control" id="avfPlate" type="text" placeholder="e.g. ABC 1234" /></div>
+                            <div class="m-input-wrap"><i class="fas fa-id-card"></i><input class="m-control" id="avfPlate" type="text" placeholder="ABC 1234, 123 ABC or AB 12345" /></div>
                         </div>
                         <div class="m-form-group">
                             <label class="m-label">Color</label>
@@ -1162,7 +1162,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
 <script src="{{ asset('assets/js/availability-picker.js') }}"></script>
 <script src="{{ asset('assets/js/form-validate.js') }}"></script>
-<script src="{{ asset('assets/js/plate-mask.js') }}"></script>
+<script src="{{ asset('assets/js/plate-input.js') }}"></script>
 <script src="{{ asset('assets/js/password-toggle.js') }}"></script>
 <script src="{{ asset('assets/js/live-refresh.js') }}"></script>
 <script src="{{ asset('assets/js/notification-bell.js') }}"></script>
@@ -2061,7 +2061,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
     }
 
     // ── Add-vehicle field validation ────────────────────────────────────────
-    PlateMask.attach(document.getElementById('avfPlate'));
+    PlateInput.attach(document.getElementById('avfPlate'));
     FormValidate.register(document.getElementById('pef-name'), { rules: [FormValidate.rules.required('Your full name is required.')] });
     FormValidate.register(document.getElementById('avfMake'), { rules: [FormValidate.rules.required('Make / model is required.')] });
     FormValidate.register(document.getElementById('avfYear'), { rules: [FormValidate.rules.required('Year is required.')] });

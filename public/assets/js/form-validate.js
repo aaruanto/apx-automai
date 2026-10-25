@@ -196,8 +196,20 @@
         phonePH: function (message) {
             return { test: function (v) { return /^09\d{9}$|^\+639\d{9}$/.test(v.trim()); }, message: message || 'Enter a valid PH mobile number (e.g. 09171234567).' };
         },
+        // Must agree with App\Support\PlateNumber exactly — same shape, same
+        // bounds, same message. The old rule here and its four server-side
+        // twins all demanded three letters, a space and three or four digits,
+        // which is a car plate: it refused 123 ABC and AB 12345 outright, and
+        // every protocol, government, diplomatic, trailer and vintage plate
+        // with them. Shape, not format.
         plate: function (message) {
-            return { test: function (v) { return /^[A-Z]{3} \d{3,4}$/.test(v.trim().toUpperCase()); }, message: message || 'Enter a valid plate number (e.g. ABC 1234).' };
+            return {
+                test: function (v) {
+                    var p = v.toUpperCase().replace(/\s+/g, ' ').trim();
+                    return p.length >= 2 && p.length <= 15 && /^[A-Z0-9]+(?:[ -][A-Z0-9]+)*$/.test(p);
+                },
+                message: message || 'Enter the plate as it appears on the vehicle, e.g. ABC 1234, 123 ABC or AB 12345.',
+            };
         },
         minLen: function (n, message) {
             return { test: function (v) { return v.trim().length >= n; }, message: message || ('Must be at least ' + n + ' characters.') };

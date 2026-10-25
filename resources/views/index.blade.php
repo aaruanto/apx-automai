@@ -1006,7 +1006,7 @@
     <script src="/assets/js/main.js"></script>
     <script src="/assets/js/availability-picker.js"></script>
     <script src="/assets/js/form-validate.js"></script>
-    <script src="/assets/js/plate-mask.js"></script>
+    <script src="/assets/js/plate-input.js"></script>
     <script src="/assets/js/alert-modal.js"></script>
 
     <x-alert-modal id="apx-alert-modal" />
@@ -1365,7 +1365,7 @@
                         </div>
                         <div class="row g-2 mb-2">
                             <div class="col-6"><label class="form-label">Year</label><select class="form-select" id="apx-v-year" disabled><option value="">Select year</option></select></div>
-                            <div class="col-6"><label class="form-label">Plate number <span style="color:#e63946">*</span></label><input type="text" class="form-control" id="apx-v-plate" placeholder="e.g. ABC 1234"></div>
+                            <div class="col-6"><label class="form-label">Plate number <span style="color:#e63946">*</span></label><input type="text" class="form-control" id="apx-v-plate" placeholder="ABC 1234, 123 ABC or AB 12345"></div>
                         </div>
                         <div class="mt-2"><label class="form-label">Notes / special request</label><textarea class="form-control" id="apx-f-notes" rows="2" placeholder="Anything we should know?"></textarea></div>
                     </div>
@@ -1895,8 +1895,8 @@
             }, 100);
         };
 
-        // ── Field validation (form-validate.js + plate-mask.js) ────────────
-        if (window.PlateMask) PlateMask.attach(document.getElementById('apx-v-plate'));
+        // ── Field validation (form-validate.js + plate-input.js) ────────────
+        if (window.PlateInput) PlateInput.attach(document.getElementById('apx-v-plate'));
         if (window.FormValidate) {
             FormValidate.register(document.getElementById('apx-f-name'), { rules: [FormValidate.rules.required('Please enter your full name.')] });
             FormValidate.register(document.getElementById('apx-f-email'), { rules: [FormValidate.rules.required('Please enter your email.'), FormValidate.rules.email()] });

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Support\PlateNumber;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Booking;
@@ -59,6 +60,11 @@ class BookingController extends Controller
             $request->merge(['service_ids' => [$request->input('service_id')]]);
         }
 
+        // Normalised before validating, not after: the rules reject a leading,
+        // trailing or doubled space, so cleaning has to happen first or a
+        // customer typing "abc 1234 " is refused rather than tidied.
+        $request->merge(['plate' => PlateNumber::normalise($request->input('plate'))]);
+
         $request->validate([
             'customer_name'  => 'required|string|max:255',
             'customer_phone' => 'required|string|max:20',
@@ -66,7 +72,7 @@ class BookingController extends Controller
             // booking use. This path accepted anything up to 20 characters,
             // so the admin could create a vehicle the customer could never
             // then edit, because their form would reject its plate.
-            'plate'          => ['required', 'string', 'max:20', 'regex:/^[A-Z]{3} \d{3,4}$/i'],
+            'plate'          => PlateNumber::rules(),
             'service_ids'    => 'required|array|min:1',
             'service_ids.*'  => 'integer|exists:services,id',
             'booking_date'   => 'required|date|after_or_equal:today', // no past dates
@@ -92,7 +98,7 @@ class BookingController extends Controller
         );
 
         $vehicle = $user->vehicles()->firstOrCreate(
-            ['plate_number' => strtoupper($request->plate)],
+            ['plate_number' => PlateNumber::normalise($request->plate)],
             [
                 'make'  => $request->car_model ?? 'Unknown',
                 'model' => $request->car_model ?? '',

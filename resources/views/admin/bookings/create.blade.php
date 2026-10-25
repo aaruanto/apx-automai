@@ -152,7 +152,7 @@
                                 <input class="form-control" type="text"
                                        @if ($isEdit) disabled @else name="plate" id="adminPlateInput" required @endif
                                        value="{{ $src->vehicle->plate_number ?? '' }}"
-                                       placeholder="e.g. ABC 1234"
+                                       placeholder="ABC 1234, 123 ABC or AB 12345"
                                        style="letter-spacing:.08em;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;{{ $isEdit ? 'opacity:.65;cursor:not-allowed;' : '' }}" />
                                 @if ($isEdit)
                                 <div class="form-hint">The customer changes this from their own vehicles.</div>
@@ -402,7 +402,7 @@ const serviceData = {
 // read-only, so guard rather than attaching to null.
 const adminPlate = document.getElementById('adminPlateInput');
 if (adminPlate) {
-    PlateMask.attach(adminPlate);
+    PlateInput.attach(adminPlate);
     FormValidate.register(adminPlate, { rules: [FormValidate.rules.required('Plate number is required.'), FormValidate.rules.plate()] });
 }
 // Customer and vehicle fields exist only when creating; on edit they are

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\BookingPolicy;
+use App\Support\PlateNumber;
 use App\Support\EmailRule;
 
 use App\Models\Bundle;
@@ -27,6 +28,11 @@ class GuestBookingController extends Controller
             'guest_email' => strtolower(trim((string) $request->input('guest_email'))),
         ]);
 
+        // Normalised before validating, not after: the rules below reject a
+        // leading, trailing or doubled space, so cleaning has to happen first
+        // or a customer typing "abc 1234 " is refused rather than tidied.
+        $request->merge(['vehicle_plate' => PlateNumber::normalise($request->input('vehicle_plate'))]);
+
         $request->validate([
             'guest_name'     => 'required|string|max:255',
             'guest_email'    => ['required', EmailRule::strict(), 'max:255'],
@@ -39,10 +45,10 @@ class GuestBookingController extends Controller
             'vehicle_make'   => 'required|string|max:100',
             'vehicle_model'  => 'required|string|max:100',
             'vehicle_year'   => 'required|integer|min:2000',
-            'vehicle_plate'  => ['required', 'string', 'max:20', 'regex:/^[A-Z]{3} \d{3,4}$/i'],
+            'vehicle_plate'  => PlateNumber::rules(),
             'vehicle_type'   => 'nullable|in:car,motorcycle',
         ], [
-            'vehicle_plate.regex' => 'Enter a valid plate number (e.g. ABC 1234).',
+            ...PlateNumber::messages('vehicle_plate'),
         ]);
 
         // ── Block real accounts from booking as a guest ───────────────────
@@ -90,7 +96,7 @@ class GuestBookingController extends Controller
         // the booking to whichever account already owned that plate, which both
         // leaked that customer's vehicle details and let anyone who could read a
         // plate off a car attach themselves to it.
-        $plateKey = strtoupper(trim($request->vehicle_plate));
+        $plateKey = PlateNumber::normalise($request->vehicle_plate);
 
         $vehicle = Vehicle::where('plate_number', $plateKey)
             ->where('user_id', $user->id)

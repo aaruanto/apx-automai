@@ -1148,7 +1148,7 @@
     {{-- 0.7.0 is the last datalabels release for Chart.js 2.x. --}}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/0.7.0/chartjs-plugin-datalabels.min.js" crossorigin="anonymous"></script>
     <script src="{{ asset('assets/js/form-validate.js') }}"></script>
-    <script src="{{ asset('assets/js/plate-mask.js') }}"></script>
+    <script src="{{ asset('assets/js/plate-input.js') }}"></script>
     <script src="{{ asset('assets/js/alert-modal.js') }}"></script>
     <script src="{{ asset('assets/js/booking-actions.js') }}"></script>
     <script src="{{ asset('assets/js/live-refresh.js') }}"></script>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Support\EmailRule;
+use App\Support\PlateNumber;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
@@ -64,11 +65,16 @@ class CustomerController extends Controller
     {
         $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
 
+        // Normalised before validating, not after: the rules below reject a
+        // leading, trailing or doubled space, so cleaning has to happen first
+        // or a customer typing "abc 1234 " is refused rather than tidied.
+        $request->merge(['plate' => PlateNumber::normalise($request->input('plate'))]);
+
         $request->validate([
             'name'  => 'required|string|max:255',
             'email' => ['required', EmailRule::strict(), 'unique:users,email'],
             'phone' => 'required|string|max:20',
-            'plate' => 'required|string|max:20',
+            'plate' => PlateNumber::rules(),
         ]);
 
         // Create user account
@@ -93,7 +99,12 @@ class CustomerController extends Controller
         // Create vehicle
         if ($request->plate) {
             $user->vehicles()->create([
-                'plate_number' => strtoupper($request->plate),
+                'plate_number' => PlateNumber::normalise($request->plate),
+                // vehicles.make is NOT NULL and this payload omitted it, so
+                // adding a customer with a plate threw a constraint violation
+                // and returned a 500. The form only asks for a model, so the
+                // same fallback Admin\BookingController uses applies here.
+                'make'         => $request->car_model ?: 'Unknown',
                 'model'        => $request->car_model ?? '',
                 'color'        => $request->color ?? '',
             ]);
