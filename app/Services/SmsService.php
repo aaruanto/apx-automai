@@ -3,22 +3,24 @@
 namespace App\Services;
 
 use App\Models\SmsLog;
-use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Http;
+use App\Services\Sms\SmsGateway;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Semaphore gateway.
+ * Sending a text, independent of who carries it.
  *
- * POST {base}/messages with the key as an ordinary form field — not a header,
- * not basic auth — alongside number, message and an optional sendername. The
- * reply is a JSON *array* of created messages, one per recipient.
+ * This owns everything true of any provider: folding the message to GSM-7,
+ * normalising the number, counting segments, refusing anything absurdly
+ * long, writing the sms_logs row, and returning the ok/failed shape the
+ * reminder commands and the admin test send already read. The provider
+ * owns only the HTTP call and how to read the answer — see App\Services\Sms.
  *
- * Replaced UniSMS, whose free sender ID stopped reaching Smart, TNT and Sun.
- * Semaphore routes domestically and reaches every network on its default
- * sender name with no registration. Everything above the HTTP call — number
- * normalisation, segment counting, logging — is unchanged by that move, and
- * the UniSMS implementation is in the git history if its coverage returns.
+ * SMS_DRIVER picks one. That is deliberate rather than tidy: a Philippine
+ * carrier must approve an alphanumeric sender name before a branded message
+ * can be delivered, which takes weeks and paperwork from a third party. With
+ * the provider behind a config value, work does not stop while that is in
+ * review — log sends nothing and costs nothing, and a provider with an
+ * unregistered default sender can carry real messages in the meantime.
  *
  * Every attempt is written to sms_logs whatever the outcome, because the
  * question afterwards is always "did the customer actually get a text", and
@@ -27,6 +29,14 @@ use Illuminate\Support\Facades\Log;
  */
 class SmsService
 {
+    public function __construct(private SmsGateway $gateway) {}
+
+    /** Which provider is carrying messages: 'log', 'unisms', 'semaphore'. */
+    public function driver(): string
+    {
+        return $this->gateway->name();
+    }
+
     /**
      * Semaphore splits anything over 160 characters itself and bills per part,
      * with no documented ceiling. This limit is ours: without it a runaway
@@ -49,21 +59,16 @@ class SmsService
 
     // ── Configuration ──────────────────────────────────────────────────────
 
-    /**
-     * The key alone. Unlike UniSMS, the sender name is optional — Semaphore
-     * falls back to the one registered to the account.
-     */
+    /** Whatever the chosen provider needs in order to send. */
     public function configured(): bool
     {
-        return filled(config('services.semaphore.key'));
+        return $this->gateway->configured();
     }
 
     /** Why SMS is unavailable, phrased for an admin to act on. Null when fine. */
     public function unavailableReason(): ?string
     {
-        return blank(config('services.semaphore.key'))
-            ? 'SEMAPHORE_KEY is not set, so SMS is switched off.'
-            : null;
+        return $this->gateway->unavailableReason();
     }
 
     // ── Philippine number normalisation ────────────────────────────────────
@@ -219,8 +224,8 @@ class SmsService
         }
 
         // Done before anything measures or logs the message, so the length
-        // check, the stored sms_logs row and what Semaphore bills for are all
-        // the same text.
+        // check, the stored sms_logs row and what the provider bills for are
+        // all the same text.
         $content = $this->gsmSafe($content);
 
         $recipient = $this->normalise($to);
@@ -239,182 +244,48 @@ class SmsService
             );
         }
 
-        // Semaphore silently discards any message beginning with "TEST": it
-        // returns a normal success and nothing is delivered. Catching it here
-        // turns an invisible non-delivery into a stated refusal.
-        if (preg_match('/^\s*TEST/i', $content) === 1) {
+        // Provider-specific content rules, such as Semaphore discarding
+        // anything that begins with "TEST" while reporting success.
+        if ($refusal = $this->gateway->refuses($content)) {
             return $this->fail(
-                'Semaphore silently discards messages starting with "TEST" — it reports success and delivers nothing. Reword the template so it does not begin with that word.',
-                $recipient, $content, $context, 'test_prefix'
+                $refusal['reason'], $recipient, $content, $context, $refusal['status']
             );
         }
 
-        try {
-            $response = Http::asForm()
-                ->timeout((int) config('services.semaphore.timeout'))
-                ->acceptJson()
-                ->post($this->endpoint('messages'), array_filter([
-                    // The key is an ordinary form field here, not a header.
-                    'apikey'     => (string) config('services.semaphore.key'),
-                    // Semaphore takes 09XXXXXXXXX or 639XXXXXXXXX, without a
-                    // leading plus; we keep E.164 for the log and strip it here.
-                    'number'     => ltrim($recipient, '+'),
-                    'message'    => $content,
-                    // Trimmed, because array_filter below rejects '' and null
-                    // but not ' '. A stray space typed into the host's env UI
-                    // would send a blank sender name and come back as "No active
-                    // sender name found" — while the variable still looks empty.
-                    'sendername' => trim((string) config('services.semaphore.sender_name')),
-                ], fn ($value) => $value !== '' && $value !== null));
-        } catch (\Throwable $e) {
+        // The only line that depends on who is carrying the message. It never
+        // throws: a provider being unreachable is an outcome, and an sms_logs
+        // row is written either way.
+        $result = $this->gateway->dispatch($recipient, $content);
+
+        if (! $result['ok']) {
             return $this->fail(
-                'Could not reach Semaphore: '.$e->getMessage(),
-                $recipient, $content, $context, 'transport_error'
-            );
-        }
-
-        if (! $response->successful()) {
-            return $this->fail(
-                $this->describeFailure($response),
-                $recipient, $content, $context, 'http_'.$response->status()
-            );
-        }
-
-        // The reply is an array of created messages, one per recipient, even
-        // for a single send.
-        $body    = $response->json();
-        $message = is_array($body) ? ($body[0] ?? $body) : [];
-
-        $status    = strtolower((string) ($message['status'] ?? 'queued'));
-        $reference = $message['message_id'] ?? null;
-
-        // A message Semaphore itself marks Failed is not a success, however
-        // healthy the HTTP status was.
-        if ($status === 'failed') {
-            return $this->fail(
-                'Semaphore accepted the request but marked the message Failed'
-                    .(isset($message['network']) ? ' on '.$message['network'] : '').'.',
-                $recipient, $content, $context, 'failed'
+                $result['message'], $recipient, $content, $context, $result['status']
             );
         }
 
         $log = $this->log($context + [
             'recipient'    => $recipient,
             'content'      => $content,
-            'status'       => $status,
-            'reference_id' => $reference ? (string) $reference : null,
+            'status'       => $result['status'],
+            'reference_id' => $result['reference'],
             'segments'     => $this->segments($content)['segments'],
         ]);
 
         return [
             'ok'      => true,
-            'message' => 'Queued with Semaphore'.($reference ? ' (id '.$reference.')' : '').'.',
+            'message' => $result['message'],
             'log'     => $log,
         ];
     }
 
     /**
-     * Turn a failed response into something an admin can act on. Where the
-     * gateway explains itself, quote it; where it does not, say what the
-     * status means for this app rather than restating the status line.
+     * Remaining credits, or null when the provider cannot say — which is
+     * also the honest answer when nothing is being spent, as under the log
+     * driver. The admin screen shows nothing rather than a misleading zero.
      */
-    private function describeFailure(Response $response): string
-    {
-        $detail = $this->extractDetail($response);
-
-        return match ($response->status()) {
-            401 => 'Semaphore rejected the API key (401). Check SEMAPHORE_KEY.',
-            // 403 is "authenticated but not permitted", which is a different
-            // problem from a wrong key: an account awaiting approval, or one
-            // with no credit to spend. Saying "check your key" here sends the
-            // reader to the one thing that is probably fine.
-            403 => 'Semaphore refused the request (403)'.($detail ? ': '.$detail : '.')
-                   .' The key reached them, so this is an account-level block —'
-                   .' usually an account not yet approved for sending, or one with no credits.'
-                   .' Check the balance and account status in the Semaphore dashboard.',
-            402 => 'Out of Semaphore credits. Top up the account to resume sending.',
-            // Only guess at a cause when the gateway did not give one.
-            422 => $detail
-                ? 'Semaphore rejected the request (422): '.$detail
-                : 'Semaphore rejected the request (422). An unregistered sender name is the usual cause.',
-            429 => 'Rate limited by Semaphore (429). The limit is 120 sends a minute.',
-            default => 'Semaphore returned HTTP '.$response->status().($detail ? ': '.$detail : '.'),
-        };
-    }
-
-    /**
-     * Whatever the gateway said about the failure.
-     *
-     * Checking only two known keys meant a 422 naming the offending field came
-     * back as a bare "rejected the request", which is the one case where the
-     * detail is the whole answer. So: try the documented keys, then the common
-     * validation-bag shapes, and failing both fall back to the raw body rather
-     * than discarding it.
-     */
-    private function extractDetail(Response $response): ?string
-    {
-        foreach (['message', 'error', 'detail', 'errors'] as $key) {
-            $value = $response->json($key);
-
-            if (is_string($value) && trim($value) !== '') {
-                return trim($value);
-            }
-
-            // A validation bag: {"errors": {"sender_id": ["is not registered"]}}
-            if (is_array($value) && $value !== []) {
-                $parts = [];
-
-                foreach ($value as $field => $messages) {
-                    $messages = is_array($messages) ? $messages : [$messages];
-                    $parts[]  = (is_string($field) ? $field.': ' : '')
-                        .implode(' ', array_filter($messages, 'is_string'));
-                }
-
-                return \Illuminate\Support\Str::limit(implode('; ', array_filter($parts)), 300);
-            }
-        }
-
-        $body = trim((string) $response->body());
-
-        return $body === '' ? null : \Illuminate\Support\Str::limit($body, 300);
-    }
-
-    // ── Credits ────────────────────────────────────────────────────────────
-
-    /** Remaining SMS credits, or null if the balance could not be read. */
     public function credits(): ?int
     {
-        if (! $this->configured()) {
-            return null;
-        }
-
-        try {
-            $response = Http::timeout((int) config('services.semaphore.timeout'))
-                ->acceptJson()
-                ->get($this->endpoint('account'), [
-                    'apikey' => (string) config('services.semaphore.key'),
-                ]);
-
-            if (! $response->successful()) {
-                return null;
-            }
-
-            // Documented as an object, but the messages endpoint returns an
-            // array for a single item, so tolerate either shape here too.
-            $body    = $response->json();
-            $account = is_array($body) && array_is_list($body) ? ($body[0] ?? []) : ($body ?? []);
-
-            return isset($account['credit_balance']) ? (int) $account['credit_balance'] : null;
-        } catch (\Throwable $e) {
-            Log::warning('Could not read Semaphore balance: '.$e->getMessage());
-
-            return null;
-        }
-    }
-
-    private function endpoint(string $path): string
-    {
-        return rtrim((string) config('services.semaphore.base_url'), '/').'/'.$path;
+        return $this->gateway->credits();
     }
 
     // ── Logging ────────────────────────────────────────────────────────────

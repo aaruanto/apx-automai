@@ -17,7 +17,14 @@ uses(RefreshDatabase::class);
 // The controller keeps the template as a JSON file on the default disk, so
 // without this every test here would read and write the developer's own
 // saved template.
-beforeEach(fn () => Storage::fake('local'));
+//
+// The driver is named because these tests assert on what a real provider
+// said. SMS_DRIVER now defaults to log, which attempts nothing and reports
+// success, so without this every SMS assertion below is about the simulator.
+beforeEach(function () {
+    Storage::fake('local');
+    config(['services.sms.driver' => 'semaphore']);
+});
 
 function testAdmin(): User
 {

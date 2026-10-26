@@ -37,20 +37,61 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Semaphore
+    | SMS
     |--------------------------------------------------------------------------
     |
-    | Philippine SMS gateway, routed domestically, reaching Globe, Smart, Sun
-    | and DITO on the default sender name without any registration.
+    | SMS_DRIVER picks who carries a text: log, unisms or semaphore. Everything
+    | else about sending is the same whichever is set — GSM-7 folding, number
+    | normalisation, segment counting, the sms_logs row — so the provider is a
+    | config value rather than a rewrite. See App\Services\Sms.
     |
-    | This replaced UniSMS, whose free sender ID stopped reaching Smart, TNT
-    | and Sun — a carrier registration matter rather than anything in the API.
-    | The UniSMS implementation is in the git history if that coverage returns.
+    | It exists because a Philippine carrier has to approve an alphanumeric
+    | sender name before a branded message is delivered, and that approval is
+    | weeks of paperwork from a third party. Work does not stop meanwhile: log
+    | sends nothing and costs nothing, and a provider with an unregistered
+    | default sender can carry real messages while a branded name is in review.
     |
-    | SEMAPHORE_SENDER_NAME is optional: left unset, Semaphore uses the sender
-    | name registered to the account. Leaving SEMAPHORE_KEY unset switches SMS
-    | off entirely — the app skips the channel and says so, rather than failing.
+    | Defaults to log, and an unrecognised value falls back to it. A provider
+    | that spends real credits is chosen deliberately, never by a typo.
     |
+    */
+    'sms' => [
+        'driver' => env('SMS_DRIVER', 'log'),
+    ],
+
+    /*
+    | UniSMS. The key goes out as HTTP basic auth rather than a form field, and
+    | a sender ID is required on every message.
+    |
+    | Dropped once, when its free sender ID stopped reaching Smart, TNT and Sun
+    | — a carrier registration matter rather than anything in the API. Kept now
+    | because that default sender needs no registration at all, which makes it
+    | the one provider that can send while a branded name is being approved.
+    | Expect Globe and DITO to arrive and Smart, TNT and Sun not to; confirm a
+    | real message lands on the intended handset before relying on it.
+    */
+    'unisms' => [
+        'key'       => env('UNISMS_KEY'),
+        'sender_id' => env('UNISMS_SENDER_ID'),
+        'base_url'  => env('UNISMS_BASE_URL', 'https://unismsapi.com/api'),
+        'timeout'   => (int) env('UNISMS_TIMEOUT', 15),
+    ],
+
+    /*
+    | Semaphore. Philippine gateway, routed domestically, reaching Globe,
+    | Smart, Sun and DITO.
+    |
+    | It cannot send at all until a sender name is APPROVED ON THE ACCOUNT.
+    | This comment used to claim the default name reached every network with no
+    | registration, which is false and cost real time: with none registered
+    | every call fails with HTTP 500 and "No active sender name found", which
+    | reads like a key or billing problem and is neither. Credits and sender
+    | names are separate things; topping up grants nothing.
+    |
+    | SEMAPHORE_SENDER_NAME is optional, and normally left unset: Semaphore
+    | then uses the name registered to the account. Leaving SEMAPHORE_KEY unset
+    | switches SMS off — the app skips the channel and says so, rather than
+    | failing.
     */
     'semaphore' => [
         'key'         => env('SEMAPHORE_KEY'),

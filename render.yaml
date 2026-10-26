@@ -62,6 +62,20 @@ services:
         sync: false
       - key: MAIL_FROM_ADDRESS
         sync: false
+      # Which gateway carries a text. Left at log, the deploy sends no SMS
+      # at all — it records every attempt in sms_logs and contacts nobody,
+      # which is the right setting until a sender name is approved. Set it
+      # to unisms or semaphore here, and give that provider's key below.
+      - key: SMS_DRIVER
+        value: log
+      # UniSMS. Both are prompted for, because neither is useful without
+      # the other: UniSMS requires a sender ID on every message.
+      - key: UNISMS_BASE_URL
+        value: https://unismsapi.com/api
+      - key: UNISMS_KEY
+        sync: false
+      - key: UNISMS_SENDER_ID
+        sync: false
       # Semaphore. The key is prompted for in the dashboard; with SEMAPHORE_KEY
       # unset the app simply skips the SMS channel. SEMAPHORE_SENDER_NAME is
       # deliberately not listed: unset, Semaphore uses the sender name

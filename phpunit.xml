@@ -18,6 +18,19 @@
         </include>
     </source>
     <php>
+        <!-- The suite crossed 650 tests and began exhausting PHP's default
+             128M part-way through, which reads as a failing test and is not
+             one: the fatal lands in whatever view happened to render next.
+             RefreshDatabase keeps a container per test, so this grows with the
+             suite — raise it again rather than reading the crash as a bug. -->
+        <ini name="memory_limit" value="512M"/>
+        <!-- A test run must never be able to text a real customer. The config
+             default is already log, but a developer with SEMAPHORE_KEY and
+             SMS_DRIVER=semaphore in their own .env would otherwise inherit it
+             here, and these entries are set before Dotenv loads, so this wins.
+             The two Semaphore-specific test files override it with config() at
+             runtime, which is unaffected. -->
+        <env name="SMS_DRIVER" value="log"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

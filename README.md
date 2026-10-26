@@ -344,8 +344,71 @@ variables are set through the dashboard.
 
 ## SMS
 
-SMS goes through [Semaphore](https://semaphore.co/docs), a Philippine gateway
-routed domestically, reaching Globe, Smart, Sun and DITO.
+`SMS_DRIVER` chooses who carries a text. Everything else about sending is the
+same whichever one is set — GSM-7 folding, number normalisation, segment
+counting, the `sms_logs` row, the reminder ledger — so switching provider is a
+config change, not a rewrite.
+
+```
+SMS_DRIVER=log
+```
+
+| Driver | Sends? | Needs | Use it when |
+| --- | --- | --- | --- |
+| `log` | No | Nothing | Developing. **The default.** |
+| `unisms` | Yes | `UNISMS_KEY`, `UNISMS_SENDER_ID` | A branded sender name is still in review |
+| `semaphore` | Yes | `SEMAPHORE_KEY`, plus an approved sender name on the account | Normally |
+
+### `log` — the default
+
+Writes the message to `sms_logs` and the application log and contacts nobody.
+Every shared rule still runs, so the reminder shows up in `sms_logs` exactly
+as a real one would, with the status `simulated` and a `sim-…` reference.
+
+That exists because the expensive question during development is "did the
+right reminder fire, for the right booking, exactly once?", and the answer is
+in `sms_logs` and the `reminders` table, not on a handset. Chasing that costs
+a credit per attempt on a real provider and nothing here.
+
+What it cannot tell you: whether the key is right, whether the provider
+accepts the message, or whether the carrier delivers it. Those need a real
+send. Use `log` for the logic and spend credits proving delivery.
+
+It reports itself as configured even with no credentials at all, deliberately
+— the reminder commands skip the SMS channel entirely when the gateway says it
+is unavailable, and the point of this driver is that reminders do run.
+
+An unrecognised `SMS_DRIVER` falls back to `log` rather than throwing: a typo
+in an environment variable should stop messages going out, not return a 500 on
+every page that touches the service.
+
+### `unisms`
+
+```
+UNISMS_KEY=your-api-key
+UNISMS_SENDER_ID=
+UNISMS_BASE_URL=https://unismsapi.com/api
+```
+
+The key goes out as HTTP basic auth, not a form field, and a sender ID is
+required on **every** message — unset, the app switches SMS off and names the
+missing variable. The reply is a single object under a `message` key, where
+Semaphore returns an array.
+
+The project was built against UniSMS first, and this is that implementation
+rather than a rewrite. It was dropped because its free sender ID stopped
+reaching Smart, TNT and Sun — and it is back because its default sender ID
+needs no registration at all, which makes it the one provider that can send
+while an application for a branded name is in review.
+
+Expect Globe and DITO to arrive and Smart, TNT and Sun not to. That is the
+trade: no paperwork, narrower reach. Coverage on a shared free sender ID is
+nobody's promise and has changed before without notice, so **confirm a real
+message arrives on the handset you intend to use** before relying on it.
+
+### `semaphore`
+
+A Philippine gateway routed domestically, reaching Globe, Smart, Sun and DITO.
 
 ```
 SEMAPHORE_KEY=your-api-key
@@ -356,23 +419,19 @@ SEMAPHORE_BASE_URL=https://api.semaphore.co/api/v4
 **Leaving `SEMAPHORE_KEY` blank switches SMS off.** The app skips the channel
 and says so; it does not fail, and no booking is affected.
 
+It cannot send at all until a sender name is **approved on the account**.
+Credits and sender names are separate things and topping up grants nothing:
+with none registered, every call fails with HTTP 500 and `No active sender
+name found`, which reads like a key or billing problem and is neither. The
+first name is free, is applied for in their dashboard, needs a letter of
+authorisation per carrier, takes 2–4 weeks, and **cannot be changed
+afterwards**. Ours is `APXMOTORS`.
+
 `SEMAPHORE_KEY` is sent as an ordinary form field named `apikey` — not a
 header, not a bearer token. `SEMAPHORE_SENDER_NAME` is **optional**: left
 blank, Semaphore uses the sender name registered to the account, which reaches
 every network with no registration of your own. Setting it to an unregistered
 name is the usual cause of a 422.
-
-### Why not UniSMS
-
-The project was built against UniSMS first. Its free sender ID stopped
-reaching Smart, TNT and Sun — Philippine carriers require alphanumeric sender
-IDs to be registered per network, and registering one takes 2–4 weeks plus a
-letter of authorisation per carrier. Semaphore's default sender name is
-already registered across all of them.
-
-That swap touched only the HTTP call. Number normalisation, segment counting,
-`sms_logs` and the admin test send are provider-independent and were unchanged;
-the UniSMS implementation is in the git history if its coverage returns.
 
 ### Messages beginning with "TEST"
 

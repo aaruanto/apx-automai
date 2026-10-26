@@ -122,6 +122,16 @@ changing its name serves the old one to anyone who has visited before.
   unique `(booking_id, reason)` makes earning idempotent. There are no tiers.
 - **`ReminderLedger`** makes every reminder exactly-once, for both appointment
   and maintenance reminders.
+- **`SmsService` + `App\Services\Sms`** — `SMS_DRIVER` picks who carries a
+  text: `log`, `unisms` or `semaphore`. `SmsService` owns everything true of
+  any provider (GSM-7 folding, number normalisation, segments, the
+  `sms_logs` row, the ok/failed shape); a gateway owns only the HTTP call.
+  **The default is `log`**, which runs every rule and contacts nobody, so a
+  fresh clone cannot text a real customer and reminder logic can be debugged
+  without spending a credit per attempt. An unknown value falls back to
+  `log` rather than throwing. Add a provider by implementing `SmsGateway`
+  and naming it in `AppServiceProvider::register()` — never by editing
+  `SmsService`, which is the part that must not differ between providers.
 - **`MaintenanceDue`** decides whether a vehicle is due. The scheduled command
   and the customer dashboard both call it, so the screen and the inbox cannot
   disagree.

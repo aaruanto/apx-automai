@@ -7,6 +7,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use App\Models\Setting;
+use App\Services\Sms\LogGateway;
+use App\Services\Sms\SemaphoreGateway;
+use App\Services\Sms\SmsGateway;
+use App\Services\Sms\UniSmsGateway;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -16,7 +20,21 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Which gateway SmsService is handed. Everything else about sending —
+        // GSM-7 folding, number normalisation, segments, sms_logs, the
+        // ok/failed shape — is the same whoever carries the message, so the
+        // provider is a config value rather than a rewrite.
         //
+        // An unknown value falls back to log rather than throwing. A typo in an
+        // environment variable should stop messages going out, not take every
+        // page down with it.
+        $this->app->bind(SmsGateway::class, function () {
+            return match (config('services.sms.driver')) {
+                'semaphore' => new SemaphoreGateway(),
+                'unisms'    => new UniSmsGateway(),
+                default     => new LogGateway(),
+            };
+        });
     }
 
     /**

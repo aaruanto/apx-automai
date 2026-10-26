@@ -10,6 +10,10 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     config([
+        // These exercise the Semaphore gateway specifically. The app now
+        // defaults to the log driver, which sends nothing, so the provider
+        // has to be named or every assertion about an HTTP call is moot.
+        'services.sms.driver'            => 'semaphore',
         'services.semaphore.key'         => 'test-secret-key',
         'services.semaphore.sender_name' => 'APXAUTO',
         'services.semaphore.base_url'    => 'https://api.semaphore.co/api/v4',

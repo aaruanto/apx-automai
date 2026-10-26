@@ -462,3 +462,108 @@ it('shows no service-due state when nothing is outstanding', function () {
 
     expect($html)->not->toContain('Basic PMS due');
 });
+
+// ── Appointment reminders: the SMS channel ────────────────────────────────
+//
+// Every test above gives its customer no phone number, so the SMS half of a
+// reminder was never actually exercised — the one that costs money per send
+// and the one a customer is most likely to read. These run on the log driver,
+// which performs every step of a real send except contacting anyone, so the
+// chain being checked is the real one: command → ledger claim → SmsService →
+// gateway → sms_logs → ledger mark.
+
+function smsCustomer(): User
+{
+    return User::factory()->create([
+        'role'      => 'customer',
+        'is_active' => true,
+        'is_guest'  => false,
+        'phone'     => '09171234567',
+    ]);
+}
+
+it('texts an appointment reminder as well as mailing it', function () {
+    $user = smsCustomer();
+    $booking = reminderBooking($user, reminderVehicle($user));
+
+    $this->artisan('reminders:send')->assertSuccessful();
+
+    $log = \App\Models\SmsLog::sole();
+
+    expect($log->recipient)->toBe('+639171234567')
+        ->and($log->status)->toBe('simulated')
+        // The row has to name the booking, or a customer asking "did you text
+        // me about the Vios or the Hilux" is unanswerable.
+        ->and($log->booking_id)->toBe($booking->id)
+        ->and($log->trigger)->toBe('remind_7d');
+
+    // Both channels are claimed separately, so a failing text cannot suppress
+    // the email or vice versa.
+    expect(Reminder::where('channel', 'sms')->where('status', 'sent')->count())->toBe(1)
+        ->and(Reminder::where('channel', 'email')->where('status', 'sent')->count())->toBe(1);
+});
+
+it('texts once, however many times the scheduler ticks', function () {
+    $user = smsCustomer();
+    reminderBooking($user, reminderVehicle($user));
+
+    // The failure this guards is the expensive one. A day window matches on a
+    // date, which stays true all day: unclaimed, this is ~1,440 texts per
+    // booking per day, each one billed.
+    foreach (range(1, 10) as $ignored) {
+        $this->artisan('reminders:send')->assertSuccessful();
+    }
+
+    expect(\App\Models\SmsLog::count())->toBe(1);
+});
+
+it('skips a customer with no number without failing the reminder', function () {
+    // A normal state, not a fault: the email must still go out.
+    $user = reminderCustomer();
+    reminderBooking($user, reminderVehicle($user));
+
+    $this->artisan('reminders:send')->assertSuccessful();
+
+    expect(\App\Models\SmsLog::count())->toBe(0)
+        ->and(sentMail())->toHaveCount(1);
+});
+
+it('sends no text when the SMS channel is switched off', function () {
+    $template = MessageTemplate::load();
+    $template['channels']['send_sms'] = false;
+    MessageTemplate::save($template);
+
+    $user = smsCustomer();
+    reminderBooking($user, reminderVehicle($user));
+
+    $this->artisan('reminders:send')->assertSuccessful();
+
+    expect(\App\Models\SmsLog::count())->toBe(0)
+        ->and(sentMail())->toHaveCount(1);
+});
+
+it('folds the branch em-dash out of a reminder before it is billed', function () {
+    // {branch} resolves to the configured branch name, which contains an
+    // em-dash. One such character forces the whole message to UCS-2 and cuts a
+    // segment from 160 characters to 70, tripling the cost of every reminder.
+    // The shipped sms_body does not use the token, but an admin can add it from
+    // Message Templates, so the fold has to survive that.
+    config(['apx.branch_name' => 'APX Motors — Tandang Sora']);
+
+    $template = MessageTemplate::load();
+    $template['sms_body'] = 'Hi {first_name}! {branch}: your {service} is on {date}.';
+    MessageTemplate::save($template);
+
+    $user = smsCustomer();
+    reminderBooking($user, reminderVehicle($user));
+
+    $this->artisan('reminders:send')->assertSuccessful();
+
+    $log = \App\Models\SmsLog::sole();
+
+    // The branch name still reads as itself — the em-dash is replaced, not
+    // stripped — and the message is billed as one segment, not three.
+    expect($log->content)->toContain('APX Motors - Tandang Sora')
+        ->and($log->content)->not->toContain('—')
+        ->and($log->segments)->toBe(1);
+});
