@@ -567,3 +567,28 @@ it('folds the branch em-dash out of a reminder before it is billed', function ()
         ->and($log->content)->not->toContain('—')
         ->and($log->segments)->toBe(1);
 });
+
+it('records which vehicle a maintenance text was about', function () {
+    // The command always passed vehicle_id in its send context, but the column
+    // did not exist and the attribute was not fillable, so Eloquent discarded
+    // it: the row landed with a null booking_id and nothing tying it to a
+    // vehicle. Asserted through the real command rather than a hand-made row,
+    // because the discarding happened inside the send path.
+    basicRule();
+
+    $user    = smsCustomer();
+    $vehicle = reminderVehicle($user, [
+        'last_service_date' => Carbon::today()->subMonths(18)->toDateString(),
+    ]);
+
+    $this->artisan('reminders:maintenance')->assertSuccessful();
+
+    $log = \App\Models\SmsLog::sole();
+
+    expect($log->vehicle_id)->toBe($vehicle->id)
+        ->and($log->booking_id)->toBeNull()
+        ->and($log->trigger)->toBe('maintenance_due')
+        // And the page's accessor reaches it without the caller knowing which
+        // kind of row this is.
+        ->and($log->subjectVehicle()->id)->toBe($vehicle->id);
+});

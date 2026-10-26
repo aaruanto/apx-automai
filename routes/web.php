@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Customer\DashboardController as CustomerDashboard;
 use App\Http\Controllers\Admin\MechanicController;
+use App\Http\Controllers\Admin\MessageLogController;
 use App\Http\Controllers\Admin\MessageTemplateController;
 use App\Http\Controllers\Admin\MaintenanceRuleController;
 use Illuminate\Support\Facades\Route;
@@ -112,6 +113,10 @@ Route::middleware(['auth', 'role:admin'])
     Route::get('/templates',       [MessageTemplateController::class, 'index'])   ->name('templates.index');
     Route::post('/templates/save', [MessageTemplateController::class, 'save'])    ->name('templates.save');
     Route::post('/templates/test', [MessageTemplateController::class, 'sendTest'])->name('templates.test');
+    // What was actually sent, as opposed to what is configured to be sent.
+    // Its own controller: MessageTemplateController already does template
+    // CRUD and test sending, and a delivery record is neither.
+    Route::get('/templates/log',  [MessageLogController::class, 'index'])      ->name('templates.log');
 
     // ── Bundles ─────────────────────────────────────────────────────────────
     // Several services sold together for less. Switched off rather than

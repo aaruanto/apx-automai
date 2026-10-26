@@ -1094,12 +1094,20 @@
                     <a href="{{ route('admin.customers.create') }}" class="{{ request()->routeIs('admin.customers.create') ? 'active-sub' : '' }}">Add Customer</a>
                 </div>
 
-                <!-- MESSAGE TEMPLATES -->
-                <a class="nav-link {{ request()->routeIs('admin.templates.*') ? 'active' : '' }}"
-                    href="{{ route('admin.templates.index') }}">
+                <!-- MESSAGING -->
+                {{-- A group rather than a single link now that there are two
+                     pages: what we send, and what we actually sent. Same
+                     pattern as Bookings and Customers above. --}}
+                <button class="nav-link {{ request()->routeIs('admin.templates.*') ? 'active open' : '' }}"
+                    onclick="toggleSub(event,'sub-messaging',this)">
                     <span class="nav-icon"><i class="fas fa-envelope-open-text"></i></span>
-                    <span class="nav-label">Message Templates</span>
-                </a>
+                    <span class="nav-label">Messaging</span>
+                    <i class="fas fa-chevron-right nav-arrow"></i>
+                </button>
+                <div class="sub-nav {{ request()->routeIs('admin.templates.*') ? 'open' : '' }}" id="sub-messaging">
+                    <a href="{{ route('admin.templates.index') }}" class="{{ request()->routeIs('admin.templates.index') ? 'active-sub' : '' }}">Templates</a>
+                    <a href="{{ route('admin.templates.log') }}" class="{{ request()->routeIs('admin.templates.log') ? 'active-sub' : '' }}">Delivery Log</a>
+                </div>
 
                 <hr class="sidebar-divider" />
                 <div class="section-label">Insights</div>
