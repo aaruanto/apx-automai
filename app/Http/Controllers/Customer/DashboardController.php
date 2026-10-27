@@ -263,7 +263,17 @@ class DashboardController extends Controller
         // Complimentary work accompanies paid work; it is not a booking of its
         // own. Checked before reserve() so a refused booking never takes a slot
         // and never has to be cleaned up afterwards.
-        if (! $bundle && BookingPolicy::isFreeOnly(Service::whereIn('id', $data['service_ids'])->get())) {
+        // The bundle goes to the policy rather than being short-circuited here,
+        // so "a bundle is paid work whatever it contains" is stated once, in
+        // BookingPolicy, instead of being re-decided at each call site — which
+        // is how the two drift apart. The guest controller already does this.
+        //
+        // service_ids stays guarded: validation makes it nullable when a bundle
+        // was chosen, so with a bundle the key may not be there at all.
+        if (BookingPolicy::isFreeOnly(
+            Service::whereIn('id', $data['service_ids'] ?? [])->get(),
+            $bundle
+        )) {
             return response()->json([
                 'success' => false,
                 'message' => BookingPolicy::FREE_ONLY_MESSAGE,

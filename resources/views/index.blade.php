@@ -1008,6 +1008,7 @@
     <script src="/assets/js/form-validate.js"></script>
     <script src="/assets/js/plate-input.js"></script>
     <script src="/assets/js/alert-modal.js"></script>
+    <script src="/assets/js/free-only-guard.js"></script>
 
     <x-alert-modal id="apx-alert-modal" />
 
@@ -1150,6 +1151,13 @@
         .apx-modal-svc-card.selected .apx-modal-svc-price { color:#c0392b; }
 
         /* ---- estimate bar ---- */
+        /* Informational, not an error: the customer has done nothing wrong,
+           they are one service away from a booking. Blue per the app's
+           error/info convention — red is for failures. */
+        .apx-free-only-note { display:flex; align-items:flex-start; gap:9px; background:rgba(59,130,246,.08); border:1px solid rgba(59,130,246,.22); border-radius:8px; padding:10px 14px; margin-top:10px; font-size:0.82rem; color:#1e3a5f; line-height:1.5; }
+        .apx-free-only-note i { color:#3B82F6; margin-top:2px; flex-shrink:0; }
+        /* Visibly unavailable, never silently dead: the note above says why. */
+        .btn-apx-next[disabled] { opacity:0.45; cursor:not-allowed; }
         .apx-estimate-bar { display:flex; justify-content:space-between; align-items:center; background:#f8f9fa; border-radius:8px; padding:9px 14px; margin-top:10px; font-size:0.83rem; }
         .apx-estimate-bar .apx-est-count { color:#777; }
         .apx-estimate-bar .apx-est-val { font-weight:700; color:#e63946; }
@@ -1329,6 +1337,19 @@
                             <span class="apx-est-count" id="apx-sel-count">No services selected</span>
                             <span class="apx-est-val" id="apx-est-total">₱0</span>
                         </div>
+                        {{-- The free-only rule, said while there is still
+                             something to do about it. Sits with the selection
+                             rather than by the Next button, because the fix is
+                             to add a service, not to press something else.
+                             Wording comes from BookingPolicy, so it cannot
+                             drift from what the server refuses with. --}}
+                        {{-- fa-info-circle, not fa-circle-info: this page is on
+                             Font Awesome 5.10.0, which does not know the v6
+                             names and silently renders nothing. --}}
+                        <div id="apx-free-only-note" class="apx-free-only-note" style="display:none;" role="status">
+                            <i class="fas fa-info-circle"></i>
+                            <span id="apx-free-only-text"></span>
+                        </div>
                         {{-- Shown only while the account discount is running
                              and something is selected, so the nudge quotes a
                              real figure rather than an abstract percentage. --}}
@@ -1482,6 +1503,11 @@
     (function () {
         var SERVICES = @json($servicesJs);
         var BUNDLES  = @json($bundlesJs);
+
+        // One wording for the rule, taken from the constant the server refuses
+        // with. A second copy here would be free to drift from the message the
+        // customer eventually sees.
+        FreeOnlyGuard.configure(@json(\App\Support\BookingPolicy::FREE_ONLY_MESSAGE));
         var BUNDLE_SERVICE_IDS = @json((object) $bundleServiceIds);
         var ACCOUNT_DISCOUNT   = @json($accountDiscount);
         var GUIDED             = @json($guidedPaths);
@@ -1692,7 +1718,11 @@
                 card.dataset.idx = i;
                 card.innerHTML = '<div class="apx-svc-check"><svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5l2 2 4-4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></div>'
                     + s.name
-                    + '<br><span class="apx-modal-svc-tag' + (isFree?' free':'') + '">' + (isFree?'free':s.category) + '</span>'
+                    // The tag states the condition rather than repeating the
+                    // price, which the line below already gives. "free" alone
+                    // read as an offer with no strings, which is what sent
+                    // customers all the way to step 3 before being refused.
+                    + '<br><span class="apx-modal-svc-tag' + (isFree?' free':'') + '">' + (isFree?'free with paid service':s.category) + '</span>'
                     + '<span class="apx-modal-svc-price">' + fmt(s.price) + '</span>';
                 card.onclick = function() { apxToggle(i, card); };
                 grid.appendChild(card);
@@ -1754,6 +1784,45 @@
             }
 
             apxUpdateNudge(total);
+            apxRefreshFreeOnly();
+        }
+
+        /* Tell the customer the moment the selection becomes unbookable, and
+           stop them going further while it is.
+
+           Hung off apxUpdateEst because every path that changes the selection
+           already calls it — services, bundles, the guided screens and the
+           reset on close — so there is no route in that can skip this.
+
+           Feedback only. GuestBookingController runs the same rule on the
+           request and is the thing that actually refuses; this just means the
+           customer finds out now rather than after picking a date and time. */
+        function apxRefreshFreeOnly() {
+            var note  = document.getElementById('apx-free-only-note');
+            var text  = document.getElementById('apx-free-only-text');
+            var next  = document.getElementById('apx-btn-next');
+            if (!note || !next) return;
+
+            var prices = Array.from(selected).map(function (i) { return SERVICES[i].price; });
+            var state  = FreeOnlyGuard.evaluate(prices, currentBundle() !== null);
+            var blocked = FreeOnlyGuard.blocks(state);
+
+            text.textContent = FreeOnlyGuard.message;
+
+            // The note lives in the scrolling part of the modal, under a long
+            // list of services. Appearing off-screen would leave a disabled
+            // Next button with no visible reason beside it, which is the one
+            // thing this must not do — so bring it into view as it appears.
+            var wasHidden = note.style.display === 'none';
+            note.style.display = blocked ? '' : 'none';
+            if (blocked && wasHidden && typeof note.scrollIntoView === 'function') {
+                note.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+
+            // Only ever disabled on step 1: steps 2 and 3 have their own
+            // reasons to stop, and an empty selection keeps the button live so
+            // its existing "choose a service" message still fires.
+            next.disabled = blocked && step === 1;
         }
 
         /* The guest nudge. Quotes the actual peso saving on what is selected,
@@ -1925,12 +1994,25 @@
             // On the path menu there is nothing to advance to yet; the cards
             // are the action. Everywhere else Next behaves as it always did.
             btn.style.visibility = (n === 1 && pathView === 'root') ? 'hidden' : 'visible';
+            // Coming back to step 1 with a free-only selection must re-block;
+            // leaving step 1 must release the button for its own checks.
+            apxRefreshFreeOnly();
         }
 
         window.apxNext = function() {
             if (step===1) {
                 if (selected.size === 0 && selectedBundle === null) {
                     ApxAlertModal.show({ variant: 'error', title: 'Nothing selected', message: 'Please choose a bundle or at least one service.' });
+                    return;
+                }
+                // The disabled button is the visible half of this; this is the
+                // half that still holds if the button is re-enabled from the
+                // console or the state changes between render and click. The
+                // note beside the service list is already explaining it, so
+                // there is nothing to pop up here.
+                var prices = Array.from(selected).map(function (i) { return SERVICES[i].price; });
+                if (FreeOnlyGuard.blocks(FreeOnlyGuard.evaluate(prices, currentBundle() !== null))) {
+                    apxRefreshFreeOnly();
                     return;
                 }
                 apxSetStep(2);
@@ -2015,7 +2097,16 @@
                 body: JSON.stringify(payload)
             })
             .then(function(r) {
-                if (!r.ok) return r.json().then(function(e) { throw new Error(e.message || 'Server error ('+r.status+')'); });
+                if (!r.ok) return r.json().then(function(e) {
+                    var err = new Error(e.message || 'Server error ('+r.status+')');
+                    // 422 is the server understanding the booking and declining
+                    // it, with something the customer can act on: a policy rule,
+                    // a slot that filled up, a field to correct. Marked here so
+                    // the catch can tell that apart from the request failing,
+                    // which is the only way the two reach the same handler.
+                    err.refused = r.status === 422;
+                    throw err;
+                });
                 return r.json();
             })
             .then(function(data) {
@@ -2035,6 +2126,22 @@
             .catch(function(err) {
                 btn.disabled = false;
                 btn.textContent = 'Confirm booking ✓';
+
+                // A refusal is not a fault. Every 422 used to arrive here under
+                // "Something went wrong", which told the customer the system
+                // had broken while the line underneath told them what to do —
+                // so the title contradicted the only useful part of the dialog.
+                // Informational, per the app's blue-is-not-red convention, and
+                // not logged to the console: nothing went wrong.
+                if (err && err.refused) {
+                    ApxAlertModal.show({
+                        variant: 'info',
+                        title: 'Check your booking',
+                        message: err.message
+                    });
+                    return;
+                }
+
                 console.error('Booking error:', err);
                 ApxAlertModal.show({ variant: 'error', title: 'Something went wrong', message: err.message || 'Could not submit booking. Please try again.' });
             });

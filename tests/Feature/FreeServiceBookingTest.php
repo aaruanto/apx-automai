@@ -180,3 +180,96 @@ it('allows a customer booking that pairs a complimentary service with paid work'
 
     expect(App\Models\Booking::count())->toBe(1);
 });
+
+// ── What the mixed booking is actually worth ──────────────────────────────
+//
+// The two tests above prove a paid-plus-free booking is accepted. Neither
+// looked at the money, so a free service that quietly picked up a price — or
+// a paid one flattened to zero by sitting beside it — would have passed both.
+// BookingPricing snapshots every price into booking_service.price, and that
+// pivot is what reports and the customer's total spent read, so it is the
+// thing worth asserting.
+
+it('prices a guest booking so the complimentary service is free and the paid work is not', function () {
+    $paid = paidService('Change Oil');
+    $free = freeService('Free Car Wash');
+
+    $this->postJson('/booking/guest', [
+        'guest_name'    => 'Price Tester',
+        'guest_email'   => 'price@gmail.com',
+        'booking_date'  => nextWeekday(),
+        'booking_time'  => '10:00',
+        'service_ids'   => [$paid->id, $free->id],
+        'vehicle_make'  => 'Toyota',
+        'vehicle_model' => 'Vios',
+        'vehicle_year'  => 2020,
+        'vehicle_plate' => 'PRC 0001',
+        'vehicle_type'  => 'car',
+    ])->assertOk();
+
+    $booking = App\Models\Booking::with('services')->sole();
+
+    // Asserted before the prices below, and not only for its own sake: a
+    // missing pivot row would make $prices[$free->id] null, which casts to
+    // 0.0 and would pass the free-service assertion without the service
+    // being on the booking at all.
+    expect($booking->services)->toHaveCount(2);
+
+    $prices = $booking->services->pluck('pivot.price', 'id');
+
+    expect((float) $prices[$paid->id])->toBe(1500.0)
+        ->and((float) $prices[$free->id])->toBe(0.0)
+        // A guest gets no account discount, so the list price stands.
+        ->and((float) $booking->list_price)->toBe(1500.0);
+});
+
+it('prices a customer booking the same way, and carries both services', function () {
+    $customer = freeSvcCustomer();
+    $paid     = paidService('Change Oil');
+    $free     = freeService('Free Car Wash');
+
+    $vehicle = Vehicle::create([
+        'user_id' => $customer->id, 'make' => 'Toyota', 'model' => 'Vios', 'year' => 2020,
+        'plate_number' => 'PRC 0002', 'vehicle_type' => 'car',
+    ]);
+
+    $this->actingAs($customer)->postJson('/customer/bookings', [
+        'service_ids'  => [$paid->id, $free->id],
+        'vehicle_id'   => $vehicle->id,
+        'booking_date' => nextWeekday(),
+        'booking_time' => '10:00',
+    ])->assertOk();
+
+    $booking = App\Models\Booking::with('services')->sole();
+
+    // The free service is on the booking, not silently dropped for costing
+    // nothing — staff need to know to wash the car.
+    expect($booking->services)->toHaveCount(2);
+
+    $prices = $booking->services->pluck('pivot.price', 'id');
+
+    expect((float) $prices[$paid->id])->toBe(1500.0)
+        ->and((float) $prices[$free->id])->toBe(0.0);
+});
+
+it('counts the complimentary service toward how long the bay is held', function () {
+    // 45 minutes of paid work plus a 30-minute wash is 75 minutes of someone's
+    // day. Pricing it at zero must not shorten the slot.
+    $customer = freeSvcCustomer();
+    $paid     = paidService('Change Oil');
+    $free     = freeService('Free Car Wash');
+
+    $vehicle = Vehicle::create([
+        'user_id' => $customer->id, 'make' => 'Toyota', 'model' => 'Vios', 'year' => 2020,
+        'plate_number' => 'PRC 0003', 'vehicle_type' => 'car',
+    ]);
+
+    $this->actingAs($customer)->postJson('/customer/bookings', [
+        'service_ids'  => [$paid->id, $free->id],
+        'vehicle_id'   => $vehicle->id,
+        'booking_date' => nextWeekday(),
+        'booking_time' => '10:00',
+    ])->assertOk();
+
+    expect((int) App\Models\Booking::sole()->duration)->toBe(75);
+});

@@ -1028,6 +1028,26 @@
                                 <span><strong id="bkTotalPrice">—</strong> <span style="color:var(--text-muted);">&middot; <span id="bkTotalDuration">—</span></span></span>
                             </div>
 
+                            {{-- The free-only rule, said while the customer can
+                                 still act on it rather than after they have
+                                 picked a date and a time.
+
+                                 Same decision and same wording as the landing
+                                 page (FreeOnlyGuard + BookingPolicy), different
+                                 markup: this panel is a primary service plus
+                                 extras, not a multi-select grid.
+
+                                 Styled like the points box above — translucent
+                                 blue over whatever surface, text in
+                                 var(--text-muted) — so it reads correctly in
+                                 both themes. fa-circle-info is the v6 name,
+                                 which is right here: the portal is on Font
+                                 Awesome 6.3.0 while the landing page is on 5. --}}
+                            <div id="bkFreeOnlyNote" role="status" style="display:none;margin-bottom:14px;padding:10px 12px;border-radius:8px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);font-size:.8rem;line-height:1.55;color:var(--text-muted);">
+                                <i class="fas fa-circle-info" style="color:var(--info,#3B82F6);margin-right:6px;"></i>
+                                <span id="bkFreeOnlyText"></span>
+                            </div>
+
                             @if ($loyalty['enabled'])
                             {{-- POINTS
                                  Redemption is opt-in and the slider is only a
@@ -1167,6 +1187,7 @@
 <script src="{{ asset('assets/js/password-toggle.js') }}"></script>
 <script src="{{ asset('assets/js/live-refresh.js') }}"></script>
 <script src="{{ asset('assets/js/notification-bell.js') }}"></script>
+<script src="{{ asset('assets/js/free-only-guard.js') }}"></script>
 <script>
     // Vehicle and booking fields are user-supplied and get interpolated into
     // innerHTML below, so escape them first.
@@ -1236,6 +1257,11 @@
     // DATA FROM DB
     let MY_VEHICLES = {!! json_encode($vehiclesJs) !!};
 const BOOKINGS = {!! json_encode($bookingsJs) !!};
+
+    {{-- One wording for the free-only rule, taken from the constant the server
+         refuses with, exactly as the landing page does. A second copy here
+         would be free to drift from the message the customer ends up seeing. --}}
+    FreeOnlyGuard.configure(@json(\App\Support\BookingPolicy::FREE_ONLY_MESSAGE));
 
     {{-- SERVICES built from the database — dbId is the real services.id so bookings always use the correct service --}}
     const SERVICES = (function() {
@@ -1512,6 +1538,15 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
 
         list.innerHTML = SERVICES
             .filter(s => s.dbId !== selectedService.dbId)
+            // Same rule the Services tab applies: only work at least one of
+            // their own vehicles could actually have. Without this the tab
+            // narrowed by vehicle but this list did not, so a customer with
+            // nothing but motorcycles could tick a car-only extra here, fill
+            // in a date and a time, and be refused at submit — the exact late
+            // failure the rest of this panel now avoids.
+            .filter(s => !s.vehicle
+                || !MY_VEHICLES.length
+                || MY_VEHICLES.some(v => (v.type || 'car') === s.vehicle))
             .map(s => `<label style="display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:6px;cursor:pointer;font-size:.82rem;">
                     <input type="checkbox" value="${s.dbId}" data-price="${s.priceValue ?? 0}" data-duration="${s.durationValue ?? 0}">
                     <span style="flex:1;">${esc(s.name)}</span>
@@ -1600,7 +1635,59 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         return final;
     }
 
+    /* Tell the customer the moment the selection becomes unbookable.
+
+       Shares FreeOnlyGuard and BookingPolicy::FREE_ONLY_MESSAGE with the
+       landing page; the markup is this panel's own, because the two screens
+       are nothing alike.
+
+       Feedback only. Customer\DashboardController runs the same rule on the
+       request and is what actually refuses — this only means the customer
+       finds out now instead of after choosing a date and a time. */
+    function refreshFreeOnly() {
+        const note = document.getElementById('bkFreeOnlyNote');
+        const text = document.getElementById('bkFreeOnlyText');
+        const submit = document.querySelector('#bookingModal .btn-modal-submit');
+        if (!note || !submit) return;
+
+        // A bundle is sold at its own price, so it is paid work whatever it
+        // contains — the guard is told about it and lets it through, matching
+        // the server, which skips this rule entirely for a bundle.
+        let prices = [];
+        if (!selectedBundle && selectedService) {
+            prices = [selectedService.priceValue ?? 0].concat(
+                extraBoxes().filter(b => b.checked).map(b => parseFloat(b.dataset.price || 0))
+            );
+        }
+
+        const blocked = FreeOnlyGuard.blocks(
+            FreeOnlyGuard.evaluate(prices, !!selectedBundle)
+        );
+
+        text.textContent = FreeOnlyGuard.message;
+        note.style.display = blocked ? '' : 'none';
+        submit.disabled = blocked;
+        submit.style.opacity = blocked ? '0.45' : '';
+        submit.style.cursor = blocked ? 'not-allowed' : '';
+
+        // The instruction is "add another service", and the list to do that
+        // with is collapsed behind a Show toggle. Open it, so the fix is one
+        // click away rather than a hunt.
+        if (blocked) {
+            const list = document.getElementById('extrasList');
+            const toggle = document.getElementById('extrasToggle');
+            if (list && list.style.display === 'none') {
+                list.style.display = 'block';
+                if (toggle) toggle.textContent = 'Hide';
+            }
+        }
+    }
+
     function refreshBookingTotal() {
+        // Before the bundle branch below returns, so a bundle still clears a
+        // notice left over from a previous selection.
+        refreshFreeOnly();
+
         if (selectedBundle) {
             const total = applyPointsPreview(Number(selectedBundle.price));
             document.getElementById('bkTotalPrice').textContent = peso(total);
@@ -1677,21 +1764,40 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         // bike. Say so at that moment rather than letting them fill in the
         // date, the time and the notes first and be refused at the end.
         sel.onchange = function () {
-            if (!selectedService || !selectedService.vehicle) return;
-
             const chosen = MY_VEHICLES.find(v => String(v.id) === String(sel.value));
             if (!chosen) return;
 
-            if ((chosen.type || 'car') !== selectedService.vehicle) {
-                apxDialog({
-                    type: 'warning',
-                    title: 'Not offered for that vehicle',
-                    msg: selectedService.name + ' is only offered for '
-                         + (selectedService.vehicle === 'motorcycle' ? 'motorcycles' : 'cars')
-                         + '. Please choose a different vehicle or a different service.',
-                    confirmLabel: 'OK',
-                });
-            }
+            const type = chosen.type || 'car';
+
+            // The extras list is filtered to what SOME vehicle of theirs could
+            // have, which is all it can know before a vehicle is picked. A
+            // customer with both a car and a bike is still offered car-only
+            // work, so the check has to run again here, over everything that
+            // is actually on the booking — not just the service they opened.
+            const picked = [selectedService].concat(
+                extraBoxes()
+                    .filter(b => b.checked)
+                    .map(b => SERVICES.find(s => String(s.dbId) === String(b.value)))
+            ).filter(Boolean);
+
+            const offending = picked.filter(s => s.vehicle && s.vehicle !== type);
+            if (!offending.length) return;
+
+            // Names the work rather than the rule, so they know what to drop —
+            // the same shape as BookingPolicy::wrongVehicleMessage, which is
+            // what the server would say if this were posted anyway.
+            const names = offending.map(s => s.name).join(', ');
+
+            apxDialog({
+                type: 'warning',
+                title: 'Not offered for that vehicle',
+                msg: names + (offending.length === 1 ? ' is' : ' are')
+                     + ' only offered for '
+                     + (offending[0].vehicle === 'motorcycle' ? 'motorcycles' : 'cars')
+                     + '. Please choose a different vehicle, or remove '
+                     + (offending.length === 1 ? 'it' : 'them') + '.',
+                confirmLabel: 'OK',
+            });
         };
         document.getElementById('bookingModal').classList.add('open');
         document.body.style.overflow = 'hidden';
@@ -1707,6 +1813,15 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
     }
 
     function submitBooking() {
+        // The disabled button is the visible half; this is the half that still
+        // holds if it is re-enabled from the console or the selection changes
+        // between render and click. The notice above is already explaining it,
+        // so nothing is popped up here.
+        refreshFreeOnly();
+        if (document.querySelector('#bookingModal .btn-modal-submit')?.disabled) {
+            return;
+        }
+
         const date       = document.getElementById('mDate').value;
         const time       = document.getElementById('mTime').value;
         const vehicleRaw = document.getElementById('mVehicleSelect').value;
@@ -1748,7 +1863,10 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                 throw new Error('Server returned non-JSON (status ' + r.status + '). Ensure controller returns response()->json(...).');
             }
             if (r.status === 422) {
-                return r.json().then(body => { throw body; });
+                // Marked so the catch can tell a deliberate refusal — a policy
+                // rule, a full slot — from the request itself failing. Both
+                // land in the same handler otherwise.
+                return r.json().then(body => { body.refused = true; throw body; });
             }
             return r.json();
         })
@@ -1797,6 +1915,17 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             if (err && err.errors) {
                 const msgs = Object.values(err.errors).flat().join('<br>');
                 apxDialog({ type: 'warning', title: 'Validation Errors', msg: msgs, confirmLabel: 'OK' });
+            } else if (err && err.refused) {
+                // The booking was understood and declined, with something the
+                // customer can act on. Calling that "Error" in red said the
+                // system had broken, while the message underneath explained
+                // what to change — the title contradicted the useful part.
+                apxDialog({
+                    type: 'info',
+                    title: 'Check your booking',
+                    msg: err.message || 'This booking could not be accepted as it stands.',
+                    confirmLabel: 'OK',
+                });
             } else {
                 apxDialog({ type: 'danger', title: 'Error', msg: err.message || 'Could not submit booking. Please try again.', confirmLabel: 'OK' });
             }
