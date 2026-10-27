@@ -190,8 +190,23 @@
         required: function (message) {
             return { test: function (v) { return v.trim().length > 0; }, message: message || 'This field is required.' };
         },
+        // The server resolves the domain's MX/A records (App\Support\EmailRule);
+        // a browser cannot, so these two can never agree exactly. What matters
+        // is the direction of the disagreement: this must not approve what the
+        // server will refuse. The old pattern, [^\s@]+@[^\s@]+\.[^\s@]+, waved
+        // through "a@b.c", "a..b@c.com" and ".a@b.com" — the customer was told
+        // the address was fine and the save then failed. Catch the obvious
+        // typos here and leave the domain's existence to the server.
         email: function (message) {
-            return { test: function (v) { return v.trim() === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()); }, message: message || 'Enter a valid email address.' };
+            return {
+                test: function (v) {
+                    var e = v.trim();
+                    if (e === '') return true;
+                    if (/\.\./.test(e)) return false;
+                    return /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,}$/.test(e);
+                },
+                message: message || 'Enter a valid email address.',
+            };
         },
         phonePH: function (message) {
             return { test: function (v) { return /^09\d{9}$|^\+639\d{9}$/.test(v.trim()); }, message: message || 'Enter a valid PH mobile number (e.g. 09171234567).' };
@@ -201,12 +216,15 @@
         // twins all demanded three letters, a space and three or four digits,
         // which is a car plate: it refused 123 ABC and AB 12345 outright, and
         // every protocol, government, diplomatic, trailer and vintage plate
-        // with them. Shape, not format.
+        // with them. Shape, not format — but a shape that carries at least one
+        // letter and one digit, because shape alone accepted "ABC" and "AB".
         plate: function (message) {
             return {
                 test: function (v) {
                     var p = v.toUpperCase().replace(/\s+/g, ' ').trim();
-                    return p.length >= 2 && p.length <= 15 && /^[A-Z0-9]+(?:[ -][A-Z0-9]+)*$/.test(p);
+                    return p.length >= 5 && p.length <= 15
+                        && /^[A-Z0-9]+(?:[ -][A-Z0-9]+)*$/.test(p)
+                        && /[A-Z]/.test(p) && /[0-9]/.test(p);
                 },
                 message: message || 'Enter the plate as it appears on the vehicle, e.g. ABC 1234, 123 ABC or AB 12345.',
             };
