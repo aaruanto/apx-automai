@@ -1,6 +1,28 @@
 <?php
 
+use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\User;
+use App\Support\EmailRule;
+
+test('changing an email address goes through the strict rule', function () {
+    // Wiring, not behaviour, and deliberately so. EmailRule resolves the
+    // domain's MX/A records in production but returns plain email:rfc under
+    // test, because the suite would otherwise need working DNS and
+    // example.com has no MX record. In Laravel 12 'email' and 'email:rfc'
+    // are the same validator, so no assertion about a rejected address can
+    // tell the two apart here — only production can.
+    //
+    // What went wrong is worth guarding anyway: registration and guest
+    // booking resolved the domain and this screen did not, so an address
+    // refused at sign-up could be set afterwards by editing the profile.
+    // This fails if someone puts the bare rule back.
+    $user = User::factory()->create();
+
+    $request = new ProfileUpdateRequest();
+    $request->setUserResolver(fn () => $user);
+
+    expect($request->rules()['email'])->toContain(EmailRule::strict());
+});
 
 test('profile page is displayed', function () {
     $user = User::factory()->create();

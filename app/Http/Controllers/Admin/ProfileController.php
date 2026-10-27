@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Service;
 use App\Models\User;
+use App\Support\EmailRule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -34,7 +35,10 @@ class ProfileController extends Controller
 
         $request->validate([
             'name'  => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . Auth::id(),
+            // EmailRule, not a bare 'email' — same reason as the customer
+            // profile screen: the strict rule is only worth having if every
+            // path that sets an address uses it.
+            'email' => ['required', EmailRule::strict(), 'unique:users,email,' . Auth::id()],
             'phone' => 'nullable|string|max:20',
         ]);
 
