@@ -83,8 +83,8 @@ it('rejects a plate that is not a plate', function (string $plate) {
 })->with(['', 'A', 'ABC!1234', 'ABC/1234', 'ABCDEFGHIJKLMNOPQRST']);
 
 it('accepts the formats the old rule refused', function (string $plate) {
-    // 12345, AB 1234, ABCD 1234 and ABC 12345 were all rejected by the
-    // previous /^[A-Z]{3} \d{3,4}$/ rule, which only described a car plate.
+    // AB 1234, ABCD 1234 and ABC 12345 were all rejected by the previous
+    // /^[A-Z]{3} \d{3,4}$/ rule, which only described a car plate.
     // Motorcycle, trailer and special plates do not look like that, and a
     // wrong rejection stops a real booking.
     $user    = owner();
@@ -95,7 +95,23 @@ it('accepts the formats the old rule refused', function (string $plate) {
     ])->assertOk();
 
     expect($vehicle->refresh()->plate_number)->toBe($plate);
-})->with(['12345', 'AB 1234', 'ABCD 1234', 'ABC 12345', '123 ABC']);
+})->with(['AB 1234', 'ABCD 1234', 'ABC 12345', '123 ABC']);
+
+it('refuses a plate of digits alone, which no customer vehicle carries', function () {
+    // 12345 was accepted while the rule tested shape only. Requiring a letter
+    // and a digit is what stops "ABC" and "AB", and a digits-only plate is the
+    // one real format that goes with them: protocol and government plates.
+    // A service centre does not see those, and admin can still enter the
+    // vehicle directly if it ever does.
+    $user    = owner();
+    $vehicle = vehicleFor($user, 'AAA 1111');
+
+    $this->actingAs($user)->patchJson("/customer/vehicles/{$vehicle->id}", [
+        'brand' => 'Toyota', 'plate' => '12345', 'year' => 2020,
+    ])->assertStatus(422);
+
+    expect($vehicle->refresh()->plate_number)->toBe('AAA 1111');
+});
 
 it('will not let a customer edit somebody elses vehicle', function () {
     // Scoped by owner, so another customer's id is a 404, not an edit.

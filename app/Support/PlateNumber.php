@@ -25,10 +25,34 @@ namespace App\Support;
  */
 class PlateNumber
 {
-    /** Short enough to be a plate, long enough for a diplomatic or trailer one. */
-    public const MIN_LENGTH = 2;
+    /**
+     * Short enough to be a plate, long enough for a diplomatic or trailer one.
+     *
+     * 5, not 2: the shortest real format the shop sees is ABC 12 / 123 AB at
+     * six characters, and a minimum of 2 let "AB" through. See HAS_BOTH below
+     * for the rest of that story.
+     */
+    public const MIN_LENGTH = 5;
 
     public const MAX_LENGTH = 15;
+
+    /**
+     * A plate carries at least one letter and at least one digit.
+     *
+     * Checking only the shape — letters, digits, spaces, hyphens — accepted
+     * "ABC", "AB" and "ABCDEFGH", and two such rows reached the vehicles
+     * table before anyone noticed. Normalising hid it: a customer typing
+     * "ABC" and a row of spaces had the spaces collapsed away, leaving a
+     * three-character string that passed. Every format the shop actually
+     * sees mixes letters and digits — ABC 1234, 123 ABC, AB 12345, and
+     * conduction stickers like A1B234 — so requiring both rejects the junk
+     * without refusing a real plate.
+     *
+     * The one casualty is a digits-only protocol or government plate. A
+     * service centre will not see one, and admin can still enter the vehicle
+     * directly if it ever does.
+     */
+    public const HAS_BOTH = '/^(?=.*[A-Z])(?=.*[0-9])/';
 
     /**
      * Prefixes the system uses for itself.
@@ -72,6 +96,7 @@ class PlateNumber
             'min:'.self::MIN_LENGTH,
             'max:'.self::MAX_LENGTH,
             'regex:/^[A-Z0-9]+(?:[ -][A-Z0-9]+)*$/',
+            'regex:'.self::HAS_BOTH,
             'not_regex:'.self::RESERVED_PREFIXES,
         ];
     }

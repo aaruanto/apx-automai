@@ -85,6 +85,19 @@ it('still refuses input that is not a plate', function (string $plate) {
     'punctuation'  => ['ABC!1234'],
     'too long'     => ['ABCDEFGHIJKLMNOPQRST'],
     'slash'        => ['ABC/1234'],
+
+    // Shape alone was not enough. These all matched "letters, digits, spaces
+    // and hyphens" and two of them — FDFA and SAFEFF — reached the vehicles
+    // table before anyone noticed. A plate carries both letters and digits.
+    'letters only'      => ['ABC'],
+    'two letters'       => ['AB'],
+    'digits only'       => ['12'],
+    'letters, long'     => ['ABCDEFGH'],
+    'spaced letters'    => ['A B C D'],
+    // Typed as "ABC" and a row of spaces: normalising collapses the spaces
+    // away, which is what hid this behind an apparently three-character plate.
+    'letters then space' => ['ABC      '],
+    'separators only'   => ['--'],
 ]);
 
 it('refuses the placeholder plates the system reserves for itself', function (string $plate) {
