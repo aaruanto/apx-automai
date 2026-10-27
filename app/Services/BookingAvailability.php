@@ -320,9 +320,14 @@ class BookingAvailability
      * with remaining capacity and whether it's still bookable (capacity left
      * and, for today, not already in the past).
      *
+     * $known is the day's active bookings, already loaded, for the calendar
+     * path only — see monthAvailability(). Leave it null and the day is read
+     * fresh, which is what every caller outside this class wants.
+     *
+     * @param  Collection<int, array{start: Carbon, end: Carbon}>|null  $known
      * @return list<array{start: string, label: string, remaining: int, bookable: bool}>
      */
-    public function dayAvailability(string $date, int $durationMinutes): array
+    public function dayAvailability(string $date, int $durationMinutes, ?Collection $known = null): array
     {
         $day   = Carbon::parse($date)->startOfDay();
         $hours = $this->hoursFor($day);
@@ -337,13 +342,21 @@ class BookingAvailability
         $isToday = $day->isToday();
         $now     = now();
 
+        // One read for the day, not one per slot. Every slot below asks the
+        // same question of the same rows, so asking the database each time
+        // was 17 identical queries to draw one weekday.
+        $intervals = $known ?? $this->activeIntervalsForDate($date);
+
+        // Hoisted for the same reason: this reads a setting, and it sat in
+        // the loop's increment expression.
+        $step  = $this->gridMinutes();
         $slots = [];
 
-        for ($slotStart = $open->copy(); $slotStart->copy()->addMinutes($durationMinutes)->lte($close); $slotStart->addMinutes($this->gridMinutes())) {
+        for ($slotStart = $open->copy(); $slotStart->copy()->addMinutes($durationMinutes)->lte($close); $slotStart->addMinutes($step)) {
             $start = $slotStart->copy();
             $end   = $start->copy()->addMinutes($durationMinutes);
 
-            $overlap   = $this->maxOverlap($date, $start, $end);
+            $overlap   = $this->maxOverlap($date, $start, $end, null, false, $intervals);
             $remaining = max(0, self::MECHANIC_CAPACITY - $overlap);
             $isPast    = $isToday && $start->lte($now);
 
@@ -370,6 +383,23 @@ class BookingAvailability
         $daysInMonth = $firstDay->daysInMonth;
         $today       = Carbon::today();
 
+        // The whole month in one read, grouped by date.
+        //
+        // This used to be a query per grid slot per day — 252 of them to draw
+        // one month, every one asking for the bookings of a single day. On
+        // SQLite that is 170ms and invisible; against Render's Postgres each
+        // is a network round trip, and the picker took 1.5 to 1.7 seconds to
+        // appear. Days before today are skipped below and never looked up, so
+        // only the remainder of the month is fetched.
+        $from = $firstDay->copy()->max($today);
+
+        $byDate = $from->gt($firstDay->copy()->endOfMonth())
+            ? collect()
+            : $this->activeIntervalsForRange(
+                $from->toDateString(),
+                $firstDay->copy()->endOfMonth()->toDateString(),
+            );
+
         $days = [];
 
         for ($d = 1; $d <= $daysInMonth; $d++) {
@@ -381,8 +411,11 @@ class BookingAvailability
                 continue;
             }
 
-            $anyBookable = collect($this->dayAvailability($dateStr, $durationMinutes))
-                ->contains('bookable', true);
+            $anyBookable = collect($this->dayAvailability(
+                $dateStr,
+                $durationMinutes,
+                $byDate->get($dateStr, collect()),
+            ))->contains('bookable', true);
 
             $days[] = [
                 'date'     => $dateStr,
@@ -409,10 +442,31 @@ class BookingAvailability
      * Concurrency only changes at a booking's start, so sampling at every
      * existing-booking start point inside the window (plus $start itself)
      * is enough to find the maximum — no need to walk every minute.
+     *
+     * $known lets the calendar hand over rows it has already read, which is
+     * what stops a month costing a query per slot. It is read-only ground:
+     * reserve() and reschedule() call this with $lock true and never pass
+     * $known, so the decision that actually takes a slot is always made
+     * against a fresh SELECT ... FOR UPDATE inside the transaction. Handing
+     * it stale rows is how two customers would get the same last slot.
+     *
+     * @param  Collection<int, array{start: Carbon, end: Carbon}>|null  $known
      */
-    private function maxOverlap(string $date, Carbon $start, Carbon $end, ?int $excludeId = null, bool $lock = false): int
-    {
-        $intervals = $this->activeIntervalsForDate($date, $excludeId, $lock)
+    private function maxOverlap(
+        string $date,
+        Carbon $start,
+        Carbon $end,
+        ?int $excludeId = null,
+        bool $lock = false,
+        ?Collection $known = null,
+    ): int {
+        if ($known !== null && ($lock || $excludeId !== null)) {
+            throw new \LogicException(
+                'maxOverlap: pre-loaded intervals cannot serve a locking or excluding read.'
+            );
+        }
+
+        $intervals = ($known ?? $this->activeIntervalsForDate($date, $excludeId, $lock))
             ->filter(fn (array $iv) => $iv['start']->lt($end) && $iv['end']->gt($start));
 
         if ($intervals->isEmpty()) {
@@ -493,11 +547,43 @@ class BookingAvailability
         }
 
         return $query->get(['id', 'service_id', 'booking_time', 'duration'])
-            ->map(function (Booking $booking) use ($date) {
-                $start   = Carbon::parse($date . ' ' . $booking->booking_time);
-                $minutes = $booking->duration ?? optional($booking->service)->duration ?? $this->gridMinutes();
+            ->map(fn (Booking $booking) => $this->intervalFor($booking, $date));
+    }
 
-                return ['start' => $start, 'end' => $start->copy()->addMinutes($minutes)];
-            });
+    /**
+     * The same thing for a span of dates, in one query, keyed by date.
+     *
+     * Only the calendar uses this, and only to draw. It takes no exclusion
+     * and no lock: see maxOverlap(), which refuses rows from here for any
+     * read that decides whether a booking may be taken.
+     *
+     * @return Collection<string, Collection<int, array{start: Carbon, end: Carbon}>>
+     */
+    private function activeIntervalsForRange(string $from, string $to): Collection
+    {
+        return Booking::with('service:id,duration')
+            ->whereBetween('booking_date', [$from, $to])
+            ->whereIn('status', self::ACTIVE_STATUSES)
+            ->get(['id', 'service_id', 'booking_date', 'booking_time', 'duration'])
+            ->groupBy(fn (Booking $booking) => Carbon::parse($booking->booking_date)->toDateString())
+            ->map(fn (Collection $forDay, string $date) => $forDay
+                ->map(fn (Booking $booking) => $this->intervalFor($booking, $date))
+                ->values());
+    }
+
+    /**
+     * One booking's occupied window. Shared so the per-day and per-month
+     * reads cannot disagree about what a booking occupies — the duration
+     * fallback below is the kind of detail that drifts when it is written
+     * twice.
+     *
+     * @return array{start: Carbon, end: Carbon}
+     */
+    private function intervalFor(Booking $booking, string $date): array
+    {
+        $start   = Carbon::parse($date . ' ' . $booking->booking_time);
+        $minutes = $booking->duration ?? optional($booking->service)->duration ?? $this->gridMinutes();
+
+        return ['start' => $start, 'end' => $start->copy()->addMinutes($minutes)];
     }
 }

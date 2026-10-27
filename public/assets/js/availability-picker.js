@@ -53,9 +53,41 @@
         this._loadMonth();
     };
 
+    /**
+     * Reload both panels in one request.
+     *
+     * The endpoint answers a month and a day together — pass year, month and
+     * date and the response carries both `days` and `slots`. This used to
+     * call _loadMonth() and _loadDay() separately, so opening a booking for
+     * edit, where the date is prefilled, cost two round trips to render one
+     * screen. On a cold Render instance that is the slower half of the wait.
+     */
     AvailabilityPicker.prototype.refresh = function () {
-        this._loadMonth();
-        if (this.selectedDate) this._loadDay(this.selectedDate);
+        var self = this;
+
+        if (!this._monthChrome()) return;
+
+        var params = { year: this.year, month: this.month };
+
+        if (this.selectedDate) {
+            params.date = this.selectedDate;
+            this._dayChrome(this.selectedDate);
+        }
+
+        this._fetch(params).then(function (data) {
+            if (!data) {
+                if (params.date) {
+                    self.els.slotsList.innerHTML = '<p class="avp-slots-empty">Could not load times. Please try again.</p>';
+                }
+                return;
+            }
+
+            self._renderMonth(data.days || []);
+
+            // Only when this request asked for a day. Without the guard a
+            // month-only response would blank the slot list with "no times".
+            if (params.date) self._renderSlots(data.slots || []);
+        });
     };
 
     /** Clear any date/time selection and jump back to the current month — call this when reopening a booking modal. */
@@ -98,8 +130,12 @@
             .catch(function () { return null; });
     };
 
-    AvailabilityPicker.prototype._loadMonth = function () {
-        var self = this;
+    /**
+     * The month's title and nav state, and the "no service picked yet" case.
+     * Split out so refresh() can set up both panels before issuing a single
+     * request — returns false when there is nothing to ask for.
+     */
+    AvailabilityPicker.prototype._monthChrome = function () {
         var monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
             'July', 'August', 'September', 'October', 'November', 'December'];
         this.els.title.textContent = monthNames[this.month - 1] + ' ' + this.year;
@@ -111,8 +147,23 @@
             this.els.days.innerHTML = '';
             this.els.slotsHeader.textContent = 'Select a date';
             this.els.slotsList.innerHTML = '<p class="avp-slots-empty">Choose a service first to see availability.</p>';
-            return;
+            return false;
         }
+
+        return true;
+    };
+
+    /** The day panel's heading and loading state. */
+    AvailabilityPicker.prototype._dayChrome = function (dateStr) {
+        var d = new Date(dateStr + 'T00:00:00');
+        this.els.slotsHeader.textContent = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+        this.els.slotsList.innerHTML = '<p class="avp-slots-empty">Loading times…</p>';
+    };
+
+    AvailabilityPicker.prototype._loadMonth = function () {
+        var self = this;
+
+        if (!this._monthChrome()) return;
 
         this._fetch({ year: this.year, month: this.month }).then(function (data) {
             if (!data) return;
@@ -158,10 +209,8 @@
 
     AvailabilityPicker.prototype._loadDay = function (dateStr) {
         var self = this;
-        var d = new Date(dateStr + 'T00:00:00');
-        var label = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-        this.els.slotsHeader.textContent = label;
-        this.els.slotsList.innerHTML = '<p class="avp-slots-empty">Loading times…</p>';
+
+        this._dayChrome(dateStr);
 
         this._fetch({ date: dateStr }).then(function (data) {
             if (!data) {
