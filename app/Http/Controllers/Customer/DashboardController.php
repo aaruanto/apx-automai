@@ -11,6 +11,7 @@ use App\Models\Service;
 use App\Models\Vehicle;
 use App\Services\AccountAnonymizer;
 use App\Services\BookingAvailability;
+use App\Services\BookingCancellation;
 use App\Services\BookingPricing;
 use App\Services\LoyaltyService;
 use App\Support\BookingPolicy;
@@ -529,7 +530,21 @@ class DashboardController extends Controller
         // who cancelled and when, and the reason when one is offered.
         $reason = trim((string) ($request->input('reason') ?? ''));
 
-        $booking->cancel($reason !== '' ? $reason : 'Cancelled by customer', Auth::id());
+        // Through the shared service, not Booking::cancel() alone. This wrote
+        // the four fields and stopped, so a customer cancelling their own
+        // booking left no audit row, received no notice, and — the part that
+        // cost them money — never touched the loyalty ledger: points redeemed
+        // against the booking were simply gone, and points earned for work
+        // that will not happen stayed on the balance.
+        $cancelled = app(BookingCancellation::class)
+            ->cancel($booking, $reason !== '' ? $reason : 'Cancelled by customer', Auth::id());
+
+        if (! $cancelled) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This booking can no longer be cancelled.',
+            ], 422);
+        }
 
         return response()->json(['success' => true]);
     }

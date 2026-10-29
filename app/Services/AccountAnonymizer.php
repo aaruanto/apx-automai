@@ -62,8 +62,17 @@ class AccountAnonymizer
             foreach ($this->upcomingBookings($user) as $booking) {
                 // Free the slot straight away — the shop shouldn't hold a bay for
                 // an account that's on its way out.
-                $booking->cancel('Account deleted by customer', $user->id);
-                $cancelled++;
+                //
+                // Through the shared service so the points follow: redeeming
+                // against a booking and then closing the account used to lose
+                // them silently. notify is off because this is the one path
+                // where telling the customer is wrong — they asked for the
+                // account to go, and the address is about to be anonymised.
+                if (app(BookingCancellation::class)->cancel(
+                    $booking, 'Account deleted by customer', $user->id, notify: false
+                )) {
+                    $cancelled++;
+                }
             }
 
             $user->forceFill(['is_active' => false])->save();

@@ -13,6 +13,7 @@ use App\Notifications\BookingNotification;
 use App\Models\Service;
 use App\Mail\BookingConfirmed;
 use App\Services\BookingAvailability;
+use App\Services\BookingCancellation;
 use App\Services\LoyaltyService;
 use App\Exceptions\SlotUnavailableException;
 use Illuminate\Http\Request;
@@ -575,47 +576,20 @@ class BookingController extends Controller
 
         $booking = Booking::findOrFail($id);
 
-        if (! $booking->cancel($validated['reason'], $request->user()->id)) {
+        // Every consequence of a cancellation — the audit row, the
+        // loyalty reversal and refund, and telling the customer — lives in
+        // BookingCancellation, so the customer dashboard, the no-show sweep
+        // and this screen cannot drift apart. They did: three of the four
+        // ways of cancelling a booking skipped the ledger entirely.
+        $cancelled = app(BookingCancellation::class)
+            ->cancel($booking, $validated['reason'], $request->user()->id);
+
+        if (! $cancelled) {
             return response()->json([
                 'success' => false,
                 'message' => 'This booking is '.(self::STATUS_LABELS[$booking->status] ?? $booking->status)
                              .' and can no longer be cancelled.',
             ], 422);
-        }
-
-        // Cancellation already stamped who and why on the booking itself; it
-        // joins the audit trail too so one page shows every change that moved
-        // money, rather than this one living somewhere of its own.
-        AuditLog::record(
-            'booking.cancelled', $booking,
-            ['status' => 'cancelled'], [], $validated['reason'],
-            label: $booking->reference_number,
-        );
-
-        // Work that is not happening earns nothing. Points spent on it are
-        // returned, and points it earned are taken back — clamped so a
-        // customer is never pushed into a negative balance by the shop's
-        // own cancellation.
-        $loyalty = app(LoyaltyService::class);
-        $loyalty->reverseFor($booking);
-        $loyalty->refundSpentFor($booking);
-
-        if ($booking->user) {
-            // The booking is already cancelled and the points already
-            // reversed, both committed above. Telling the customer is the last
-            // step and the only one that reaches outside this server, so a
-            // dead SMTP connection must not turn a completed cancellation into
-            // a 500 — the admin would try again against a booking that is
-            // already cancelled.
-            //
-            // The bell entry still lands: via() lists database before mail and
-            // Laravel sends them in that order, so the in-app record is
-            // written before the connection is attempted.
-            try {
-                $booking->user->notify(BookingNotification::cancelled($booking->fresh()));
-            } catch (\Throwable $e) {
-                \Log::error('Cancellation notice failed for '.$booking->reference_number.': '.$e->getMessage());
-            }
         }
 
         return response()->json([
