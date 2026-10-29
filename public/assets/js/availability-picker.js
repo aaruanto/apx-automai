@@ -40,6 +40,8 @@
             nextBtn: this.root.querySelector('[data-nav="next"]'),
             slotsHeader: this.root.querySelector('.avp-slots-header'),
             slotsList: this.root.querySelector('.avp-slots-list'),
+            // Optional: older markup without the element still works.
+            calEmpty: this.root.querySelector('.avp-cal-empty'),
         };
 
         this.els.prevBtn.addEventListener('click', this._changeMonth.bind(this, -1));
@@ -145,9 +147,30 @@
 
         if (!this._serviceIds().length) {
             this.els.days.innerHTML = '';
-            this.els.slotsHeader.textContent = 'Select a date';
+
+            // Say so inside the calendar. A blank grid under a month title and
+            // weekday headings reads as a broken calendar, and the admin create
+            // screen puts the Services field ~500px below this panel, so the
+            // message in the slots panel beside it was nowhere near where
+            // anyone was looking.
+            if (this.els.calEmpty) this.els.calEmpty.hidden = false;
+
+            // Not "Select a date": there are no dates to select yet, and
+            // telling someone to do an impossible thing is what made this read
+            // as broken rather than as waiting.
+            this.els.slotsHeader.textContent = 'No date selected';
             this.els.slotsList.innerHTML = '<p class="avp-slots-empty">Choose a service first to see availability.</p>';
             return false;
+        }
+
+        // Chosen now, so clear both the calendar notice and any slots message
+        // left over from when nothing was chosen — it used to sit there saying
+        // "choose a service first" after one had been chosen.
+        if (this.els.calEmpty) this.els.calEmpty.hidden = true;
+
+        if (!this.selectedDate) {
+            this.els.slotsHeader.textContent = 'Select a date';
+            this.els.slotsList.innerHTML = '<p class="avp-slots-empty">Pick a green day on the calendar to see open times.</p>';
         }
 
         return true;

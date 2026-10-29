@@ -248,7 +248,16 @@
                             @endphp
                             <input type="hidden" name="booking_date" id="adminBookingDate" value="{{ $prefillDate }}" required />
                             <input type="hidden" name="booking_time" id="adminBookingTime" value="{{ $prefillTime }}" required />
-                            <x-availability-picker id="adminAvp" />
+                            {{-- Names the field to go to: it sits in SERVICE &
+                                 NOTES, roughly 500px below this panel, so an
+                                 admin reading an empty calendar has no reason
+                                 to connect the two. --}}
+                            {{-- A plain & here: the prop is a PHP string that
+                                 {{ }} escapes on output, so an HTML entity
+                                 would be escaped a second time and show up
+                                 literally as "&amp;". --}}
+                            <x-availability-picker id="adminAvp"
+                                empty-hint="Choose a service in SERVICE & NOTES below — how long the work takes decides which slots are open." />
                             {{-- Same .fv-error pattern the rest of the form
                                  uses, so it reads as a field error rather than
                                  a new kind of message. --}}

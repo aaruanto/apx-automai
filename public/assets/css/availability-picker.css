@@ -165,6 +165,26 @@
     margin: 0;
 }
 
+/* Stands in the calendar grid's place while no service is chosen, so the
+   empty month always carries its own explanation. Sized to roughly a week of
+   rows so the panel does not jump when the real grid replaces it. */
+.avp-cal-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 120px;
+    padding: 12px 16px;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--text-muted, #888);
+}
+
+/* [hidden] loses to the display above without this. */
+.avp-cal-empty[hidden] {
+    display: none;
+}
+
 .avp-slot {
     display: flex;
     align-items: center;
