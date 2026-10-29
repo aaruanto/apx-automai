@@ -365,7 +365,13 @@ class DashboardController extends Controller
             ->whereNotNull('deleted_at')
             ->forceDelete();
 
-        if (Vehicle::where('plate_number', $plate)->exists()) {
+        // withTrashed, via the shared lookup: this asked Vehicle::where(...),
+        // which the model's soft-delete scope hides trashed rows from. A plate
+        // on another customer's deleted vehicle therefore looked free, and the
+        // insert below hit the unique index and returned a 500. The customer
+        // is told the plate is taken and nothing more — whose it is, is not
+        // theirs to know.
+        if (Vehicle::holdingPlate($plate)) {
             return response()->json([
                 'success' => false,
                 'message' => 'That plate number is already registered.',

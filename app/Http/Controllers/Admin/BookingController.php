@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\Booking;
 use App\Models\Mechanic;
 use App\Models\RescheduleRequest;
+use App\Models\Vehicle;
 use App\Models\User;
 use App\Notifications\BookingNotification;
 use App\Models\Service;
@@ -99,14 +100,43 @@ class BookingController extends Controller
             ]
         );
 
-        $vehicle = $user->vehicles()->firstOrCreate(
-            ['plate_number' => PlateNumber::normalise($request->plate)],
-            [
-                'make'  => $request->car_model ?? 'Unknown',
-                'model' => $request->car_model ?? '',
-                'year'  => null,
-            ]
-        );
+        $plate = PlateNumber::normalise($request->plate);
+
+        // firstOrCreate scoped to this user asked a narrower question than the
+        // database enforces: plate_number is globally unique, so a plate
+        // registered to a different account is not free, and a soft-deleted
+        // vehicle still holds its plate. Finding nothing, it inserted, the
+        // constraint threw, and booking a walk-in whose plate was already in
+        // the system returned a 500 with no booking created. Ask who holds it.
+        $held = Vehicle::holdingPlate($plate);
+
+        if ($held && $held->user_id !== $user->id) {
+            // Named, not merely refused. Admin can already see every customer
+            // and vehicle in the portal, so this leaks nothing, and the useful
+            // next step — book under the account that holds the plate —
+            // requires knowing which account that is. The usual cause is the
+            // same customer in the system twice under two phone numbers.
+            $owner = $held->user?->name;
+
+            return back()->withInput()->withErrors(['plate' => $owner
+                ? "Plate {$plate} is already registered to {$owner}. Book under that customer, or correct the plate."
+                : "Plate {$plate} is already registered to another account. Check the customer records, or correct the plate."]);
+        }
+
+        if ($held) {
+            // Their own vehicle, deleted at some point. Restoring it keeps the
+            // service history attached to the car rather than starting a second
+            // record for it — which the unique index would refuse anyway.
+            $held->restore();
+            $vehicle = $held;
+        } else {
+            $vehicle = $user->vehicles()->create([
+                'plate_number' => $plate,
+                'make'         => $request->car_model ?? 'Unknown',
+                'model'        => $request->car_model ?? '',
+                'year'         => null,
+            ]);
+        }
 
         try {
             $booking = app(BookingAvailability::class)->reserve([

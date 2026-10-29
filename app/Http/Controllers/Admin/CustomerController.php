@@ -12,6 +12,7 @@ use App\Services\LoyaltyService;
 use Illuminate\Support\Str;
 use App\Support\CsvExport;
 use App\Models\User;
+use App\Models\Vehicle;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
@@ -76,6 +77,22 @@ class CustomerController extends Controller
             'phone' => 'required|string|max:20',
             'plate' => PlateNumber::rules(),
         ]);
+
+        // plate_number is globally unique and a soft delete does not release
+        // it, so a plate already in the system cannot be given to the account
+        // about to be created. This path did not check at all: it inserted and
+        // let the constraint throw, which returned a 500 — after the user and
+        // customer rows had already been written, leaving a customer with no
+        // vehicle and no explanation. Checked before anything is created.
+        $held = Vehicle::holdingPlate($request->plate);
+
+        if ($held) {
+            $owner = $held->user?->name;
+
+            return back()->withInput()->withErrors(['plate' => $owner
+                ? "That plate is already registered to {$owner}. Add the vehicle to that customer instead, or correct the plate."
+                : 'That plate is already registered to another account. Check the customer records, or correct the plate.']);
+        }
 
         // Create user account
         $user = User::create([

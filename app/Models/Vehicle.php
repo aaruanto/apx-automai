@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PlateNumber;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -27,6 +28,32 @@ class Vehicle extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * The vehicle holding this plate — soft-deleted ones included — or null.
+     *
+     * plate_number is a plain UNIQUE index, and a soft delete does not release
+     * it: the row is still there with deleted_at set, so the plate stays taken
+     * for good. Four write paths tested for a collision with a query that
+     * cannot see a trashed row, concluded the plate was free, and inserted
+     * anyway — the constraint threw and every one of them returned a 500. Two
+     * of the four did not test at all.
+     *
+     * So anything about to write a plate asks here first. What to do with the
+     * answer differs by path — an admin is told whose plate it is, a customer
+     * is not — but "is this plate taken" has one correct answer, and this is
+     * where it lives.
+     */
+    public static function holdingPlate(?string $plate): ?self
+    {
+        $plate = PlateNumber::normalise($plate);
+
+        if ($plate === '') {
+            return null;
+        }
+
+        return static::withTrashed()->where('plate_number', $plate)->first();
     }
 
     /**

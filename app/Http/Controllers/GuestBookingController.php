@@ -98,17 +98,28 @@ class GuestBookingController extends Controller
         // plate off a car attach themselves to it.
         $plateKey = PlateNumber::normalise($request->vehicle_plate);
 
-        $vehicle = Vehicle::where('plate_number', $plateKey)
-            ->where('user_id', $user->id)
-            ->first();
+        // Through the shared lookup, which sees soft-deleted rows. Both queries
+        // here were plain Vehicle::where(...), which the soft-delete scope
+        // hides trashed rows from, so a plate on a deleted vehicle looked free
+        // to both of them: the guard passed and the insert below hit the unique
+        // index, returning a 500 to a guest mid-booking.
+        $held = Vehicle::holdingPlate($plateKey);
 
         // plate_number is globally unique, so a plate held by someone else can't
         // be reused — say so rather than failing on the constraint.
-        if (! $vehicle && Vehicle::where('plate_number', $plateKey)->exists()) {
+        if ($held && $held->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'That plate number is already registered to another account. Please log in to book with it, or contact us if this is your vehicle.',
             ], 422);
+        }
+
+        $vehicle = $held;
+
+        if ($vehicle && $vehicle->trashed()) {
+            // Their own vehicle from an earlier visit, since deleted. Restored
+            // rather than duplicated, which the unique index forbids anyway.
+            $vehicle->restore();
         }
 
         if (!$vehicle) {
