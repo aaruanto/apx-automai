@@ -74,6 +74,24 @@
 }
 .trigger-toggle input:checked + .toggle-slider { background: var(--red); }
 .trigger-toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+/* The badge carried its display inline, which quietly defeated the `hidden`
+   attribute meant to control it: `hidden` works through the user-agent rule
+   [hidden] { display: none }, and an inline style outranks it. So the badge
+   was on screen from first paint and markClean() could not put it away —
+   it read as "you have unsaved changes" on a page nobody had touched, and
+   stayed up after a save that had in fact worked.
+
+   In a class, the attribute decides again. [hidden] is restated here because
+   this rule and the UA rule have equal weight on the same element, and the
+   later one would otherwise win. */
+.unsaved-flag {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: .78rem; font-weight: 600;
+    color: var(--warning, #f59e0b); background: rgba(245, 158, 11, .12);
+    border: 1px solid rgba(245, 158, 11, .3);
+    border-radius: 999px; padding: 4px 12px;
+}
+.unsaved-flag[hidden] { display: none; }
 .sms-counter { font-size: .72rem; color: var(--text-muted); text-align: right; margin-top: 4px; }
 .sms-counter.warn { color: var(--warning); }
 .sms-counter.over { color: var(--red); }
@@ -114,10 +132,7 @@
                  "2 hours before", navigate away, and never learn it had not
                  been kept. Hidden until something actually changes, so it is
                  never background furniture. --}}
-            <span id="unsavedFlag" hidden
-                  style="display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:600;
-                         color:var(--warning,#f59e0b);background:rgba(245,158,11,.12);
-                         border:1px solid rgba(245,158,11,.3);border-radius:999px;padding:4px 12px;">
+            <span id="unsavedFlag" class="unsaved-flag" hidden>
                 <i class="fas fa-circle-exclamation"></i> Unsaved changes
             </span>
             <button class="btn btn-ghost" onclick="openModal('testSendModal')">

@@ -107,3 +107,26 @@ it('refuses a service-due template saved with an empty body', function () {
         'maintenance_sms'     => 'Fine',
     ])->assertStatus(422);
 });
+
+it('does not announce unsaved changes on a page nobody has touched', function () {
+    // The badge carried its display inline, next to the `hidden` attribute
+    // that was supposed to control it. `hidden` works through the user-agent
+    // rule [hidden] { display: none }, which an inline style outranks, so the
+    // badge was on screen from first paint and markClean() could not put it
+    // away. It said "unsaved changes" before anyone had typed, and went on
+    // saying it after a save that had worked — training the admin to ignore
+    // the one warning that stops a trigger change being lost.
+    //
+    // Asserted on the markup because that is where the bug lived: no browser
+    // is involved, and the attribute only decides visibility while nothing
+    // inline is competing with it.
+    $admin = \App\Models\User::factory()->create(['role' => 'admin']);
+
+    $html = $this->actingAs($admin)->get('/admin/templates')->assertOk()->getContent();
+
+    expect($html)->toMatch('/<span[^>]*id="unsavedFlag"[^>]*\bhidden\b/');
+
+    preg_match('/<span[^>]*id="unsavedFlag"[^>]*>/', $html, $m);
+
+    expect($m[0])->not->toMatch('/style=["\'][^"\']*display\s*:/');
+});
