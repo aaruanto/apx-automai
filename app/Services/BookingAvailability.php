@@ -190,6 +190,22 @@ class BookingAvailability
             $this->assertWithinHours($attributes['booking_date'], $start, $end);
             $this->assertAvailable($attributes['booking_date'], $start, $end, null, lock: true);
 
+            // Then: does this car already have a booking over the same window?
+            //
+            // Here rather than in the three controllers, for the two reasons
+            // that matter. Every booking creator — customer, admin, guest —
+            // comes through reserve(), so one guard covers all three and there
+            // are no copies to drift apart. And it is inside the transaction
+            // that assertAvailable() has just taken lockForUpdate() on, so two
+            // submissions arriving together cannot both pass before either
+            // writes.
+            $this->assertVehicleFree(
+                $attributes['vehicle_id'] ?? null,
+                $attributes['booking_date'],
+                $start,
+                $end
+            );
+
             $attributes['duration']          = $duration;
             $attributes['reference_number'] ??= $this->nextReference();
 
@@ -290,7 +306,53 @@ class BookingAvailability
 
             $this->assertWithinHours($date, $start, $end);
             $this->assertAvailable($date, $start, $end, $booking->id, lock: true);
+
+            // Moving a booking onto a window its own vehicle already holds is
+            // the same mistake as making one there, so the same guard applies
+            // — excluding this booking, which is allowed to overlap itself.
+            $this->assertVehicleFree($booking->vehicle_id, $date, $start, $end, $booking->id);
         });
+    }
+
+    /**
+     * Refuse a window this vehicle is already booked into.
+     *
+     * Throws the same exception the capacity check uses, so all three booking
+     * paths report it through the handling they already have: the message is
+     * what differs, and it names the booking in the way rather than saying the
+     * slot is full — which would be untrue and would send the customer off to
+     * pick another time when what they actually have is a booking already.
+     *
+     * A null vehicle is not this rule's business. The column is NOT NULL and
+     * every caller supplies it, but reserve() takes an array and should not
+     * fail here on a key it does not own.
+     *
+     * @throws SlotUnavailableException
+     */
+    public function assertVehicleFree(
+        ?int $vehicleId,
+        string $date,
+        Carbon $start,
+        Carbon $end,
+        ?int $excludeBookingId = null
+    ): void {
+        if (! $vehicleId) {
+            return;
+        }
+
+        $clash = $this->vehicleConflict($vehicleId, $date, $start, $end, $excludeBookingId);
+
+        if (! $clash) {
+            return;
+        }
+
+        throw new SlotUnavailableException(
+            'This vehicle already has a booking at that time — '
+            .$clash->reference_number.' on '
+            .Carbon::parse($clash->booking_date)->format('j F Y').' at '
+            .Carbon::parse($clash->booking_time)->format('g:i A')
+            .'. Please cancel it first, or choose another time.'
+        );
     }
 
     /**
@@ -509,9 +571,51 @@ class BookingAvailability
         Carbon $end,
         ?int $excludeBookingId = null
     ): ?Booking {
+        return $this->conflictOn('mechanic_id', $mechanicId, $date, $start, $end, $excludeBookingId);
+    }
+
+    /**
+     * The booking this vehicle already has over the same window, if any.
+     *
+     * One car cannot be in two bays at once, whatever work is being done, so
+     * this is keyed on the vehicle alone and not on the services chosen.
+     *
+     * Overlap rather than an exact time match: the same car at 09:00 and again
+     * at 09:30 for a 60-minute job is the same mistake, and comparing times
+     * for equality misses it. Nothing enforced this before — the only gate was
+     * the three-mechanic capacity rule, so one customer could book one vehicle
+     * into one slot three times before the fourth was refused.
+     */
+    public function vehicleConflict(
+        int $vehicleId,
+        string $date,
+        Carbon $start,
+        Carbon $end,
+        ?int $excludeBookingId = null
+    ): ?Booking {
+        return $this->conflictOn('vehicle_id', $vehicleId, $date, $start, $end, $excludeBookingId);
+    }
+
+    /**
+     * The first active booking on this date whose window overlaps, matched on
+     * one column.
+     *
+     * Both callers above ask the same question of different columns, so the
+     * rule — which statuses occupy time, and what counts as an overlap — is
+     * written once here. Touching is not overlapping: a job ending at 10:00
+     * and one starting at 10:00 do not clash.
+     */
+    private function conflictOn(
+        string $column,
+        int $value,
+        string $date,
+        Carbon $start,
+        Carbon $end,
+        ?int $excludeBookingId = null
+    ): ?Booking {
         return Booking::with('service:id,duration')
             ->where('booking_date', $date)
-            ->where('mechanic_id', $mechanicId)
+            ->where($column, $value)
             ->whereIn('status', self::ACTIVE_STATUSES)
             ->when($excludeBookingId, fn ($q) => $q->where('id', '!=', $excludeBookingId))
             ->get()

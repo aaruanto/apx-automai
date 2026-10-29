@@ -74,24 +74,39 @@ it('snapshots price and duration so later changes do not rewrite history', funct
 it('holds a bay for the summed duration, not just the first service', function () {
     // 3 bays. Three 2-hour bookings at 09:00 fill the shop, so a fourth
     // overlapping one must be refused — proving the long block is really held.
-    [$user, $vehicle] = bookingCustomer();
+    //
+    // A car apiece. This used to put all four on one vehicle, which only
+    // worked because nothing stopped the same car being booked into the same
+    // slot repeatedly; the duplicate guard now refuses the second one, and
+    // the capacity rule under test would never have been reached. Three cars
+    // filling three bays is also what the comment above has always claimed.
     $long = [svc('A', 100, 60)->id, svc('B', 100, 60)->id];
     $date = nextWeekday();
 
     foreach (range(1, 3) as $i) {
+        [$filler, $fillerVehicle] = bookingCustomer();
+
         app(BookingAvailability::class)->reserve([
-            'user_id' => $user->id, 'vehicle_id' => $vehicle->id,
+            'user_id' => $filler->id, 'vehicle_id' => $fillerVehicle->id,
             'service_ids' => $long, 'booking_date' => $date,
             'booking_time' => '09:00', 'status' => 'pending',
         ]);
     }
 
-    // 10:00 falls inside the 09:00–11:00 block of all three.
+    // 10:00 falls inside the 09:00–11:00 block of all three. A fourth car, so
+    // the refusal can only be capacity.
+    [$fourth, $fourthVehicle] = bookingCustomer();
+
     expect(fn () => app(BookingAvailability::class)->reserve([
-        'user_id' => $user->id, 'vehicle_id' => $vehicle->id,
+        'user_id' => $fourth->id, 'vehicle_id' => $fourthVehicle->id,
         'service_ids' => $long, 'booking_date' => $date,
         'booking_time' => '10:00', 'status' => 'pending',
-    ]))->toThrow(App\Exceptions\SlotUnavailableException::class);
+    ]))->toThrow(
+        App\Exceptions\SlotUnavailableException::class,
+        // Named, so this cannot quietly start passing because some other rule
+        // refused it — which is exactly how it survived using one vehicle.
+        'That time slot is unavailable. Please choose another time.'
+    );
 });
 
 it('lets a customer book several services at once', function () {

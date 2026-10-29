@@ -262,8 +262,13 @@ it('still lets a returning guest reuse their own guest record', function () {
         'guest_email' => 'returning@example.com', 'vehicle_plate' => 'RET 1111',
     ]))->assertOk();
 
+    // A different time on the return visit. Both used to sit at the helper's
+    // default 14:00, which the duplicate guard now refuses — one car cannot
+    // hold the same window twice. The point here is the account, not the slot:
+    // a returning guest reuses their record rather than growing a second one.
     $this->postJson('/booking/guest', guestBooking([
         'guest_email' => 'returning@example.com', 'vehicle_plate' => 'RET 1111',
+        'booking_time' => '16:00',
     ]))->assertOk();
 
     // One guest account, two bookings — not a second row each time.
