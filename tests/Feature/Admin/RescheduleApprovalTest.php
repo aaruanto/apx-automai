@@ -185,15 +185,21 @@ it('stops the booking being walked across the calendar', function () {
     $admin   = rsAdmin();
     $booking = rsBooking();
 
-    foreach ([10, 12] as $offset) {
-        rsProposeMove($admin, $booking, nextWeekdayAfter($offset));
+    // Three different days. The offsets 10, 12 and 14 collapsed to the same
+    // date on a Monday and again on a Wednesday, so the second move proposed
+    // the day the booking had just been moved to and this read as a passing
+    // test on the other five days.
+    [$first, $second, $third] = nextWeekdays(3, 10);
+
+    foreach ([$first, $second] as $date) {
+        rsProposeMove($admin, $booking, $date);
         test()->actingAs($admin)->patch('/admin/bookings/'.$booking->id.'/reschedule/apply');
     }
 
     expect($booking->fresh()->timesRescheduled())->toBe(RescheduleRequest::MAX_APPLIED_PER_BOOKING);
 
     // The third is refused outright.
-    rsProposeMove($admin, $booking, nextWeekdayAfter(14))
+    rsProposeMove($admin, $booking, $third)
         ->assertSessionHasErrors('booking_date');
 
     expect(RescheduleRequest::where('status', RescheduleRequest::PENDING)->count())->toBe(0);

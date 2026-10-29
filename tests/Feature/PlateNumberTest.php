@@ -123,6 +123,12 @@ it('does not create a second vehicle for the same car typed untidily', function 
     // loudly or attached the booking to the wrong vehicle.
     $svc = plateService();
 
+    // Three different days, asked for together. Feeding $i to
+    // nextWeekdayAfter() returned the same Monday twice on a Friday, so the
+    // third booking landed on the second one's slot and came back 422 —
+    // nothing to do with plates.
+    $dates = nextWeekdays(3);
+
     foreach (['ABC 1234', 'abc 1234', '  ABC  1234  '] as $i => $typed) {
         $this->postJson('/booking/guest', [
             'guest_name' => 'Walk In', 'guest_email' => 'plate-dupe@example.com',
@@ -130,7 +136,7 @@ it('does not create a second vehicle for the same car typed untidily', function 
             'vehicle_make' => 'Toyota', 'vehicle_model' => 'Vios', 'vehicle_year' => 2021,
             'vehicle_plate' => $typed, 'vehicle_type' => 'car',
             'service_ids' => [$svc->id],
-            'booking_date' => nextWeekdayAfter($i), 'booking_time' => '10:00',
+            'booking_date' => $dates[$i], 'booking_time' => '10:00',
         ])->assertOk();
     }
 

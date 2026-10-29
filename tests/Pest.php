@@ -72,3 +72,37 @@ function nextWeekdayAfter(int $days): string
 
     return $date->toDateString();
 }
+
+/**
+ * $count full opening days, each a different date, from $from days out.
+ *
+ * nextWeekdayAfter() maps a day offset onto the next opening day, and that
+ * mapping is not one-to-one: on a Friday, offsets 1 and 2 both answer with the
+ * following Monday. A loop feeding it $i therefore asked for several dates and
+ * got the same one twice, so its second booking collided with its first and the
+ * request came back 422. Two tests did exactly that, and between them failed on
+ * five days of the week — the plate-normalising test on Friday, Saturday and
+ * Sunday, the reschedule-walk test on Monday and Wednesday — each passing
+ * whenever it happened to be run on one of the other days.
+ *
+ * So anything needing more than one date asks for them together and gets
+ * distinct ones. Use nextWeekdayAfter() only for a single date.
+ *
+ * @return list<string>
+ */
+function nextWeekdays(int $count, int $from = 1): array
+{
+    $dates = [];
+    $date  = Carbon\Carbon::today()->addDays($from);
+
+    while (count($dates) < $count) {
+        while ($date->dayOfWeekIso >= 6) {
+            $date->addDay();
+        }
+
+        $dates[] = $date->toDateString();
+        $date->addDay();
+    }
+
+    return $dates;
+}
