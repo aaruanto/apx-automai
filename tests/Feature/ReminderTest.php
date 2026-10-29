@@ -35,8 +35,18 @@ beforeEach(function () {
     // assertable and closer to what Brevo will receive.
     config(['mail.default' => 'array']);
 
+    // An in-memory disk, not the real one. These tests both delete the saved
+    // template and write their own, and without faking that lands in
+    // storage/app/private — so running the suite silently rewrote the message
+    // bodies and trigger toggles an admin had saved on that machine. The two
+    // other template tests already fake it; this file was the one that did
+    // not, and it is the one that saves four times.
+    Storage::fake('local');
+
     // The stored template is whatever the admin last saved. Tests must not
-    // depend on that, so start from the shipped defaults every time.
+    // depend on that, so start from the shipped defaults every time. Still
+    // needed with a fake disk: Storage::fake() is per-test, but the intent —
+    // begin from defaults — is what this line states.
     Storage::delete(MessageTemplate::PATH);
 });
 
@@ -591,4 +601,51 @@ it('records which vehicle a maintenance text was about', function () {
         // And the page's accessor reaches it without the caller knowing which
         // kind of row this is.
         ->and($log->subjectVehicle()->id)->toBe($vehicle->id);
+});
+
+it('switches off one reminder without silencing the others', function () {
+    // The question behind the Trigger Schedule toggles: does turning one off
+    // actually stop those reminders? The test above proves "all off sends
+    // nothing", which a command that never ran would also pass. This proves
+    // the switch is selective — the off one is silent while the on one fires.
+    //
+    // Dates are exact, not weekday-adjusted: the command matches
+    // Carbon::today()->addDays($days), so a booking has to land on that day
+    // to be picked up at all. These are created directly, so no availability
+    // rule is involved.
+    $template = MessageTemplate::defaults();
+    $template['triggers']['remind_7d'] = false;
+    $template['triggers']['remind_3d'] = true;
+    $template['triggers']['remind_1d'] = false;
+    $template['triggers']['remind_2h'] = false;
+    MessageTemplate::save($template);
+
+    $user    = reminderCustomer();
+    $vehicle = reminderVehicle($user);
+
+    $sevenDaysOut = reminderBooking($user, $vehicle, [
+        'booking_date' => Carbon::today()->addDays(7)->toDateString(),
+    ]);
+    $threeDaysOut = reminderBooking($user, $vehicle, [
+        'booking_date' => Carbon::today()->addDays(3)->toDateString(),
+    ]);
+
+    $this->artisan('reminders:send')->assertSuccessful();
+
+    // Asserted on the ledger rather than the mail count, because that is what
+    // records which booking was told what, and it cannot be satisfied by a
+    // coincidence of totals.
+    expect(Reminder::where('trigger_key', 'remind_7d')->count())->toBe(0)
+        ->and(Reminder::where('trigger_key', 'remind_3d')->count())->toBe(1);
+
+    $fired = Reminder::where('trigger_key', 'remind_3d')->sole();
+
+    expect($fired->booking_id)->toBe($threeDaysOut->id)
+        ->and($fired->status)->toBe('sent');
+
+    // And nothing at all went to the booking whose trigger is off.
+    expect(Reminder::where('booking_id', $sevenDaysOut->id)->count())->toBe(0);
+
+    // One booking told, once, on one channel.
+    expect(sentMail())->toHaveCount(1);
 });
