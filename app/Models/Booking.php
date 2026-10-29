@@ -61,6 +61,53 @@ class Booking extends Model
     ];
 
     /**
+     * The slot, read back in one shape whatever the driver stores.
+     *
+     * booking_time is a `time` column. PostgreSQL hands it back as 09:00:00;
+     * SQLite returns whatever string it was given, which for a form post is
+     * 09:00. Nothing cast these, so every comparison of a stored value against
+     * a submitted one was a string comparison between two spellings of the
+     * same instant — '09:00' !== '09:00:00' is true, so on the live site an
+     * admin pressing Confirm was told the booking had "moved from 09:00:00 to
+     * 09:00:00" and the customer was emailed about it.
+     *
+     * Normalising on read rather than on write fixes every reader at once,
+     * including ones not written yet, and needs no migration: what is already
+     * in the column stays as it is and simply reads the same either way.
+     *
+     * Deliberately still strings rather than Carbon. Casting would change the
+     * type everywhere — views, comparisons, the availability picker — for a
+     * problem that is only about spelling.
+     */
+    protected function bookingTime(): Attribute
+    {
+        return Attribute::get(fn ($value) => $value === null ? null : substr($value, 0, 5));
+    }
+
+    protected function bookingDate(): Attribute
+    {
+        // PostgreSQL's `date` already comes back as Y-m-d, so this is symmetry
+        // rather than a known fault — and it costs nothing to make the pair
+        // behave the same way.
+        return Attribute::get(fn ($value) => $value === null ? null : substr($value, 0, 10));
+    }
+
+    /**
+     * Whether a submitted date and time name the slot this booking already
+     * holds.
+     *
+     * Both sides go through the same normalisation, so a form posting 09:00
+     * against a column holding 09:00:00 is not mistaken for a move. Callers
+     * ask this instead of comparing the fields themselves, which is what went
+     * wrong four separate times in one controller.
+     */
+    public function slotMatches(?string $date, ?string $time): bool
+    {
+        return substr((string) $date, 0, 10) === $this->booking_date
+            && substr((string) $time, 0, 5) === $this->booking_time;
+    }
+
+    /**
      * Whether "Arrived / Start Service" is allowed right now.
      *
      * Lives here so the two admin views that render the button and the

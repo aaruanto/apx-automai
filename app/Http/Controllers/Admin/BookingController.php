@@ -214,18 +214,18 @@ class BookingController extends Controller
 
         // Changing which services are on the booking changes how long it
         // occupies the bay, so the slot has to be re-checked for that too.
-        $rescheduled = $servicesMoved
-            || $request->booking_date !== $booking->booking_date
-            || $request->booking_time !== $booking->booking_time;
+        // slotMatches() normalises both sides. Comparing the raw strings
+        // made every save on PostgreSQL look like a move, because the time
+        // column reads back as 09:00:00 while the form posts 09:00.
+        $slotMoved = ! $booking->slotMatches($request->booking_date, $request->booking_time);
+
+        $rescheduled = $servicesMoved || $slotMoved;
 
         // The customer's appointment is the date and the time. Moving those is
         // proposed rather than applied — the booking keeps its slot until the
         // customer agrees. Everything else on this form still saves outright:
         // status, mechanic, notes and which services are on the booking are
         // the shop's record of the job, not the promise made to the customer.
-        $slotMoved = $request->booking_date !== $booking->booking_date
-            || $request->booking_time !== $booking->booking_time;
-
         $duration = $booking->duration;
 
         if ($rescheduled) {
@@ -359,7 +359,7 @@ class BookingController extends Controller
             app(\App\Services\ServiceHistory::class)->recordCompletion($booking->fresh()->load('vehicle'));
         }
 
-        if ($oldDate !== $booking->booking_date || $oldTime !== $booking->booking_time) {
+        if (! $booking->slotMatches($oldDate, $oldTime)) {
             AuditLog::record(
                 'booking.rescheduled', $booking,
                 ['booking_date' => $oldDate, 'booking_time' => $oldTime],
@@ -379,7 +379,9 @@ class BookingController extends Controller
                 $booking->user->notify(BookingNotification::completed($booking->fresh()));
             }
 
-            if ($oldDate !== $booking->booking_date || $oldTime !== $booking->booking_time) {
+            // Only a real move. This fired on every save on PostgreSQL,
+            // announcing "moved from 09:00:00 to 09:00:00".
+            if (! $booking->slotMatches($oldDate, $oldTime)) {
                 $booking->user->notify(
                     BookingNotification::rescheduled($booking->fresh(), $oldDate, $oldTime)
                 );
