@@ -532,7 +532,21 @@ class BookingController extends Controller
         $loyalty->refundSpentFor($booking);
 
         if ($booking->user) {
-            $booking->user->notify(BookingNotification::cancelled($booking->fresh()));
+            // The booking is already cancelled and the points already
+            // reversed, both committed above. Telling the customer is the last
+            // step and the only one that reaches outside this server, so a
+            // dead SMTP connection must not turn a completed cancellation into
+            // a 500 — the admin would try again against a booking that is
+            // already cancelled.
+            //
+            // The bell entry still lands: via() lists database before mail and
+            // Laravel sends them in that order, so the in-app record is
+            // written before the connection is attempted.
+            try {
+                $booking->user->notify(BookingNotification::cancelled($booking->fresh()));
+            } catch (\Throwable $e) {
+                \Log::error('Cancellation notice failed for '.$booking->reference_number.': '.$e->getMessage());
+            }
         }
 
         return response()->json([
