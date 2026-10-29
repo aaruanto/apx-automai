@@ -108,11 +108,22 @@
                 <li class="active">Message Templates</li>
             </ol>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+            {{-- Nothing on this page takes effect until Save is pressed, and a
+                 toggle that slides across looks committed. Someone would flip
+                 "2 hours before", navigate away, and never learn it had not
+                 been kept. Hidden until something actually changes, so it is
+                 never background furniture. --}}
+            <span id="unsavedFlag" hidden
+                  style="display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:600;
+                         color:var(--warning,#f59e0b);background:rgba(245,158,11,.12);
+                         border:1px solid rgba(245,158,11,.3);border-radius:999px;padding:4px 12px;">
+                <i class="fas fa-circle-exclamation"></i> Unsaved changes
+            </span>
             <button class="btn btn-ghost" onclick="openModal('testSendModal')">
                 <i class="fas fa-paper-plane"></i> Send Test
             </button>
-            <button class="btn btn-primary" onclick="saveAllTemplates()">
+            <button class="btn btn-primary" id="saveTemplatesBtn" onclick="saveAllTemplates()">
                 <i class="fas fa-floppy-disk"></i> Save All Templates
             </button>
         </div>
@@ -691,6 +702,52 @@ function updateMaintenanceSmsCounter(ta) {
     counter.className   = 'sms-counter' + (len > 160 ? ' warn' : '') + (len > 320 ? ' over' : '');
 }
 
+/* ── Unsaved changes ──────────────────────────────────────────────────────
+   Everything on this page — message bodies, triggers, channels — is posted
+   only when Save All Templates is pressed. That is deliberate and stays that
+   way: the bodies plainly need an explicit save, and a page where the toggles
+   saved themselves while the text beside them did not would be worse than one
+   consistent rule. What was missing was any sign that the rule applied, so a
+   toggle read as committed the moment it slid across.
+
+   markDirty() is wired to every control on the page rather than a list of
+   names, so a field added later is covered without anyone remembering to. */
+let templatesDirty = false;
+
+function markDirty() {
+    if (templatesDirty) return;
+    templatesDirty = true;
+    const flag = document.getElementById('unsavedFlag');
+    if (flag) flag.hidden = false;
+}
+
+function markClean() {
+    templatesDirty = false;
+    const flag = document.getElementById('unsavedFlag');
+    if (flag) flag.hidden = true;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    // Inputs, selects and textareas, plus the contenteditable body.
+    document.querySelectorAll('input, select, textarea').forEach(function (el) {
+        // The test-send modal is its own thing and does not post this form.
+        if (el.closest('#testSendModal')) return;
+        el.addEventListener('change', markDirty);
+        el.addEventListener('input', markDirty);
+    });
+
+    const body = document.getElementById('emailBody');
+    if (body) body.addEventListener('input', markDirty);
+
+    // The browser's own guard, for the case that started this: changing a
+    // toggle and navigating away. Only armed while something is pending.
+    window.addEventListener('beforeunload', function (e) {
+        if (!templatesDirty) return;
+        e.preventDefault();
+        e.returnValue = '';
+    });
+});
+
 function saveAllTemplates() {
     const payload = {
         email_subject:   document.getElementById('emailSubject').value,
@@ -721,7 +778,17 @@ function saveAllTemplates() {
     };
     fetch('/admin/templates/save', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': _csrfToken },
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': _csrfToken,
+            // Without this Laravel does not consider the request to expect
+            // JSON, so a validation failure redirects instead of returning
+            // 422. fetch follows the redirect, the response arrives as 200
+            // text/html, and the r.ok check below passes — which is why a
+            // rejected save still showed "Saved". The status check was right;
+            // it was never being given a failing status to see.
+            'Accept': 'application/json',
+        },
         body: JSON.stringify(payload),
     })
     /* The status is checked before the toast is shown. This used to resolve
@@ -740,6 +807,10 @@ function saveAllTemplates() {
         );
     })
     .then(() => {
+        // Only here, after a confirmed 2xx. A rejected save leaves the flag
+        // up, which is the whole point: the changes really are still pending.
+        markClean();
+
         const toast = document.getElementById('saveToast');
         toast.style.display = 'flex';
         setTimeout(() => toast.style.display = 'none', 3000);
