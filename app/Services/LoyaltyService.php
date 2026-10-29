@@ -227,10 +227,10 @@ class LoyaltyService
     public function reverseFor(Booking $booking): int
     {
         return DB::transaction(function () use ($booking) {
-            $earned = (int) LoyaltyLedger::where('booking_id', $booking->id)
-                ->where('reason', LoyaltyLedger::EARNED)
-                ->lockForUpdate()
-                ->sum('points');
+            $earned = $this->lockedSum(
+                LoyaltyLedger::where('booking_id', $booking->id)
+                    ->where('reason', LoyaltyLedger::EARNED)
+            );
 
             $alreadyReversed = (int) abs(LoyaltyLedger::where('booking_id', $booking->id)
                 ->where('reason', LoyaltyLedger::REVERSED)
@@ -284,10 +284,10 @@ class LoyaltyService
         }
 
         return DB::transaction(function () use ($booking) {
-            $spent = (int) abs(LoyaltyLedger::where('booking_id', $booking->id)
-                ->where('reason', LoyaltyLedger::REDEEMED)
-                ->lockForUpdate()
-                ->sum('points'));
+            $spent = (int) abs($this->lockedSum(
+                LoyaltyLedger::where('booking_id', $booking->id)
+                    ->where('reason', LoyaltyLedger::REDEEMED)
+            ));
 
             $alreadyBack = (int) LoyaltyLedger::where('booking_id', $booking->id)
                 ->where('reason', LoyaltyLedger::ADJUSTED)
@@ -365,7 +365,7 @@ class LoyaltyService
         }
 
         return DB::transaction(function () use ($user, $points, $reason) {
-            $balance = (int) LoyaltyLedger::where('user_id', $user->id)->lockForUpdate()->sum('points');
+            $balance = $this->lockedSum(LoyaltyLedger::where('user_id', $user->id));
 
             if ($points < 0) {
                 // Never below zero, however the figure was typed.
@@ -402,6 +402,30 @@ class LoyaltyService
     }
 
     /** One ledger row, with the running balance carried on it. */
+    /**
+     * Sum a column with the matching rows locked for the rest of the
+     * transaction.
+     *
+     * ->lockForUpdate()->sum() reads correctly and is not. Laravel keeps the
+     * lock when it rewrites the query as an aggregate — aggregate() clones
+     * away only the columns — so PostgreSQL is handed
+     *
+     *     select sum("points") as aggregate from ... for update
+     *
+     * and refuses it: FOR UPDATE is not allowed with aggregate functions.
+     * SQLite's grammar drops FOR UPDATE altogether, so every test passed and
+     * only the live site broke, with a 500 on every cancellation.
+     *
+     * Fetching the rows and adding them up here locks exactly the same rows,
+     * gives the same number, and is the same on both databases. The sets are
+     * one booking's or one customer's ledger entries, so there is nothing to
+     * gain by pushing the addition into the database.
+     */
+    private function lockedSum(\Illuminate\Database\Eloquent\Builder $query, string $column = 'points'): int
+    {
+        return (int) $query->lockForUpdate()->get([$column])->sum($column);
+    }
+
     private function write(
         int $userId,
         int $points,

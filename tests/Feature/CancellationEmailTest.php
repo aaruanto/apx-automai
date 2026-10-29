@@ -194,3 +194,38 @@ it('does not try to email an admin-created walk-in placeholder address', functio
         // The bell entry is still written, so the record exists.
         ->and($booking->user->notifications()->count())->toBe(1);
 });
+
+// ── The edit screen's own cancel control ──────────────────────────────────
+
+it('cancels from the edit screen through the same path as the list', function () {
+    // That screen used to carry its own dialog which posted nothing but a CSRF
+    // token. The server requires a reason, so pressing "Yes, Cancel"
+    // redirected away having cancelled nothing, with no sign anything had
+    // failed. It now calls ApxBookingActions like the list does.
+    $booking = noticeBooking();
+
+    noticeCancel(noticeAdmin(), $booking, 'Customer rang to cancel')->assertOk();
+
+    expect($booking->fresh()->status)->toBe('cancelled')
+        ->and($booking->fresh()->cancel_reason)->toBe('Customer rang to cancel')
+        ->and(noticeMail())->toHaveCount(1);
+});
+
+it('refuses a cancellation with no reason, rather than quietly doing nothing', function () {
+    $booking = noticeBooking();
+
+    test()->actingAs(noticeAdmin())
+        ->patchJson('/admin/bookings/'.$booking->id.'/cancel', [])
+        ->assertStatus(422)
+        ->assertJsonPath('errors.reason.0', 'Please give a reason for cancelling this booking.');
+
+    expect($booking->fresh()->status)->not->toBe('cancelled');
+});
+
+it('leaves no cancel dialog on the edit screen that posts without a reason', function () {
+    // The markup guard. A form posting to the cancel route with no reason
+    // field is the shape of the bug, and it looked perfectly reasonable.
+    $markup = file_get_contents(resource_path('views/admin/bookings/create.blade.php'));
+
+    expect($markup)->not->toContain("route('admin.bookings.cancel'");
+});

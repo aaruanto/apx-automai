@@ -319,9 +319,14 @@
                         </a>
                         @if($isEdit)
                         <hr style="border-color:var(--border);margin:12px 0;" />
-                        <button type="button" class="btn btn-danger"
+                        {{-- The same action the bookings list uses, rather
+                             than a second dialog of its own. The one that used
+                             to live here posted no reason at all, which the
+                             server requires, so pressing it silently bounced
+                             back and cancelled nothing. --}}
+                        <button type="button" class="btn btn-danger" id="cancelBookingBtn"
                                 style="width:100%;justify-content:center;"
-                                onclick="openModal('cancelModal')">
+                                onclick="cancelThisBooking(this)">
                             <i class="fas fa-ban"></i> Cancel This Booking
                         </button>
                         @endif
@@ -365,36 +370,32 @@
 
 @endsection
 
-@section('modals')
-@if($isEdit)
-<div class="modal-overlay" id="cancelModal">
-    <div class="modal" style="max-width:400px;">
-        <div class="modal-header">
-            <div class="modal-title" style="color:var(--red);">
-                <i class="fas fa-triangle-exclamation" style="margin-right:8px;"></i>Cancel Booking?
-            </div>
-            <button class="modal-close" onclick="closeModal('cancelModal')"><i class="fas fa-xmark"></i></button>
-        </div>
-        <div class="modal-body">
-            <p style="color:var(--text-muted);font-size:.9rem;">
-                This will mark the booking as <strong style="color:var(--red)">Cancelled</strong>. Are you sure?
-            </p>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="closeModal('cancelModal')">Go Back</button>
-            <form method="POST" action="{{ route('admin.bookings.cancel', $booking->id) }}">
-                @csrf @method('PATCH')
-                <button type="submit" class="btn btn-danger"><i class="fas fa-ban"></i> Yes, Cancel</button>
-            </form>
-        </div>
-    </div>
-</div>
-@endif
-@endsection
+{{-- The @section('modals') block that used to sit here has gone with it. The
+     dialog asked "are you sure?" and posted nothing but a CSRF token, while
+     the server requires a reason — so it redirected away having cancelled
+     nothing, and the admin had no way to tell. Cancelling now goes through
+     ApxBookingActions, the same path the bookings list uses, which collects
+     the reason and reports what actually happened. --}}
 
 @push('scripts')
 <script src="{{ asset('assets/js/availability-picker.js') }}"></script>
 <script>
+@if($isEdit)
+/* Cancelling from this screen.
+
+   Hands off to the shared action so the reason prompt, the validation and
+   the error reporting are the ones the bookings list already uses — there is
+   no second copy here to fall out of step with it.
+
+   On success this page is showing a booking that no longer matches what is
+   on file, so it reloads rather than trying to patch the form in place. */
+function cancelThisBooking(btn) {
+    ApxBookingActions.cancelBooking({{ $booking->id }}, btn, function () {
+        window.location.reload();
+    });
+}
+@endif
+
 const serviceBoxes    = () => Array.from(document.querySelectorAll('input[name="service_ids[]"]'));
 const checkedServices = () => serviceBoxes().filter(b => b.checked);
 const summaryPrice    = document.getElementById('summaryPrice');
