@@ -101,18 +101,7 @@
          out what was wrong was to guess. The client-side checks above should
          now catch the common cases first; this is the backstop for everything
          they do not, such as a plate already registered to someone else. --}}
-    @if ($errors->any())
-        <div class="alert alert-danger" role="alert"
-             style="background:var(--red-glow);border:1px solid var(--red);color:var(--text);
-                    border-radius:8px;padding:12px 16px;margin-bottom:18px;font-size:.86rem;line-height:1.6;">
-            <strong style="display:block;margin-bottom:4px;">This booking could not be saved.</strong>
-            <ul style="margin:0;padding-left:18px;">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
+    <x-form-errors title="This booking could not be saved." />
 
     <form method="POST" id="bookingForm" action="{{ $isEdit ? route('admin.bookings.update', $booking->id) : route('admin.bookings.store') }}">
         @csrf
@@ -140,7 +129,7 @@
                                 </label>
                                 <input class="form-control" type="text"
                                        @if ($isEdit) disabled @else name="customer_name" id="adminCustomerName" required @endif
-                                       value="{{ $src->user->name ?? '' }}"
+                                       value="{{ old('customer_name', $src->user->name ?? '') }}"
                                        placeholder="e.g. Juan dela Cruz"
                                        style="{{ $isEdit ? 'opacity:.65;cursor:not-allowed;' : '' }}" />
                             </div>
@@ -150,7 +139,7 @@
                                 </label>
                                 <input class="form-control" type="tel"
                                        @if ($isEdit) disabled @else name="customer_phone" id="adminCustomerPhone" required @endif
-                                       value="{{ $src->user->phone ?? '' }}"
+                                       value="{{ old('customer_phone', $src->user->phone ?? '') }}"
                                        placeholder="09XXXXXXXXX"
                                        style="{{ $isEdit ? 'opacity:.65;cursor:not-allowed;' : '' }}" />
                                 @if ($isEdit)
@@ -161,7 +150,7 @@
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="form-label">Email Address</label>
                             <input class="form-control" type="email" name="customer_email"
-                                   value="{{ $src->user->email ?? '' }}"
+                                   value="{{ old('customer_email', $src->user->email ?? '') }}"
                                    placeholder="optional" />
                         </div>
                     </div>
@@ -187,7 +176,7 @@
                                 </label>
                                 <input class="form-control" type="text"
                                        @if ($isEdit) disabled @else name="plate" id="adminPlateInput" required @endif
-                                       value="{{ $src->vehicle->plate_number ?? '' }}"
+                                       value="{{ old('plate', $src->vehicle->plate_number ?? '') }}"
                                        placeholder="ABC 1234, 123 ABC or AB 12345"
                                        style="letter-spacing:.08em;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;{{ $isEdit ? 'opacity:.65;cursor:not-allowed;' : '' }}" />
                                 @if ($isEdit)
@@ -198,7 +187,7 @@
                                 <label class="form-label">Car Model</label>
                                 <input class="form-control" type="text"
                                        @if ($isEdit) disabled @else name="car_model" @endif
-                                       value="{{ $src->vehicle->model ?? '' }}"
+                                       value="{{ old('car_model', $src->vehicle->model ?? '') }}"
                                        placeholder="e.g. Toyota Vios 2021"
                                        style="{{ $isEdit ? 'opacity:.65;cursor:not-allowed;' : '' }}" />
                             </div>
@@ -222,6 +211,12 @@
                                 if (! $picked && isset($src) && $src->service_id) {
                                     $picked = [$src->service_id];
                                 }
+
+                                // A refused save redirects back with the input,
+                                // so the services the admin had ticked are
+                                // restored rather than cleared along with
+                                // everything else on the form.
+                                $picked = array_map('intval', (array) old('service_ids', $picked));
                             @endphp
                             <div id="servicePicker" style="border:1px solid var(--border);border-radius:8px;max-height:260px;overflow-y:auto;padding:4px;">
                                 @foreach($services->groupBy('category') as $category => $group)
@@ -251,7 +246,7 @@
                                 <option value="">— Unassigned —</option>
                                 @foreach($mechanics ?? [] as $emp)
                                 <option value="{{ $emp->id }}"
-                                    {{ isset($src) && $src->mechanic_id == $emp->id ? 'selected' : '' }}>
+                                    {{ (string) old('mechanic_id', (isset($src) ? $src->mechanic_id : '')) === (string) $emp->id ? 'selected' : '' }}>
                                     {{ $emp->name }} ({{ $emp->specialty ?? 'General' }})
                                 </option>
                                 @endforeach
@@ -260,7 +255,7 @@
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="form-label">Additional Notes</label>
                             <textarea class="form-control" name="notes"
-                                      placeholder="Special instructions, concerns, or requests...">{{ $src->notes ?? '' }}</textarea>
+                                      placeholder="Special instructions, concerns, or requests...">{{ old('notes', $src->notes ?? '') }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -281,6 +276,13 @@
                             @php
                                 $prefillDate = $isEdit ? ($booking->booking_date ?? '') : ($isRebook ? now()->addDay()->toDateString() : '');
                                 $prefillTime = isset($src) ? substr($src->booking_time, 0, 5) : '';
+
+                                // Same reason as the services above: the picker
+                                // reads these two hidden fields on load, so
+                                // restoring them puts the admin back on the
+                                // slot they had chosen.
+                                $prefillDate = old('booking_date', $prefillDate);
+                                $prefillTime = old('booking_time', $prefillTime);
                             @endphp
                             <input type="hidden" name="booking_date" id="adminBookingDate" value="{{ $prefillDate }}" required />
                             <input type="hidden" name="booking_time" id="adminBookingTime" value="{{ $prefillTime }}" required />

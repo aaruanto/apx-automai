@@ -23,6 +23,12 @@
         </a>
     </div>
 
+    {{-- This page had no error display at all, so every server-side refusal —
+         a duplicate email, a malformed plate, a plate already registered to
+         another account — looked like the form reloading itself for no reason.
+         Same banner the booking form uses. --}}
+    <x-form-errors :title="$isEdit ? 'This customer could not be saved.' : 'This customer could not be added.'" />
+
     <form method="POST" id="customerForm" action="{{ $isEdit ? route('admin.customers.update', $customer->id) : route('admin.customers.store') }}">
         @csrf
         @if($isEdit) @method('PUT') @endif
@@ -42,13 +48,13 @@
                             <div class="form-group">
                                 <label class="form-label">Full Name <span style="color:var(--red)">*</span></label>
                                 <input class="form-control" type="text" name="name" id="custCreateName"
-                                       value="{{ $customer->name ?? '' }}"
+                                       value="{{ old('name', $customer->name ?? '') }}"
                                        placeholder="e.g. Juan dela Cruz" required @if($isEdit) readonly @endif />
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Phone Number <span style="color:var(--red)">*</span></label>
                                 <input class="form-control" type="tel" name="phone" id="custCreatePhone"
-                                       value="{{ $customer->phone ?? '' }}"
+                                       value="{{ old('phone', $customer->phone ?? '') }}"
                                        placeholder="09XXXXXXXXX" required @if($isEdit) readonly @endif />
                             </div>
                         </div>
@@ -89,7 +95,7 @@
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="form-label">Address</label>
-                            <textarea class="form-control" name="address" rows="2" placeholder="Street, City" @if($isEdit) readonly @endif>{{ $customer->address ?? '' }}</textarea>
+                            <textarea class="form-control" name="address" rows="2" placeholder="Street, City" @if($isEdit) readonly @endif>{{ old('address', $customer->address ?? '') }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -104,21 +110,21 @@
                             <div class="form-group">
                                 <label class="form-label">Plate Number <span style="color:var(--red)">*</span></label>
                                 <input class="form-control" type="text" name="plate" id="custCreatePlate"
-                                       value="{{ $customer->vehicle->plate_number ?? '' }}"
+                                       value="{{ old('plate', $customer->vehicle->plate_number ?? '') }}"
                                        placeholder="ABC 1234, 123 ABC or AB 12345" required
                                        style="letter-spacing:.08em;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;" @if($isEdit) readonly @endif />
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Car Color</label>
                                 <input class="form-control" type="text" name="color"
-                                       value="{{ $customer->vehicle->color ?? '' }}"
+                                       value="{{ old('color', $customer->vehicle->color ?? '') }}"
                                        placeholder="e.g. White" @if($isEdit) readonly @endif />
                             </div>
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="form-label">Car Model</label>
                             <input class="form-control" type="text" name="car_model"
-                                   value="{{ $customer->vehicle->model ?? '' }}"
+                                   value="{{ old('car_model', $customer->vehicle->model ?? '') }}"
                                    placeholder="e.g. Toyota Vios 2021" @if($isEdit) readonly @endif />
                         </div>
 

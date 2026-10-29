@@ -236,3 +236,89 @@ it('lets a returning guest rebook on their own deleted vehicle', function () {
     expect($vehicle->fresh()->trashed())->toBeFalse();
     expect(Vehicle::withTrashed()->where('plate_number', 'RTN 4321')->count())->toBe(1);
 });
+
+// ── the refusal has to be visible, or it is a blank bounce ────────────────
+
+it('shows the admin why the walk-in booking was refused', function () {
+    pcOtherOwner('ABC 1234');
+    $admin = pcAdmin();
+
+    $html = $this->actingAs($admin)
+        ->from('/admin/bookings/create')
+        ->followingRedirects()
+        ->post('/admin/bookings', pcBookingPayload('ABC 1234'))
+        ->assertOk()
+        ->getContent();
+
+    expect($html)->toContain('This booking could not be saved.');
+    expect($html)->toContain('already registered to Existing Owner');
+
+    // And the refusal does not cost the admin the whole form. withInput() was
+    // being sent and the view ignored it, so the walk-in standing at the
+    // counter had their name, phone, car and chosen slot retyped from scratch
+    // to correct one field.
+    expect($html)->toContain('Walk In Customer');
+    expect($html)->toContain('09170000001');
+    expect($html)->toContain('ABC 1234');
+
+    // The slot too: the picker reads these two hidden fields on load.
+    expect($html)->toContain('name="booking_date" id="adminBookingDate" value="'.today()->toDateString().'"');
+    expect($html)->toContain('name="booking_time" id="adminBookingTime" value="10:00"');
+});
+
+it('keeps the services the admin had ticked when the booking is refused', function () {
+    pcOtherOwner('ABC 1234');
+
+    $wanted = pcService();
+    $other  = Service::create(['name' => 'Not Chosen', 'price' => 900, 'duration' => 30]);
+
+    $html = $this->actingAs(pcAdmin())
+        ->from('/admin/bookings/create')
+        ->followingRedirects()
+        ->post('/admin/bookings', [
+            'customer_name'  => 'Walk In Customer',
+            'customer_phone' => '09170000001',
+            'plate'          => 'ABC 1234',
+            'service_ids'    => [$wanted->id],
+            'booking_date'   => today()->toDateString(),
+            'booking_time'   => '10:00',
+        ])
+        ->assertOk()
+        ->getContent();
+
+    $checked = fn (int $id) => (bool) preg_match(
+        '/name="service_ids\[\]" value="'.$id.'"[^>]*checked/', $html
+    );
+
+    expect($checked($wanted->id))->toBeTrue();
+    expect($checked($other->id))->toBeFalse();
+});
+
+it('shows the admin why the customer was refused, and keeps what they typed', function () {
+    pcOtherOwner('DEF 1111');
+
+    $html = $this->actingAs(pcAdmin())
+        ->from('/admin/customers/create')
+        ->followingRedirects()
+        ->post('/admin/customers', [
+            'name'      => 'New Person',
+            'email'     => 'new@example.com',
+            'phone'     => '09170000003',
+            'plate'     => 'DEF 1111',
+            'color'     => 'White',
+            'car_model' => 'Toyota Vios 2021',
+        ])
+        ->assertOk()
+        ->getContent();
+
+    // This page had no error display at all before, so the refusal was a
+    // silent reload.
+    expect($html)->toContain('This customer could not be added.');
+    expect($html)->toContain('already registered to Existing Owner');
+
+    // And withInput() now has something to put back, so the admin corrects
+    // one field instead of retyping the form.
+    foreach (['New Person', 'new@example.com', '09170000003', 'DEF 1111', 'White', 'Toyota Vios 2021'] as $typed) {
+        expect($html)->toContain($typed);
+    }
+});
