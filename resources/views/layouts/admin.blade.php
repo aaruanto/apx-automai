@@ -449,6 +449,27 @@
             padding: 24px;
         }
 
+        /* Flex items default to min-width:auto, so without this the content
+           keeps its intrinsic width and pushes the page wider than the
+           viewport instead of letting .table-wrap scroll.
+
+           Unconditional, not inside a breakpoint. It used to live only under
+           (max-width: 768px), which left every size above it overflowing: the
+           content area is the viewport less the sidebar — 1050px at 1280 with
+           it expanded — while the bookings table wants 1141px, so the page ran
+           off the right edge and the ACTIONS column and New Booking button were
+           cut off. Measured at 1024px before this: Bookings over by 347px,
+           Cancelled 78, Service Intervals 36, Bundles 16; all four the same
+           cause. A flex child that may hold a wide table needs this at every
+           width, so there is one rule rather than two to drift apart. */
+        .main-content,
+        main,
+        .card,
+        .table-wrap {
+            min-width: 0;
+            max-width: 100%;
+        }
+
         /* ── Page header ── */
         .page-header {
             display: flex;
@@ -850,6 +871,22 @@
             max-width: 560px;
             box-shadow: 0 24px 60px rgba(0, 0, 0, .3);
             animation: modalIn .15s ease;
+
+            /* A modal taller than the screen used to overflow in both
+               directions from the centre of a position:fixed overlay, which
+               cannot be scrolled — so its top was cut off and its footer, with
+               the primary action in it, sat below the fold with no way to
+               reach it. The bundles modal is 794px tall and hit this first on
+               a 1366x768 laptop (top at -13px, bottom at 781px), but every
+               modal here had the same latent bug.
+
+               Capped against the viewport and laid out as a column so the body
+               takes the leftover space and scrolls on its own; the header and
+               footer stay put, which is what keeps Save reachable. The 32px
+               keeps it off the screen edges. */
+            max-height: calc(100vh - 32px);
+            display: flex;
+            flex-direction: column;
         }
 
         @keyframes modalIn {
@@ -899,6 +936,34 @@
 
         .modal-body {
             padding: 20px;
+
+            /* The part that gives when the modal is capped. auto, not scroll,
+               so a modal that already fits gains no pointless scrollbar.
+               min-height:0 because a flex item defaults to min-height:auto and
+               would otherwise refuse to shrink below its content — the same
+               trap as the layout's min-width:0 above. */
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        /* Header and footer keep their full height whatever the body does, so
+           the title and the primary action are always on screen. */
+        .modal-header,
+        .modal-footer {
+            flex-shrink: 0;
+        }
+
+        /* Half the admin modals — bundles, mechanics, service intervals,
+           settings, customers, the test send — put the body AND the footer
+           inside a <form>. That form is then the flex child of .modal, so it
+           is the thing that has to give; capping .modal alone left the form at
+           its content height, spilling the footer out of the modal box with
+           Save still unreachable. Making it a column that can shrink puts the
+           scrolling back on .modal-body where it belongs. */
+        .modal > form {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
 
         .modal-footer {
@@ -968,16 +1033,9 @@
                 grid-template-columns: 1fr;
             }
 
-            /* Flex items default to min-width:auto, so without this the
-               content keeps its intrinsic width and pushes the page wider
-               than the viewport instead of letting .table-wrap scroll. */
-            .main-content,
-            main,
-            .card,
-            .table-wrap {
-                min-width: 0;
-                max-width: 100%;
-            }
+            /* The min-width:0 / max-width:100% rule that used to sit here now
+               applies at every width — see the comment beside .main-content.
+               Deliberately not repeated: a copy is how the two drift. */
 
             .page-header,
             .filters-bar {
