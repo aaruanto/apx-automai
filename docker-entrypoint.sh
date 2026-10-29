@@ -6,6 +6,21 @@ set -o errexit
 sed -ri "s/^Listen 80$/Listen ${PORT}/" /etc/apache2/ports.conf
 sed -ri "s/<VirtualHost \*:80>/<VirtualHost *:${PORT}>/" /etc/apache2/sites-available/*.conf
 
+# Every absolute link the app writes comes from APP_URL: the button in each
+# email, and the password-setup link a guest is sent after booking. It
+# defaults to http://localhost, which nothing in render.yaml overrode — so on
+# the live site those links pointed at the customer's own machine and went
+# nowhere.
+#
+# Taken from Render's own RENDER_EXTERNAL_URL rather than written in, because
+# the hostname is not recorded anywhere in this repo and a renamed service
+# would silently break it again. An APP_URL set deliberately in the dashboard
+# still wins; only the localhost default is replaced.
+if [ -n "${RENDER_EXTERNAL_URL:-}" ] && { [ -z "${APP_URL:-}" ] || [ "${APP_URL}" = "http://localhost" ]; }; then
+    export APP_URL="${RENDER_EXTERNAL_URL}"
+fi
+echo "APP_URL is ${APP_URL:-unset}"
+
 # Skipped during the build (no APP_KEY yet), so build the package manifest here.
 php artisan package:discover --ansi
 

@@ -8,6 +8,15 @@ services:
     dockerfilePath: ./Dockerfile
     plan: free
     envVars:
+      # The name at the top of every email Laravel composes. It defaulted to
+      # "Laravel", which is what the shop's customers were being sent.
+      #
+      # APP_URL is deliberately not here: the service's own hostname is not
+      # written down anywhere in this repo and a rename would silently break
+      # every link again, so docker-entrypoint.sh takes it from Render's
+      # RENDER_EXTERNAL_URL instead. Setting it in the dashboard still wins.
+      - key: APP_NAME
+        value: APX AutoMai
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
