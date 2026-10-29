@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Booking;
 use App\Models\Mechanic;
+use App\Models\RescheduleRequest;
 use App\Models\User;
 use App\Notifications\BookingNotification;
 use App\Models\Service;
@@ -140,7 +141,14 @@ class BookingController extends Controller
             ->where('auditable_id', $booking->id)
             ->recentFirst()->limit(20)->get();
 
-        return view('admin.bookings.create', compact('booking', 'services', 'mechanics', 'history'));
+        // A schedule change the customer has not agreed to yet, if there is
+        // one. The form below still shows the booking's real date and time —
+        // the proposal is shown beside it, not instead of it.
+        $pendingReschedule = $booking->pendingReschedule();
+
+        return view('admin.bookings.create', compact(
+            'booking', 'services', 'mechanics', 'history', 'pendingReschedule'
+        ));
     }
 
     public function update(Request $request, $id)
@@ -210,11 +218,50 @@ class BookingController extends Controller
             || $request->booking_date !== $booking->booking_date
             || $request->booking_time !== $booking->booking_time;
 
+        // The customer's appointment is the date and the time. Moving those is
+        // proposed rather than applied — the booking keeps its slot until the
+        // customer agrees. Everything else on this form still saves outright:
+        // status, mechanic, notes and which services are on the booking are
+        // the shop's record of the job, not the promise made to the customer.
+        $slotMoved = $request->booking_date !== $booking->booking_date
+            || $request->booking_time !== $booking->booking_time;
+
         $duration = $booking->duration;
 
         if ($rescheduled) {
             $duration = $availability->durationForServices($serviceIds);
 
+            // Where the booking will actually sit after this save. A proposed
+            // move does not take effect here, so a services change is
+            // re-checked against the slot the booking already holds.
+            $targetDate = $slotMoved ? $booking->booking_date : $request->booking_date;
+            $targetTime = $slotMoved ? $booking->booking_time : $request->booking_time;
+
+            try {
+                $availability->reschedule($booking, $targetDate, $targetTime, $duration);
+            } catch (SlotUnavailableException $e) {
+                return back()->withInput()->withErrors(['booking_time' => $e->getMessage()]);
+            }
+        }
+
+        if ($slotMoved) {
+            // The limits that stop a booking being walked across the calendar
+            // one reasonable-looking step at a time.
+            if ($blocked = $booking->rescheduleBlockedReason()) {
+                return back()->withInput()->withErrors(['booking_date' => $blocked]);
+            }
+
+            $reason = trim((string) $request->input('reschedule_reason'));
+
+            if ($reason === '') {
+                return back()->withInput()->withErrors([
+                    'reschedule_reason' => 'Give the customer a reason for moving their booking.',
+                ]);
+            }
+
+            // Refuse an impossible time while the admin is still looking at
+            // the form. Checked again when the request is applied, because the
+            // proposed slot is deliberately not held in the meantime.
             try {
                 $availability->reschedule(
                     $booking, $request->booking_date, $request->booking_time, $duration
@@ -222,6 +269,26 @@ class BookingController extends Controller
             } catch (SlotUnavailableException $e) {
                 return back()->withInput()->withErrors(['booking_time' => $e->getMessage()]);
             }
+
+            $proposal = $this->proposeReschedule(
+                $booking,
+                $request->booking_date,
+                $request->booking_time,
+                $reason,
+                $request->user()->id
+            );
+
+            // The update below reads the request, so the proposed date and
+            // time must not reach it: the booking keeps the slot it has.
+            $request->merge([
+                'booking_date' => $booking->booking_date,
+                'booking_time' => $booking->booking_time,
+            ]);
+
+            session()->flash('reschedule_proposed',
+                'The customer has been asked to approve moving '.$booking->reference_number
+                .' to '.$proposal->proposedLabel().'. Their booking is unchanged until they agree.'
+            );
         }
 
         // Same overlap rule as capacity: one mechanic cannot be in two bays at
@@ -677,4 +744,147 @@ class BookingController extends Controller
             $admins,
             \App\Notifications\BookingNotification::requested($booking->fresh()->load(['user', 'services']))
         );
-    }}
+    }
+
+    // ── Proposed schedule changes ─────────────────────────────────────────
+
+    /**
+     * Record that the shop would like to move this booking, and tell the
+     * customer. The booking itself is not touched.
+     *
+     * Audited, so "this was moved three times" is visible afterwards rather
+     * than being a thing only the customer remembers.
+     */
+    private function proposeReschedule(
+        Booking $booking,
+        string $date,
+        string $time,
+        string $reason,
+        ?int $byUserId
+    ): RescheduleRequest {
+        $proposal = RescheduleRequest::create([
+            'booking_id'    => $booking->id,
+            'proposed_date' => $date,
+            'proposed_time' => $time,
+            'original_date' => $booking->booking_date,
+            'original_time' => $booking->booking_time,
+            'reason'        => $reason,
+            'status'        => RescheduleRequest::PENDING,
+            'proposed_by'   => $byUserId,
+        ]);
+
+        AuditLog::record(
+            'booking.reschedule_proposed', $booking,
+            ['booking_date' => $booking->booking_date, 'booking_time' => $booking->booking_time],
+            ['booking_date' => $date, 'booking_time' => $time, 'reason' => $reason],
+            label: $booking->reference_number,
+        );
+
+        if ($booking->user) {
+            // The booking is already saved either way; failing to reach the
+            // customer must not undo it, the same as a cancellation.
+            try {
+                $booking->user->notify(
+                    BookingNotification::rescheduleProposed($booking->fresh(), $proposal)
+                );
+            } catch (\Throwable $e) {
+                \Log::error('Reschedule proposal notice failed for '
+                    .$booking->reference_number.': '.$e->getMessage());
+            }
+        }
+
+        return $proposal;
+    }
+
+    /**
+     * The customer agreed, so move the booking.
+     *
+     * The proposed slot was never held — holding it would have meant one
+     * booking occupying two slots while the customer thought about it — so it
+     * is re-checked here and the move fails cleanly if the time has gone,
+     * leaving the original booking exactly as it was.
+     */
+    public function applyReschedule(Request $request, $id)
+    {
+        $booking  = Booking::findOrFail($id);
+        $proposal = $booking->pendingReschedule();
+
+        if (! $proposal) {
+            return back()->withErrors(['reschedule' => 'There is no schedule change waiting on this booking.']);
+        }
+
+        $availability = app(BookingAvailability::class);
+        $date = $proposal->proposed_date->toDateString();
+        $time = $proposal->proposed_time;
+
+        try {
+            $availability->reschedule($booking, $date, $time, $booking->duration);
+        } catch (SlotUnavailableException $e) {
+            return back()->withErrors([
+                'reschedule' => 'That time is no longer free, so the booking has not moved: '
+                    .$e->getMessage().' Withdraw this change and propose another time.',
+            ]);
+        }
+
+        $oldDate = $booking->booking_date;
+        $oldTime = $booking->booking_time;
+
+        \DB::transaction(function () use ($booking, $proposal, $date, $time, $request) {
+            $booking->update(['booking_date' => $date, 'booking_time' => $time]);
+
+            $proposal->update([
+                'status'      => RescheduleRequest::APPLIED,
+                'resolved_by' => $request->user()->id,
+                'resolved_at' => now(),
+            ]);
+        });
+
+        AuditLog::record(
+            'booking.reschedule_applied', $booking,
+            ['booking_date' => $oldDate, 'booking_time' => $oldTime],
+            ['booking_date' => $date, 'booking_time' => $time],
+            label: $booking->reference_number,
+        );
+
+        if ($booking->user) {
+            try {
+                $booking->user->notify(
+                    BookingNotification::rescheduled($booking->fresh(), $oldDate, $oldTime)
+                );
+            } catch (\Throwable $e) {
+                \Log::error('Reschedule notice failed for '.$booking->reference_number.': '.$e->getMessage());
+            }
+        }
+
+        return back()->with('success',
+            $booking->reference_number.' has moved to '.$proposal->proposedLabel().'.');
+    }
+
+    /** The shop takes the request back. The booking never moved, so nothing undoes. */
+    public function withdrawReschedule(Request $request, $id)
+    {
+        $booking  = Booking::findOrFail($id);
+        $proposal = $booking->pendingReschedule();
+
+        if (! $proposal) {
+            return back()->withErrors(['reschedule' => 'There is no schedule change waiting on this booking.']);
+        }
+
+        $proposal->update([
+            'status'      => RescheduleRequest::WITHDRAWN,
+            'resolved_by' => $request->user()->id,
+            'resolved_at' => now(),
+        ]);
+
+        AuditLog::record(
+            'booking.reschedule_withdrawn', $booking,
+            ['proposed_date' => $proposal->proposed_date->toDateString(), 'proposed_time' => $proposal->proposed_time],
+            [],
+            label: $booking->reference_number,
+        );
+
+        return back()->with('success',
+            'The proposed change to '.$booking->reference_number.' has been withdrawn. '
+            .'The booking stands as it was.');
+    }
+}

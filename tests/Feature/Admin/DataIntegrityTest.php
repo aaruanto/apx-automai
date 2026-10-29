@@ -212,16 +212,26 @@ it('records a status change with both values', function () {
 });
 
 it('records a reschedule and a service change', function () {
+    // Both still leave a trail. The schedule one is in two parts now, because
+    // an admin changing the date proposes the move rather than making it: the
+    // proposal is recorded when it is raised, and the move when the customer
+    // has agreed and it is applied. A service change still saves outright.
     [$b, $oil] = intBooking('confirmed');
     $extra = Service::create(['name' => 'Extra', 'price' => 500, 'duration' => 30]);
+    $admin = intAdmin();
 
-    $this->actingAs(intAdmin())->put("/admin/bookings/{$b->id}", editPayload($b, [
-        'service_ids'  => [$oil->id, $extra->id],
-        'booking_date' => nextWeekdayAfter(3),
+    $this->actingAs($admin)->put("/admin/bookings/{$b->id}", editPayload($b, [
+        'service_ids'       => [$oil->id, $extra->id],
+        'booking_date'      => nextWeekdayAfter(3),
+        'reschedule_reason' => 'Mechanic unavailable',
     ]));
 
     expect(AuditLog::where('action', 'booking.services_changed')->exists())->toBeTrue();
-    expect(AuditLog::where('action', 'booking.rescheduled')->exists())->toBeTrue();
+    expect(AuditLog::where('action', 'booking.reschedule_proposed')->exists())->toBeTrue();
+
+    $this->actingAs($admin)->patch("/admin/bookings/{$b->id}/reschedule/apply");
+
+    expect(AuditLog::where('action', 'booking.reschedule_applied')->exists())->toBeTrue();
 });
 
 it('records a price change but not a rename', function () {

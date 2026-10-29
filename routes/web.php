@@ -79,6 +79,10 @@ Route::middleware(['auth', 'role:admin'])
     Route::get('/bookings/{id}/rebook',       [BookingController::class, 'rebook'])   ->name('bookings.rebook');
     Route::delete('/bookings/{id}',           [BookingController::class, 'destroy'])  ->name('bookings.destroy');
     Route::patch('/bookings/{id}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
+    // A schedule change is proposed from the edit form; these two resolve it.
+    // The booking does not move until applyReschedule runs.
+    Route::patch('/bookings/{id}/reschedule/apply',    [BookingController::class, 'applyReschedule'])   ->name('bookings.reschedule.apply');
+    Route::patch('/bookings/{id}/reschedule/withdraw', [BookingController::class, 'withdrawReschedule'])->name('bookings.reschedule.withdraw');
     Route::patch('/bookings/{id}/arrive', [BookingController::class, 'arrive'])->name('bookings.arrive');
     Route::patch('/bookings/{id}/mechanic', [BookingController::class, 'assignMechanic'])->name('bookings.mechanic');
     // ── Customers ──────────────────────────────────────────────────────────

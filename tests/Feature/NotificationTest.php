@@ -93,18 +93,32 @@ it('tells the customer when their booking is cancelled, with the reason', functi
 });
 
 it('tells the customer when their booking is rescheduled, naming both slots', function () {
+    // The contract changed deliberately: an admin editing the date no longer
+    // moves the booking, it proposes the move and the customer is asked. The
+    // "rescheduled, naming both slots" notice still exists and still says what
+    // it always said — it now arrives when the change is applied, which is the
+    // moment the booking actually moves.
+    $admin    = notifAdmin();
     $customer = User::factory()->create(['role' => 'customer']);
     $booking  = notifBooking($customer, 'confirmed');
     $oldDate  = $booking->booking_date;
 
-    $this->actingAs(notifAdmin())->put("/admin/bookings/{$booking->id}", [
-        'service_ids'  => [$booking->service_id],
-        'booking_date' => nextWeekdayAfter(5),
-        'booking_time' => '14:00',
-        'status'       => 'confirmed',
+    $this->actingAs($admin)->put("/admin/bookings/{$booking->id}", [
+        'service_ids'       => [$booking->service_id],
+        'booking_date'      => nextWeekdayAfter(5),
+        'booking_time'      => '14:00',
+        'status'            => 'confirmed',
+        'reschedule_reason' => 'Mechanic unavailable that morning',
     ])->assertSessionHasNoErrors();
 
-    $body = collect($customer->notifications)->firstWhere('data.event', BookingNotification::BOOKING_RESCHEDULED)->data['body'];
+    // Proposed, not moved.
+    expect($booking->fresh()->booking_date)->toBe($oldDate);
+
+    $this->actingAs($admin)->patch("/admin/bookings/{$booking->id}/reschedule/apply");
+
+    $body = collect($customer->fresh()->notifications)
+        ->firstWhere('data.event', BookingNotification::BOOKING_RESCHEDULED)->data['body'];
+
     expect($body)->toContain($oldDate);
     expect($body)->toContain(nextWeekdayAfter(5));
 });

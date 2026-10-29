@@ -186,6 +186,68 @@ class Booking extends Model
         return $this->belongsTo(Vehicle::class);
     }
 
+    // ── Proposed schedule changes ─────────────────────────────────────────
+
+    public function rescheduleRequests()
+    {
+        return $this->hasMany(RescheduleRequest::class)->latest('id');
+    }
+
+    /** The open proposal, if the customer has one waiting on them. */
+    public function pendingReschedule(): ?RescheduleRequest
+    {
+        return $this->rescheduleRequests()->pending()->first();
+    }
+
+    public function hasPendingReschedule(): bool
+    {
+        return $this->rescheduleRequests()->pending()->exists();
+    }
+
+    /** How many times this booking has actually been moved. */
+    public function timesRescheduled(): int
+    {
+        return $this->rescheduleRequests()
+            ->where('status', RescheduleRequest::APPLIED)
+            ->count();
+    }
+
+    /**
+     * Why this booking cannot be proposed a new time, or null if it can.
+     *
+     * Two separate limits, both aimed at the same thing: an admin should not
+     * be able to keep moving a customer's appointment.
+     *
+     * One open proposal at a time, because stacking them means the customer
+     * holds two emails proposing different days and no way to tell which is
+     * live. And a ceiling on applied moves, because each individual move
+     * looks reasonable while the sequence of them is not — a Tuesday that
+     * becomes Thursday that becomes next week.
+     *
+     * Withdrawn proposals are not counted. Raising one and taking it back
+     * costs the customer nothing, because the booking never moved.
+     */
+    public function rescheduleBlockedReason(): ?string
+    {
+        if (in_array($this->status, ['cancelled', 'completed'], true)) {
+            return 'A '.$this->status.' booking cannot be rescheduled.';
+        }
+
+        if ($this->hasPendingReschedule()) {
+            return 'This booking already has a schedule change waiting on the customer. '
+                 .'Apply or withdraw that one first.';
+        }
+
+        $moves = $this->timesRescheduled();
+
+        if ($moves >= RescheduleRequest::MAX_APPLIED_PER_BOOKING) {
+            return 'This booking has already been moved '.$moves.' times, which is the limit. '
+                 .'Cancel it and book again if the schedule has to change further.';
+        }
+
+        return null;
+    }
+
     /**
      * The mechanic this booking is assigned to.
      *

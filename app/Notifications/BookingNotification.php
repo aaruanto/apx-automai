@@ -39,6 +39,7 @@ class BookingNotification extends Notification
     public const BOOKING_CONFIRMED = 'booking_confirmed';
     public const BOOKING_CANCELLED = 'booking_cancelled';
     public const BOOKING_RESCHEDULED = 'booking_rescheduled';
+    public const RESCHEDULE_PROPOSED = 'booking_reschedule_proposed';
     public const BOOKING_COMPLETED = 'booking_completed';
 
     private const ICONS = [
@@ -46,6 +47,7 @@ class BookingNotification extends Notification
         self::BOOKING_CONFIRMED   => 'fa-circle-check',
         self::BOOKING_CANCELLED   => 'fa-ban',
         self::BOOKING_RESCHEDULED => 'fa-calendar-day',
+        self::RESCHEDULE_PROPOSED => 'fa-calendar-check',
         self::BOOKING_COMPLETED   => 'fa-flag-checkered',
     ];
 
@@ -65,6 +67,7 @@ class BookingNotification extends Notification
     private const MAILED = [
         self::BOOKING_CANCELLED,
         self::BOOKING_RESCHEDULED,
+        self::RESCHEDULE_PROPOSED,
     ];
 
     /**
@@ -109,9 +112,11 @@ class BookingNotification extends Notification
      */
     public function toMail(object $notifiable): MailMessage
     {
-        $heading = $this->event === self::BOOKING_CANCELLED
-            ? 'Booking Cancelled'
-            : 'Booking Rescheduled';
+        $heading = match ($this->event) {
+            self::BOOKING_CANCELLED  => 'Booking Cancelled',
+            self::RESCHEDULE_PROPOSED => 'A Change To Your Booking',
+            default                  => 'Booking Rescheduled',
+        };
 
         return (new MailMessage)
             ->subject($heading.' — APX AutoMai #'.$this->booking->reference_number)
@@ -176,6 +181,29 @@ class BookingNotification extends Notification
             'Your booking '.$booking->reference_number.' on '.$booking->booking_date
                 .' has been cancelled.'
                 .($reason !== '' ? ' Reason: '.$reason : ''),
+        );
+    }
+
+    /**
+     * A change the shop is asking for, which has NOT happened.
+     *
+     * Worded so the customer knows their booking still stands as it is: the
+     * old slot is still theirs until they agree, and doing nothing keeps it.
+     */
+    public static function rescheduleProposed(Booking $booking, \App\Models\RescheduleRequest $request): self
+    {
+        return new self(
+            self::RESCHEDULE_PROPOSED,
+            $booking,
+            'A change to your booking',
+            'We need to move your booking '.$booking->reference_number.' from '
+                .$request->originalLabel().' to '.$request->proposedLabel().'. '
+                // Punctuated here: the reason is whatever the admin typed and
+                // usually has no full stop, so without this it ran straight
+                // into the next sentence — "called in sick Nothing has changed".
+                .'Reason: '.rtrim($request->reason, " .").'. '
+                .'Nothing has changed yet — your original time still stands until you tell us. '
+                .'Please reply or call us to confirm.',
         );
     }
 

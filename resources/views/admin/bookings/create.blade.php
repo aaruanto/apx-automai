@@ -50,6 +50,42 @@
         </a>
     </div>
 
+    {{-- A schedule change the customer has not agreed to yet. The booking
+         below still shows its ORIGINAL date and time, because that is what it
+         still holds — the proposal is a separate record, not a status, so the
+         slot is never quietly freed while the customer decides. --}}
+    @if($isEdit && ($pendingReschedule ?? null))
+    <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.22);border-radius:8px;padding:14px 18px;margin-bottom:24px;">
+        <div style="display:flex;align-items:flex-start;gap:12px;">
+            <i class="fas fa-calendar-check" style="color:var(--info);font-size:1rem;flex-shrink:0;margin-top:3px;"></i>
+            <div style="flex:1;font-size:.85rem;color:var(--text-muted);line-height:1.6;">
+                <strong style="color:var(--text);">Waiting on the customer.</strong>
+                You asked to move this booking from
+                <strong style="color:var(--text);">{{ $pendingReschedule->originalLabel() }}</strong>
+                to <strong style="color:var(--text);">{{ $pendingReschedule->proposedLabel() }}</strong>.
+                <div style="margin-top:4px;">Reason given: {{ $pendingReschedule->reason }}</div>
+                <div style="margin-top:6px;font-size:.78rem;">
+                    The booking has <strong style="color:var(--text);">not moved</strong> and still holds its
+                    original slot. Apply it once the customer has agreed — the new time is
+                    re-checked then, because it was never reserved.
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-shrink:0;">
+                <form method="POST" action="{{ route('admin.bookings.reschedule.withdraw', $booking->id) }}">
+                    @csrf @method('PATCH')
+                    <button class="btn btn-ghost btn-sm" type="submit">Withdraw</button>
+                </form>
+                <form method="POST" action="{{ route('admin.bookings.reschedule.apply', $booking->id) }}">
+                    @csrf @method('PATCH')
+                    <button class="btn btn-primary btn-sm" type="submit">
+                        <i class="fas fa-check"></i> Customer agreed — move it
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endif
+
     @if($isRebook)
     <div style="background:rgba(255,180,0,.08);border:1px solid rgba(255,180,0,.2);border-radius:8px;padding:12px 18px;margin-bottom:24px;display:flex;align-items:center;gap:12px;">
         <i class="fas fa-rotate-right" style="color:var(--warning);font-size:1rem;flex-shrink:0;"></i>
@@ -263,6 +299,30 @@
                                  a new kind of message. --}}
                             <div class="fv-error" id="slotError">Pick a date and a time from the calendar above.</div>
                             <div class="form-hint">Mon–Fri 9:00 AM – 9:00 PM &middot; Sat–Sun 9:00 AM – 12:00 PM</div>
+
+                            {{-- Only when editing: a new booking has no
+                                 customer to ask. Picking a different slot here
+                                 does not move the booking — it asks the
+                                 customer to agree first — so the reason is
+                                 required, because it is what they are sent. --}}
+                            @if($isEdit)
+                            <div class="form-group" style="margin-top:16px;">
+                                <label class="form-label" for="rescheduleReason">
+                                    Reason for changing the schedule
+                                </label>
+                                <textarea class="form-control @error('reschedule_reason') is-invalid @enderror"
+                                          id="rescheduleReason" name="reschedule_reason" rows="2"
+                                          placeholder="e.g. Mechanic called in sick — needed only if you change the date or time"
+                                >{{ old('reschedule_reason') }}</textarea>
+                                @error('reschedule_reason')
+                                    <div class="fv-error show">{{ $message }}</div>
+                                @enderror
+                                <div class="form-hint">
+                                    Required only if you change the date or time. The booking keeps its
+                                    current slot until the customer agrees, and this is what they are told.
+                                </div>
+                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>
