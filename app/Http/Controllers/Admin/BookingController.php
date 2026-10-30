@@ -81,6 +81,13 @@ class BookingController extends Controller
             'booking_date'   => 'required|date|after_or_equal:today', // no past dates
             'booking_time'   => 'required',
             'mechanic_id'       => ['nullable', 'integer', Rule::exists('mechanics', 'id')->where('status', 'active')],
+            // Make and model are separate columns and this form posted one
+            // string into both. Free text rather than a list: a walk-in can
+            // arrive in anything, and this is the path that has to record it.
+            'car_make'       => 'nullable|string|max:100',
+            'car_model'      => 'nullable|string|max:100',
+            'car_year'       => 'nullable|integer|min:1990|max:'.(date('Y') + 1),
+            'car_type'       => 'nullable|in:car,motorcycle',
         ]);
 
         $user = \App\Models\User::firstOrCreate(
@@ -132,9 +139,15 @@ class BookingController extends Controller
         } else {
             $vehicle = $user->vehicles()->create([
                 'plate_number' => $plate,
-                'make'         => $request->car_model ?? 'Unknown',
-                'model'        => $request->car_model ?? '',
-                'year'         => null,
+                // One field called "Car Model" used to be written into both
+                // columns, so a walk-in's vehicle read "Toyota Vios Toyota
+                // Vios" wherever the two were shown together. Each column now
+                // holds what its name says. make is NOT NULL, so it keeps a
+                // fallback; the rest are honestly empty when not given.
+                'make'         => $request->car_make ?: 'Unknown',
+                'model'        => $request->car_model ?: '',
+                'year'         => $request->car_year ?: null,
+                'vehicle_type' => $request->car_type ?: 'car',
             ]);
         }
 

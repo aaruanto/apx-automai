@@ -232,26 +232,11 @@
     </div>
     <script>
     (function() {
-        var SC_VEHICLES = {
-            car: {
-                Toyota:['Vios','Innova','Fortuner','Hiace','Camry','Corolla Cross','Rush'],
-                Honda:['City','Civic','BR-V','CR-V','HR-V','Jazz','Brio'],
-                Mitsubishi:['Mirage','Mirage G4','Montero Sport','Xpander','L300','Strada'],
-                Suzuki:['Alto','Celerio','Ertiga','Jimny','Swift','Dzire'],
-                Ford:['EcoSport','Everest','Explorer','Ranger','Territory'],
-                Hyundai:['Accent','Tucson','Santa Fe','Reina','Stargazer'],
-                Nissan:['Almera','Navara','Terra','X-Trail'],
-                Kia:['Soluto','Stonic','Sportage','Carnival']
-            },
-            motorcycle: {
-                Honda:['Click 125i','Click 150i','BeAT','PCX 160','ADV 160','CBR150R','XRM 125'],
-                Yamaha:['Mio i 125','Mio Gear','NMAX','Aerox','Sniper 150','FZ-S'],
-                Kawasaki:['Barako II','CT100B','Rouser NS 200','Ninja 400'],
-                Suzuki:['Skydrive 125','Raider R150','GSX-R150'],
-                TVS:['Apache RTR 160','Ntorq 125','King Duramax'],
-                Kymco:['Agility 125','Like 150i']
-            }
-        };
+        var SC_VEHICLES = @json(config('vehicles'));
+        /* The vehicles the shop sees, from config/vehicles.php. This list
+           used to be written out twice in this file, verbatim, and the
+           customer dashboard and the admin forms could not reach either
+           copy — so each invented its own idea of a make and a model. */
         var scVtype = 'car';
 
         function scPopMakes() {
@@ -1511,26 +1496,11 @@
         var BUNDLE_SERVICE_IDS = @json((object) $bundleServiceIds);
         var ACCOUNT_DISCOUNT   = @json($accountDiscount);
         var GUIDED             = @json($guidedPaths);
-        var VEHICLES = {
-            car: {
-                Toyota:['Vios','Innova','Fortuner','Hiace','Camry','Corolla Cross','Rush'],
-                Honda:['City','Civic','BR-V','CR-V','HR-V','Jazz','Brio'],
-                Mitsubishi:['Mirage','Mirage G4','Montero Sport','Xpander','L300','Strada'],
-                Suzuki:['Alto','Celerio','Ertiga','Jimny','Swift','Dzire'],
-                Ford:['EcoSport','Everest','Explorer','Ranger','Territory'],
-                Hyundai:['Accent','Tucson','Santa Fe','Reina','Stargazer'],
-                Nissan:['Almera','Navara','Terra','X-Trail'],
-                Kia:['Soluto','Stonic','Sportage','Carnival']
-            },
-            motorcycle: {
-                Honda:['Click 125i','Click 150i','BeAT','PCX 160','ADV 160','CBR150R','XRM 125'],
-                Yamaha:['Mio i 125','Mio Gear','NMAX','Aerox','Sniper 150','FZ-S'],
-                Kawasaki:['Barako II','CT100B','Rouser NS 200','Ninja 400'],
-                Suzuki:['Skydrive 125','Raider R150','GSX-R150'],
-                TVS:['Apache RTR 160','Ntorq 125','King Duramax'],
-                Kymco:['Agility 125','Like 150i']
-            }
-        };
+        var VEHICLES = @json(config('vehicles'));
+        /* The vehicles the shop sees, from config/vehicles.php. This list
+           used to be written out twice in this file, verbatim, and the
+           customer dashboard and the admin forms could not reach either
+           copy — so each invented its own idea of a make and a model. */
 
         var selected = new Set();
         // A bundle is the whole order, so it is exclusive: picking one clears

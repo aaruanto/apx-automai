@@ -456,7 +456,7 @@
                                     <div class="booking-meta">
                                         <span><i class="fas fa-clock"></i>{{ date('g:i A', strtotime($b->booking_time)) }}</span>
                                         <span><i class="fas fa-user"></i>{{ $b->staff->name ?? 'TBA' }}</span>
-                                        <span><i class="fas fa-car"></i>{{ ($b->vehicle->make ?? '') . ' (' . ($b->vehicle?->display_plate ?? 'Not provided') . ')' }}</span>
+                                        <span><i class="fas fa-car"></i>{{ trim(($b->vehicle?->make_model ?? '') . ' (' . ($b->vehicle?->display_plate ?? 'Not provided') . ')') }}</span>
                                     </div>
                                 </div>
                                 <span class="badge badge-{{ $b->status === 'confirmed' ? 'confirmed' : 'pending' }}">{{ ucfirst($b->status) }}</span>
@@ -583,10 +583,24 @@
                                 </select>
                             </div>
                         </div>
+                        {{-- One field called "Make & Model" used to post the
+                             whole string as the make and an empty model, so a
+                             vehicle added here had nothing in vehicles.model
+                             and showed up blank on the admin booking screen,
+                             which reads that column. Two fields, one per
+                             column. Suggestions come from config/vehicles.php
+                             and are only suggestions — anything may be typed,
+                             because the list cannot know every car in Quezon
+                             City. --}}
                         <div class="m-form-group">
-                            <label class="m-label">Make & Model</label>
-                            <div class="m-input-wrap"><i class="fas fa-motorcycle"></i><input class="m-control" id="avfMake" type="text" placeholder="e.g. Honda Click 125i" /></div>
+                            <label class="m-label">Make</label>
+                            <div class="m-input-wrap"><i class="fas fa-motorcycle"></i><input class="m-control" id="avfMake" type="text" list="avfMakeList" placeholder="e.g. Honda" /></div>
                         </div>
+                        <div class="m-form-group">
+                            <label class="m-label">Model</label>
+                            <div class="m-input-wrap"><i class="fas fa-car-side"></i><input class="m-control" id="avfModel" type="text" list="avfModelList" placeholder="e.g. Click 125i" /></div>
+                        </div>
+                        <x-vehicle-datalists makes="avfMakeList" models="avfModelList" />
                         <div class="m-form-group">
                             <label class="m-label">Year</label>
                             <div class="m-input-wrap"><i class="fas fa-calendar"></i><input class="m-control" id="avfYear" type="number" placeholder="e.g. 2022" min="1990" max="2030" /></div>
@@ -864,7 +878,7 @@
                                 @forelse($vehicles as $v)
                                     <div class="profile-read-val">
                                         <i class="fas fa-motorcycle"></i>
-                                        {{ $v->make }} {{ $v->model }}{{ $v->year ? ' (' . $v->year . ')' : '' }} &mdash;
+                                        {{ $v->make_model_year }} &mdash;
                                         <span class="pv-plate">{{ $v->display_plate }}</span>
                                         @if($v->is_primary)
                                             <span class="primary-badge"><i class="fas fa-star"></i> Primary</span>
@@ -1748,7 +1762,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         MY_VEHICLES.forEach(v => {
             const opt = document.createElement('option');
             opt.value = v.id;
-            opt.textContent = v.make + (v.year ? ' (' + v.year + ')' : '') + (v.plate ? ' — ' + v.plate : '');
+            opt.textContent = v.name + (v.year ? ' (' + v.year + ')' : '') + (v.plate ? ' — ' + v.plate : '');
             if (v.primary) opt.selected = true;
             sel.appendChild(opt);
         });
@@ -1886,7 +1900,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         yr:        String(d.getFullYear()),
         time:      time,
         staff:     'TBA',
-        vehicle:   (() => { const v = MY_VEHICLES.find(v => v.id == vehicleId); return v ? v.make + ' (' + v.plate + ')' : 'N/A'; })(),
+        vehicle:   (() => { const v = MY_VEHICLES.find(v => v.id == vehicleId); return v ? v.name + ' (' + v.plate + ')' : 'N/A'; })(),
         amount:    'TBA',
         status:    'upcoming',
     });
@@ -2078,7 +2092,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         container.innerHTML = MY_VEHICLES.map(v =>
             `<div class="profile-read-val">
                 <i class="fas fa-motorcycle"></i>
-                ${esc(v.make)}${v.year ? ' (' + v.year + ')' : ''} &mdash;
+                ${esc(v.name)}${v.year ? ' (' + v.year + ')' : ''} &mdash;
                 <span class="pv-plate">${esc(v.plate || 'No plate')}</span>
                 ${v.primary ? '<span class="primary-badge"><i class="fas fa-star"></i> Primary</span>' : ''}
             </div>`
@@ -2122,7 +2136,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                     <i class="fas ${v.type === 'motorcycle' ? 'fa-motorcycle' : 'fa-car'}"></i>
                 </div>
                 <div class="vehicle-card-body">
-                    <div class="vehicle-name">${esc(v.make)}</div>
+                    <div class="vehicle-name">${esc(v.name)}</div>
                     <div class="vehicle-plate">${esc(v.plate || 'No plate')}</div>
                     <div class="vehicle-meta-row">
                         <span><i class="fas ${v.type === 'motorcycle' ? 'fa-motorcycle' : 'fa-car'}"></i>${v.type === 'motorcycle' ? 'Motorcycle' : 'Car'}</span>
@@ -2161,7 +2175,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         if (form.classList.contains('open')) {
             editingVehicleId = null;
             setVehicleFormMode('add');
-            ['avfMake','avfYear','avfPlate','avfColor','avfMileage'].forEach(id => document.getElementById(id).value = '');
+            ['avfMake','avfModel','avfYear','avfPlate','avfColor','avfMileage'].forEach(id => document.getElementById(id).value = '');
             document.getElementById('avfType').value = 'car';
             setTimeout(() => document.getElementById('avfMake').focus(), 100);
         }
@@ -2178,6 +2192,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         setVehicleFormMode('edit');
 
         document.getElementById('avfMake').value  = v.make  || '';
+        document.getElementById('avfModel').value = v.model || '';
         document.getElementById('avfYear').value  = v.year  || '';
         // "Not provided" is the placeholder a blank plate displays as; it is
         // not a real plate, so it must not be typed back into the field.
@@ -2193,13 +2208,14 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
     // ── Add-vehicle field validation ────────────────────────────────────────
     PlateInput.attach(document.getElementById('avfPlate'));
     FormValidate.register(document.getElementById('pef-name'), { rules: [FormValidate.rules.required('Your full name is required.')] });
-    FormValidate.register(document.getElementById('avfMake'), { rules: [FormValidate.rules.required('Make / model is required.')] });
+    FormValidate.register(document.getElementById('avfMake'), { rules: [FormValidate.rules.required('Make is required.')] });
     FormValidate.register(document.getElementById('avfYear'), { rules: [FormValidate.rules.required('Year is required.')] });
     FormValidate.register(document.getElementById('avfPlate'), { rules: [FormValidate.rules.required('Plate number is required.'), FormValidate.rules.plate()] });
 
     function saveNewVehicle() {
     const vtype = document.getElementById('avfType').value;
     const make  = document.getElementById('avfMake').value.trim();
+    const model = document.getElementById('avfModel').value.trim();
     const year  = document.getElementById('avfYear').value.trim();
     const plate = document.getElementById('avfPlate').value.trim();
     const color = document.getElementById('avfColor').value.trim();
@@ -2221,7 +2237,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         type: 'info',
         title: editing ? 'Confirm Vehicle Changes' : 'Confirm Vehicle Registration',
         msg: `Please confirm the vehicle details:<br><br>
-              <strong>Make / Model:</strong> ${make}<br>
+              <strong>Make / Model:</strong> ${[make, model].filter(Boolean).join(' ')}<br>
               <strong>Year:</strong> ${year}<br>
               <strong>Plate:</strong> ${plate}${color ? '<br><strong>Color:</strong> ' + color : ''}`,
         confirmLabel: editing
@@ -2232,7 +2248,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             fetch(editing ? `/customer/vehicles/${editingVehicleId}` : '/customer/vehicles', {
                 method: editing ? 'PATCH' : 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                body: JSON.stringify({ brand: make, model: '', plate, year: parseInt(year), color, vehicle_type: vtype, mileage })
+                body: JSON.stringify({ brand: make, model, plate, year: parseInt(year), color, vehicle_type: vtype, mileage })
             })
             .then(r => r.json().catch(() => ({})).then(d => ({ ok: r.ok, data: d })))
             .then(({ ok, data }) => {

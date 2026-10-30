@@ -121,12 +121,45 @@
                                        placeholder="e.g. White" @if($isEdit) readonly @endif />
                             </div>
                         </div>
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label class="form-label">Car Model</label>
-                            <input class="form-control" type="text" name="car_model"
-                                   value="{{ old('car_model', $customer->vehicle->model ?? '') }}"
-                                   placeholder="e.g. Toyota Vios 2021" @if($isEdit) readonly @endif />
+                        {{-- One field called "Car Model" was written into both
+                             vehicles.make and vehicles.model, so the vehicle
+                             read back doubled wherever the two are shown
+                             together. Each column has its own field. --}}
+                        <div class="form-row cols-2">
+                            <div class="form-group">
+                                <label class="form-label">Make</label>
+                                <input class="form-control" type="text" name="car_make" list="custVehicleMakes"
+                                       value="{{ old('car_make', $customer->vehicle->make ?? '') }}"
+                                       placeholder="e.g. Toyota" @if($isEdit) readonly @endif />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Model</label>
+                                <input class="form-control" type="text" name="car_model" list="custVehicleModels"
+                                       value="{{ old('car_model', $customer->vehicle->model ?? '') }}"
+                                       placeholder="e.g. Vios" @if($isEdit) readonly @endif />
+                            </div>
                         </div>
+                        <div class="form-row cols-2" style="margin-bottom:0;">
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label class="form-label">Year</label>
+                                <input class="form-control" type="number" name="car_year"
+                                       min="1990" max="{{ date('Y') + 1 }}"
+                                       value="{{ old('car_year', $customer->vehicle->year ?? '') }}"
+                                       placeholder="e.g. 2021" @if($isEdit) readonly @endif />
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label class="form-label">Vehicle Type</label>
+                                @php $vtype = old('car_type', $customer->vehicle->vehicle_type ?? 'car'); @endphp
+                                <select class="form-control" name="car_type" @if($isEdit) disabled @endif>
+                                    <option value="car" {{ $vtype === 'car' ? 'selected' : '' }}>Car</option>
+                                    <option value="motorcycle" {{ $vtype === 'motorcycle' ? 'selected' : '' }}>Motorcycle</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        @unless($isEdit)
+                        <x-vehicle-datalists makes="custVehicleMakes" models="custVehicleModels" />
+                        @endunless
 
                         {{-- The list view shows a count rather than one plate,
                              because a customer can own several. This is where

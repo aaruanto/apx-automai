@@ -75,13 +75,38 @@ class Vehicle extends Model
         });
     }
 
+    /**
+     * The car itself: "Honda Civic". Empty string when nothing is recorded.
+     *
+     * Seven places composed this by hand and four of them did it differently
+     * — some trimmed, some did not, two printed the make and silently dropped
+     * the model, and the booking edit screen printed the model and dropped the
+     * make, which is why a vehicle the customer added showed a blank Car Model
+     * field: that path stores everything in make. One accessor, so a vehicle
+     * reads the same on every screen it appears on.
+     */
+    protected function makeModel(): Attribute
+    {
+        return Attribute::get(fn () => trim(($this->make ?? '') . ' ' . ($this->model ?? '')));
+    }
+
+    /** "Honda Civic (2023)" — the same, dated, for screens with room for it. */
+    protected function makeModelYear(): Attribute
+    {
+        return Attribute::get(function () {
+            $name = $this->make_model;
+
+            return $this->year ? trim($name . ' (' . $this->year . ')') : $name;
+        });
+    }
+
+    /** "Car — Honda Civic", for lists where the kind of vehicle matters. */
     protected function displayName(): Attribute
     {
         return Attribute::get(function () {
-            $type      = $this->vehicle_type === 'motorcycle' ? 'Motorcycle' : 'Car';
-            $makeModel = trim(($this->make ?? '') . ' ' . ($this->model ?? ''));
+            $type = $this->vehicle_type === 'motorcycle' ? 'Motorcycle' : 'Car';
 
-            return $makeModel !== '' ? $type . ' — ' . $makeModel : $type;
+            return $this->make_model !== '' ? $type . ' — ' . $this->make_model : $type;
         });
     }
 }

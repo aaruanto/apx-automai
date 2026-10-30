@@ -162,6 +162,14 @@
                         <div class="card-header-title"><i class="fas fa-car"></i> Vehicle Details</div>
                     </div>
                     <div class="card-body">
+                        {{-- This showed the plate and one field labelled "Car
+                             Model" reading vehicles.model, which is blank for
+                             every vehicle a customer added from their own
+                             dashboard — that form records the whole thing in
+                             make. So the mechanic saw a plate and nothing
+                             else. Make, model, year and whether it is a car or
+                             a motorcycle are each shown, from their own
+                             column. --}}
                         <div class="form-row cols-2">
                             {{-- On edit the vehicle is shown, not edited. This
                                  form used to write the plate straight onto the
@@ -177,21 +185,66 @@
                                 <input class="form-control" type="text"
                                        @if ($isEdit) disabled @else name="plate" id="adminPlateInput" required @endif
                                        value="{{ old('plate', $src->vehicle->plate_number ?? '') }}"
-                                       placeholder="ABC 1234, 123 ABC or AB 12345"
+                                       @unless ($isEdit) placeholder="ABC 1234, 123 ABC or AB 12345" @endunless
                                        style="letter-spacing:.08em;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;{{ $isEdit ? 'opacity:.65;cursor:not-allowed;' : '' }}" />
                                 @if ($isEdit)
                                 <div class="form-hint">The customer changes this from their own vehicles.</div>
                                 @endif
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Car Model</label>
-                                <input class="form-control" type="text"
+                                <label class="form-label">Vehicle Type</label>
+                                @if ($isEdit)
+                                    <input class="form-control" type="text" disabled
+                                           value="{{ ($src->vehicle?->vehicle_type ?? 'car') === 'motorcycle' ? 'Motorcycle' : 'Car' }}"
+                                           style="opacity:.65;cursor:not-allowed;" />
+                                @else
+                                    {{-- Recorded rather than assumed: the column
+                                         defaults to "car", so every motorcycle
+                                         a walk-in brought in was filed as one. --}}
+                                    <select class="form-control" name="car_type">
+                                        <option value="car" {{ old('car_type', 'car') === 'car' ? 'selected' : '' }}>Car</option>
+                                        <option value="motorcycle" {{ old('car_type') === 'motorcycle' ? 'selected' : '' }}>Motorcycle</option>
+                                    </select>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="form-row cols-2">
+                            <div class="form-group">
+                                <label class="form-label">Make</label>
+                                <input class="form-control" type="text" list="adminVehicleMakes"
+                                       @if ($isEdit) disabled @else name="car_make" @endif
+                                       value="{{ old('car_make', $src->vehicle->make ?? '') }}"
+                                       @unless ($isEdit) placeholder="e.g. Toyota" @endunless
+                                       style="{{ $isEdit ? 'opacity:.65;cursor:not-allowed;' : '' }}" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Model</label>
+                                <input class="form-control" type="text" list="adminVehicleModels"
                                        @if ($isEdit) disabled @else name="car_model" @endif
                                        value="{{ old('car_model', $src->vehicle->model ?? '') }}"
-                                       placeholder="e.g. Toyota Vios 2021"
+                                       @unless ($isEdit) placeholder="e.g. Vios" @endunless
                                        style="{{ $isEdit ? 'opacity:.65;cursor:not-allowed;' : '' }}" />
                             </div>
                         </div>
+                        <div class="form-group" style="margin-bottom:0;max-width:50%;">
+                            <label class="form-label">Year</label>
+                            <input class="form-control" type="number" min="1990" max="{{ date('Y') + 1 }}"
+                                   @if ($isEdit) disabled @else name="car_year" @endif
+                                   value="{{ old('car_year', $src->vehicle->year ?? '') }}"
+                                   @unless ($isEdit) placeholder="e.g. 2021" @endunless
+                                   style="{{ $isEdit ? 'opacity:.65;cursor:not-allowed;' : '' }}" />
+                            @if ($isEdit)
+                            <div class="form-hint">The customer changes these from their own vehicles.</div>
+                            @endif
+                        </div>
+
+                        {{-- Suggestions, not a constraint: a walk-in may arrive
+                             in anything, and admin is the path that has to
+                             accept it. The list is config/vehicles.php, the one
+                             the booking modal uses. --}}
+                        @unless ($isEdit)
+                        <x-vehicle-datalists makes="adminVehicleMakes" models="adminVehicleModels" />
+                        @endunless
                     </div>
                 </div>
 

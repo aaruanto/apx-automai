@@ -58,7 +58,7 @@ class DashboardController extends Controller
                 'yr'        => date('Y', strtotime($b->booking_date)),
                 'time'      => date('g:i A', strtotime($b->booking_time)),
                 'mechanic'  => $b->mechanic->name ?? 'TBA',
-                'vehicle'   => ($b->vehicle->make ?? '') . ' (' . ($b->vehicle?->display_plate ?? 'Not provided') . ')',
+                'vehicle'   => trim(($b->vehicle?->make_model ?? '') . ' (' . ($b->vehicle?->display_plate ?? 'Not provided') . ')'),
                 'vehicle_id'=> $b->vehicle_id,
                 'amount'    => 'TBA',
                 'status'    => in_array($b->status, ['confirmed', 'pending']) ? 'upcoming' : $b->status,
@@ -85,7 +85,14 @@ class DashboardController extends Controller
 
             return [
                 'id'      => $v->id,
-                'make'    => $v->make . ' ' . $v->model,
+                // name is for printing; make and model are the raw
+                // columns, because the edit form writes back into each
+                // of them separately. Sending only the composed string
+                // is what let this form put everything in make and
+                // leave model empty in the first place.
+                'name'    => $v->make_model,
+                'make'    => $v->make,
+                'model'   => $v->model,
                 'year'    => $v->year,
                 'plate'   => $v->display_plate,
                 'color'   => $v->color ?? '',
@@ -403,7 +410,9 @@ class DashboardController extends Controller
             'success' => true,
             'vehicle' => [
                 'id'      => $vehicle->id,
-                'make'    => $vehicle->make . ' ' . $vehicle->model,
+                'name'    => $vehicle->make_model,
+                'make'    => $vehicle->make,
+                'model'   => $vehicle->model,
                 'year'    => $vehicle->year,
                 'plate'   => $vehicle->display_plate,
                 'color'   => $vehicle->color,
@@ -491,7 +500,9 @@ class DashboardController extends Controller
             'success' => true,
             'vehicle' => [
                 'id'      => $vehicle->id,
-                'make'    => trim($vehicle->make . ' ' . $vehicle->model),
+                'name'    => $vehicle->make_model,
+                'make'    => $vehicle->make,
+                'model'   => $vehicle->model,
                 'year'    => $vehicle->year,
                 'plate'   => $vehicle->display_plate,
                 'color'   => $vehicle->color,

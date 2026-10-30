@@ -76,6 +76,12 @@ class CustomerController extends Controller
             'email' => ['required', EmailRule::strict(), 'unique:users,email'],
             'phone' => 'required|string|max:20',
             'plate' => PlateNumber::rules(),
+            // Separate columns, separately posted. This form had one
+            // "Car Model" field and wrote it into both.
+            'car_make'  => 'nullable|string|max:100',
+            'car_model' => 'nullable|string|max:100',
+            'car_year'  => 'nullable|integer|min:1990|max:'.(date('Y') + 1),
+            'car_type'  => 'nullable|in:car,motorcycle',
         ]);
 
         // plate_number is globally unique and a soft delete does not release
@@ -119,10 +125,14 @@ class CustomerController extends Controller
                 'plate_number' => PlateNumber::normalise($request->plate),
                 // vehicles.make is NOT NULL and this payload omitted it, so
                 // adding a customer with a plate threw a constraint violation
-                // and returned a 500. The form only asks for a model, so the
-                // same fallback Admin\BookingController uses applies here.
-                'make'         => $request->car_model ?: 'Unknown',
-                'model'        => $request->car_model ?? '',
+                // and returned a 500. It then over-corrected and wrote the
+                // model into both columns, which read back as "Toyota Vios
+                // Toyota Vios". The form asks for each separately now; make
+                // keeps the fallback because the column is NOT NULL.
+                'make'         => $request->car_make ?: 'Unknown',
+                'model'        => $request->car_model ?: '',
+                'year'         => $request->car_year ?: null,
+                'vehicle_type' => $request->car_type ?: 'car',
                 'color'        => $request->color ?? '',
             ]);
         }
