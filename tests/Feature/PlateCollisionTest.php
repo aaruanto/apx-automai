@@ -322,3 +322,41 @@ it('shows the admin why the customer was refused, and keeps what they typed', fu
         expect($html)->toContain($typed);
     }
 });
+
+// ── the seventh path, missed by the first sweep ──────────────────────────
+
+it('refuses to rename a vehicle onto a plate held by a deleted one', function () {
+    pcOtherOwner('TRS 1111', trashed: true);
+
+    $me = User::factory()->create(['role' => 'customer']);
+    $mine = Vehicle::create([
+        'user_id' => $me->id, 'plate_number' => 'MINE 22',
+        'make' => 'Honda', 'model' => 'City', 'year' => 2021,
+    ]);
+
+    // updateVehicle kept its own check, written as Vehicle::where(...), which
+    // the soft-delete scope hides trashed rows from. It passed, the update hit
+    // the unique index, and the customer got a 500 for editing their own car.
+    $this->actingAs($me)->patchJson('/customer/vehicles/'.$mine->id, [
+        'brand' => 'Honda', 'model' => 'City', 'plate' => 'TRS 1111', 'year' => 2021,
+    ])->assertStatus(422);
+
+    expect($mine->fresh()->plate_number)->toBe('MINE 22');
+});
+
+it('still lets a customer edit a vehicle without changing its plate', function () {
+    $me = User::factory()->create(['role' => 'customer']);
+    $mine = Vehicle::create([
+        'user_id' => $me->id, 'plate_number' => 'MINE 33',
+        'make' => 'Honda', 'model' => 'City', 'year' => 2021, 'color' => 'Red',
+    ]);
+
+    // The vehicle's own plate has to pass its own check, or nobody could ever
+    // change their colour.
+    $this->actingAs($me)->patchJson('/customer/vehicles/'.$mine->id, [
+        'brand' => 'Honda', 'model' => 'City', 'plate' => 'MINE 33',
+        'year' => 2021, 'color' => 'Blue',
+    ])->assertOk();
+
+    expect($mine->fresh()->color)->toBe('Blue');
+});

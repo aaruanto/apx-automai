@@ -466,11 +466,16 @@ class DashboardController extends Controller
         // Plates are unique across the system, since a plate identifies one
         // real vehicle. The vehicle's own current plate is allowed through so
         // editing anything else about it does not trip the check.
-        $taken = Vehicle::where('plate_number', $plate)
-            ->where('id', '!=', $vehicle->id)
-            ->exists();
+        //
+        // Through the shared lookup, which is withTrashed. This was the one
+        // write path left asking Vehicle::where(...), and the soft-delete
+        // scope hides trashed rows from that — so renaming a vehicle onto a
+        // plate held by a deleted one passed the check and then hit the unique
+        // index, which is a 500. The sweep that fixed the other six missed
+        // this one.
+        $held = Vehicle::holdingPlate($plate);
 
-        if ($taken) {
+        if ($held && $held->id !== $vehicle->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'That plate number is already registered.',
