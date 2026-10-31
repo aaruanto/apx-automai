@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Notifications\BookingNotification;
 use App\Models\Service;
 use App\Mail\BookingConfirmed;
+use App\Mail\BookingReceived;
 use App\Services\BookingAvailability;
 use App\Services\BookingCancellation;
 use App\Services\LoyaltyService;
@@ -167,6 +168,7 @@ class BookingController extends Controller
         }
 
         $this->notifyAdminsOfBooking($booking);
+        $this->notifyCustomerOfBooking($booking);
 
         return redirect()->route('admin.bookings.index')
             ->with('success', 'Booking #' . $booking->reference_number . ' created successfully.');
@@ -846,6 +848,63 @@ class BookingController extends Controller
             $admins,
             \App\Notifications\BookingNotification::requested($booking->fresh()->load(['user', 'services']))
         );
+    }
+
+    /**
+     * Tell the customer the shop has booked something for them.
+     *
+     * store() told the admins and nobody else. requested is not in
+     * BookingNotification::MAILED and goes only to admins, so a customer whose
+     * booking the shop created — a walk-in, or a rebook from the cancelled
+     * list — received nothing at all: no email, not even a bell entry. They
+     * found out by signing in and noticing, or by not turning up.
+     *
+     * The guest form already emails BookingReceived, and a customer booking
+     * from their own dashboard clicked the button and saw the confirmation on
+     * screen. Admin is the one case where the customer did not choose the
+     * appointment, which is exactly why this one needs telling.
+     *
+     * The bell entry is written first and separately: the notification history
+     * should show the booking even when the inbox never does.
+     */
+    private function notifyCustomerOfBooking(Booking $booking): void
+    {
+        $customer = $booking->user;
+
+        if (! $customer) {
+            return;
+        }
+
+        try {
+            $customer->notify(BookingNotification::received(
+                $booking->fresh()->load(['user', 'services'])
+            ));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error(
+                'Booking received notice failed for '.$booking->reference_number.': '.$e->getMessage()
+            );
+        }
+
+        // A walk-in with no email gets a synthesised @apxautomai.local address
+        // so the account can hold bookings. Nobody reads it, and mailing it
+        // fails slowly against a real SMTP server. Same test the notification
+        // channel applies, asked of the same place rather than copied.
+        if (! BookingNotification::hasRealAddress($customer)) {
+            return;
+        }
+
+        // Inline, because nothing on Render runs a queue worker. The booking
+        // is already written and committed; a Brevo outage must leave it that
+        // way rather than turning a saved booking into a 500 on the form.
+        try {
+            Mail::to($customer->email)->send(new BookingReceived(
+                $booking->fresh()->load(['user', 'service', 'vehicle', 'services'])
+            ));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error(
+                'Booking received email failed for '.$booking->reference_number.': '.$e->getMessage()
+            );
+        }
     }
 
     // ── Proposed schedule changes ─────────────────────────────────────────

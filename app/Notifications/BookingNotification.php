@@ -84,14 +84,19 @@ class BookingNotification extends Notification
         // survives a mail failure.
         $channels = ['database'];
 
-        if (in_array($this->event, self::MAILED, true) && $this->hasRealAddress($notifiable)) {
+        if (in_array($this->event, self::MAILED, true) && self::hasRealAddress($notifiable)) {
             $channels[] = 'mail';
         }
 
         return $channels;
     }
 
-    private function hasRealAddress(object $notifiable): bool
+    /**
+     * Public and static so a caller sending its own mailable about a booking
+     * applies the same rule rather than writing a second copy of it. The admin
+     * create path needs exactly this test before sending BookingReceived.
+     */
+    public static function hasRealAddress(?object $notifiable): bool
     {
         $email = $notifiable->email ?? null;
 
@@ -156,6 +161,33 @@ class BookingNotification extends Notification
             ($booking->user->name ?? 'A customer').' requested '.$booking->service_list
                 .' on '.$booking->booking_date.' at '.$booking->booking_time.'.',
             forAdmin: true,
+        );
+    }
+
+    /**
+     * The customer's copy of requested().
+     *
+     * requested() is worded for the admins who receive it — "A customer
+     * requested…" — and carries forAdmin, so it cannot simply be sent to the
+     * customer as well. When the shop books on someone's behalf, the customer
+     * did not choose the appointment and has nothing on screen telling them it
+     * exists, so they get their own entry saying what was booked for them.
+     *
+     * Deliberately not added to MAILED. That list is keyed on the event, and
+     * this shares BOOKING_REQUESTED with the admin notice, so mailing it would
+     * mail every admin on every request — the noise the class comment above
+     * rules out. The email is the existing BookingReceived mailable, sent at
+     * the admin create site.
+     */
+    public static function received(Booking $booking): self
+    {
+        return new self(
+            self::BOOKING_REQUESTED,
+            $booking,
+            'Booking received',
+            'We have your booking '.$booking->reference_number.' for '.$booking->service_list
+                .' on '.$booking->booking_date.' at '.$booking->booking_time
+                .'. We will confirm it shortly.',
         );
     }
 
