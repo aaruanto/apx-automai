@@ -70,6 +70,11 @@ class AppServiceProvider extends ServiceProvider
             'auth.reset-password',
             'dashboard.customer-dashboard',
             'layouts.admin',
+            // Standalone, so it is not covered by layouts.admin. Without it
+            // $defaultTheme is undefined there and the page falls back to
+            // light whatever the shop has chosen — the same bug as following
+            // the operating system, just quieter.
+            'notifications.index',
         ], function ($view) {
             // A fresh clone has no settings table until it migrates, and a
             // 500 on every page would be a poor way to learn that.

@@ -19,10 +19,35 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link href="{{ asset('assets/css/design-tokens.css') }}" rel="stylesheet" />
 
+    {{-- The same theme bootstrap every other page carries, for the same
+         reason: it has to run before the first paint or the page flashes the
+         wrong colour on every visit.
+
+         This page used to be themed off the operating system — a
+         prefers-color-scheme block guarded by :root:not([data-theme="light"]).
+         Nothing in this application has ever set data-theme, so the guard was
+         dead and the media query won outright: the page followed the OS and
+         ignored the app's own toggle entirely. An admin working in light mode
+         on a dark laptop clicked the bell and got a black page.
+
+         Same storage key and same class as layouts/admin.blade.php, so the
+         toggle on the page they came from carries over. --}}
+    <script>
+        (function () {
+            // The shop-wide default, from Settings. A stored choice wins.
+            var theme = '{{ $defaultTheme ?? 'light' }}';
+            try { theme = localStorage.getItem('apx-theme') || theme; } catch (e) {}
+            if (theme === 'dark') document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
     <style>
+        /* One palette, taken from layouts/admin.blade.php rather than a third
+           set of near-miss greys. */
         :root {
-            --surface: #fff; --surface-2: #f7f8fa; --border: #e5e7eb;
-            --text: #1a1d21; --text-muted: #6b7280;
+            --surface: #ffffff; --surface-2: #f0f1f3; --border: rgba(0, 0, 0, 0.09);
+            --text: #1a1d23; --text-muted: #6b7280;
+            --red-glow: rgba(232, 25, 44, 0.10);
         }
         * { box-sizing: border-box; }
         body {
@@ -61,11 +86,12 @@
         .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
         .empty { padding: 48px 20px; text-align: center; color: var(--text-muted); }
 
-        @media (prefers-color-scheme: dark) {
-            :root:not([data-theme="light"]) {
-                --surface: #16181c; --surface-2: #0f1115; --border: #2a2e35;
-                --text: #e8eaed; --text-muted: #9aa0a6;
-            }
+        /* Follows the app's toggle, not the operating system. Same values as
+           the admin layout's dark block. */
+        html.dark-mode {
+            --surface: #1a1d23; --surface-2: #20242c; --border: rgba(255, 255, 255, 0.07);
+            --text: #e8eaed; --text-muted: #6b7280;
+            --red-glow: rgba(232, 25, 44, 0.15);
         }
     </style>
 </head>

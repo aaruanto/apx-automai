@@ -21,7 +21,8 @@
 
     <div id="apxBellPanel"
          style="display:none;position:absolute;top:calc(100% + 8px);right:0;width:340px;max-width:calc(100vw - 32px);
-                background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:10px;
+                background:var(--surface,#fff);color:var(--text,#1a1d23);
+                border:1px solid var(--border,#e5e7eb);border-radius:10px;
                 box-shadow:0 18px 44px rgba(0,0,0,.18);z-index:9500;overflow:hidden;">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;
                     border-bottom:1px solid var(--border,#e5e7eb);">
