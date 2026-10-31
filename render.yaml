@@ -98,4 +98,18 @@ services:
 
 databases:
   - name: apx-automai-db
-    plan: free
+    # Paid, and it has to be. Render's free Postgres expires: ours was due to
+    # be suspended on 2026-10-31 and deleted after a grace period, which would
+    # have taken every booking with it. Upgraded to the 256MB plan the day
+    # before, at roughly USD 6 a month, billed by the hour.
+    #
+    # Leaving this at "free" was not merely out of date. Render refuses to
+    # downgrade a live database, so a sync against this file would fail with
+    # "cannot downgrade database from Basic-256mb to Free" and keep failing
+    # until the file agreed with the dashboard.
+    #
+    # 0.1c-256mb is what the dashboard now calls this plan; basic-256mb is the
+    # same thing under its old name and is still accepted. diskSizeGB is left
+    # out on purpose — an existing database keeps the disk it has, and Render
+    # can never shrink storage, so it is not a field to guess at.
+    plan: 0.1c-256mb
