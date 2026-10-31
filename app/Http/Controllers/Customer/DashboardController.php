@@ -17,6 +17,7 @@ use App\Services\LoyaltyService;
 use App\Support\BookingPolicy;
 use App\Support\PlateNumber;
 use App\Exceptions\SlotUnavailableException;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Password;
@@ -286,6 +287,48 @@ class DashboardController extends Controller
                 'success' => false,
                 'message' => BookingPolicy::FREE_ONLY_MESSAGE,
             ], 422);
+        }
+
+        // Already booked today, at a time that does not clash?
+        //
+        // An overlap is refused inside reserve() and stays refused — one car
+        // cannot be in two bays at once. This is the other one: 09:00 and then
+        // 14:00 breaks no rule and can be entirely deliberate, but it is also
+        // what a customer produces by submitting, not seeing the confirmation,
+        // and coming back to pick another time. So it asks rather than refuses,
+        // and a 409 carries the question rather than a 422 carrying a verdict.
+        //
+        // Only on the first submission: confirm_same_day is the answer coming
+        // back, and the booking then proceeds exactly as it would have.
+        if (! $request->boolean('confirm_same_day')) {
+            $availability = app(BookingAvailability::class);
+
+            // The same services reserve() is about to be given, so the window
+            // asked about is the window that will be booked.
+            $serviceIds = $bundle
+                ? $bundle->services->pluck('id')->all()
+                : $data['service_ids'];
+
+            [$start, $end] = $availability->windowFor(
+                $data['booking_date'],
+                $data['booking_time'],
+                $availability->durationForServices($serviceIds)
+            );
+
+            $existing = $availability->sameDayNonOverlapping(
+                $vehicle->id, $data['booking_date'], $start, $end
+            );
+
+            if ($existing) {
+                return response()->json([
+                    'success'            => false,
+                    'needs_confirmation' => true,
+                    'message'            => 'This vehicle already has a booking on this date — '
+                        .$existing->reference_number.' at '
+                        .Carbon::parse($existing->booking_time)->format('g:i A')
+                        .'. Book this one as well?',
+                ], 409);
+            }
         }
 
         try {

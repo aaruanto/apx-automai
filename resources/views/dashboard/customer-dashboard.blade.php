@@ -1826,7 +1826,11 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         if (e.target === document.getElementById('bookingModal')) closeModal();
     }
 
-    function submitBooking() {
+    /* confirmSameDay is the customer's answer to "this car is already booked
+       today — book this one as well?", which the server asks with a 409. It is
+       passed straight back on the retry; the server decides, this only relays
+       the answer. */
+    function submitBooking(confirmSameDay = false) {
         // The disabled button is the visible half; this is the half that still
         // holds if it is re-enabled from the console or the selection changes
         // between render and click. The notice above is already explaining it,
@@ -1869,12 +1873,21 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                 booking_date: date,
                 booking_time: time,
                 notes:        notes,
+                confirm_same_day: confirmSameDay,
             })
         })
         .then(r => {
             const ct = r.headers.get('content-type') || '';
             if (!ct.includes('application/json')) {
                 throw new Error('Server returned non-JSON (status ' + r.status + '). Ensure controller returns response()->json(...).');
+            }
+            // 409 is a question, not a refusal: this car already has a booking
+            // today at a time that does not clash. Ask, and send the answer
+            // back. Deliberately not a 422 — nothing is wrong with the
+            // booking, and treating it as a refusal would put a red error in
+            // front of someone whose second visit is perfectly intentional.
+            if (r.status === 409) {
+                return r.json().then(body => { body.needsConfirmation = true; throw body; });
             }
             if (r.status === 422) {
                 // Marked so the catch can tell a deliberate refusal — a policy
@@ -1929,6 +1942,19 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             if (err && err.errors) {
                 const msgs = Object.values(err.errors).flat().join('<br>');
                 apxDialog({ type: 'warning', title: 'Validation Errors', msg: msgs, confirmLabel: 'OK' });
+            } else if (err && err.needsConfirmation) {
+                // Nothing is wrong, so this is a question with two real
+                // answers. Saying yes resubmits the identical booking with the
+                // answer attached; saying nothing leaves the modal as it was,
+                // with everything still filled in.
+                apxDialog({
+                    type: 'warning',
+                    title: 'Already booked today',
+                    msg: err.message,
+                    confirmLabel: '<i class="fas fa-calendar-check" style="margin-right:5px;"></i> Book it anyway',
+                    cancelLabel: 'Go back',
+                    onConfirm: () => submitBooking(true),
+                });
             } else if (err && err.refused) {
                 // The booking was understood and declined, with something the
                 // customer can act on. Calling that "Error" in red said the

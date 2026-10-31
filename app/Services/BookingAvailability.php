@@ -613,12 +613,7 @@ class BookingAvailability
         Carbon $end,
         ?int $excludeBookingId = null
     ): ?Booking {
-        return Booking::with('service:id,duration')
-            ->where('booking_date', $date)
-            ->where($column, $value)
-            ->whereIn('status', self::ACTIVE_STATUSES)
-            ->when($excludeBookingId, fn ($q) => $q->where('id', '!=', $excludeBookingId))
-            ->get()
+        return $this->activeOn($column, $value, $date, $excludeBookingId)
             ->first(function (Booking $other) use ($date, $start, $end) {
                 $otherStart = Carbon::parse($date.' '.$other->booking_time);
                 $otherEnd   = $otherStart->copy()->addMinutes(
@@ -627,6 +622,75 @@ class BookingAvailability
 
                 return $otherStart->lt($end) && $otherEnd->gt($start);
             });
+    }
+
+    /**
+     * Every booking that still occupies time on this date, for one column.
+     *
+     * Split out of conflictOn() so the day-wide question below asks it in
+     * exactly the same terms — same date, same statuses, same self-exclusion.
+     * Two queries written separately drift, and the one that drifts quietly is
+     * the one nothing refuses on.
+     *
+     * Ordered by time so a caller naming "the booking you already have" names
+     * the first of the day rather than whichever row came back first.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, Booking>
+     */
+    private function activeOn(string $column, int $value, string $date, ?int $excludeBookingId = null)
+    {
+        return Booking::with('service:id,duration')
+            ->where('booking_date', $date)
+            ->where($column, $value)
+            ->whereIn('status', self::ACTIVE_STATUSES)
+            ->when($excludeBookingId, fn ($q) => $q->where('id', '!=', $excludeBookingId))
+            ->orderBy('booking_time')
+            ->get();
+    }
+
+    /**
+     * A booking this vehicle already holds on this date, overlapping or not.
+     *
+     * assertVehicleFree() refuses an overlap outright, which is right: one car
+     * cannot be in two bays at once. This is the softer question behind it —
+     * the same car at 09:00 and again at 14:00 breaks no rule, and can be
+     * perfectly deliberate, but it is also exactly what a customer produces by
+     * submitting, missing the confirmation and coming back to pick another
+     * time. So it is something to ask about, never something to refuse.
+     *
+     * The caller decides what to do with the answer. Admin does not ask at
+     * all: they have the customer in front of them.
+     */
+    public function vehicleBookedOn(int $vehicleId, string $date, ?int $excludeBookingId = null): ?Booking
+    {
+        return $this->activeOn('vehicle_id', $vehicleId, $date, $excludeBookingId)->first();
+    }
+
+    /**
+     * The same-day booking worth asking about — one that would be allowed.
+     *
+     * An overlap is not this question's business. assertVehicleFree() refuses
+     * it outright, and surfacing it as "book this one as well?" would present
+     * a refusal as a choice, let the customer answer yes, and then refuse them
+     * anyway on the second attempt. So when the window clashes this answers
+     * nothing and leaves the refusal to the rule that owns it.
+     *
+     * Everything else on the day is a fair question: it breaks no rule, and it
+     * is equally what a deliberate second visit and an accidental re-submission
+     * look like.
+     */
+    public function sameDayNonOverlapping(
+        int $vehicleId,
+        string $date,
+        Carbon $start,
+        Carbon $end,
+        ?int $excludeBookingId = null
+    ): ?Booking {
+        if ($this->vehicleConflict($vehicleId, $date, $start, $end, $excludeBookingId)) {
+            return null;
+        }
+
+        return $this->vehicleBookedOn($vehicleId, $date, $excludeBookingId);
     }
 
     /** The window a booking occupies, for the checks above. */

@@ -49,13 +49,21 @@ function dupVehicle(User $user, string $plate): Vehicle
 }
 
 /** Book through the customer dashboard, the shortest of the three paths. */
-function dupBook(User $user, Vehicle $vehicle, Service $service, string $date, string $time)
+/**
+ * $confirmSameDay answers the "this car is already booked today — book this
+ * one as well?" question the endpoint now asks before a second booking on one
+ * date. It is scaffolding here: these tests are about the overlap rule, and
+ * several of them need a second same-day booking to exist before the thing
+ * they actually assert. See SameDayBookingWarningTest for the question itself.
+ */
+function dupBook(User $user, Vehicle $vehicle, Service $service, string $date, string $time, bool $confirmSameDay = false)
 {
     return test()->actingAs($user)->postJson('/customer/bookings', [
-        'service_ids'  => [$service->id],
-        'vehicle_id'   => $vehicle->id,
-        'booking_date' => $date,
-        'booking_time' => $time,
+        'service_ids'      => [$service->id],
+        'vehicle_id'       => $vehicle->id,
+        'booking_date'     => $date,
+        'booking_time'     => $time,
+        'confirm_same_day' => $confirmSameDay,
     ]);
 }
 
@@ -146,7 +154,14 @@ it('allows the same vehicle at a time that does not overlap', function () {
 
     // 10:00–11:00 then 11:00–12:00. Touching, not overlapping.
     dupBook($user, $vehicle, $service, $date, '10:00')->assertOk();
-    dupBook($user, $vehicle, $service, $date, '11:00')->assertOk();
+
+    // The overlap rule still allows it — a job ending at 11:00 and one
+    // starting at 11:00 do not clash, which is what this test is about.
+    // What changed is that the endpoint now asks first, because one car
+    // twice on one day is as often a mis-submission as it is deliberate.
+    // The rule is unchanged; the question sits in front of it.
+    dupBook($user, $vehicle, $service, $date, '11:00')->assertStatus(409);
+    dupBook($user, $vehicle, $service, $date, '11:00', confirmSameDay: true)->assertOk();
 
     expect(Booking::count())->toBe(2);
 });
@@ -237,7 +252,10 @@ it('refuses moving a booking onto a window its own vehicle already holds', funct
     $date    = nextWeekday();
 
     dupBook($user, $vehicle, $service, $date, '10:00')->assertOk();
-    dupBook($user, $vehicle, $service, $date, '13:00')->assertOk();
+
+    // Two bookings on one day is the setup, not the subject — this is about
+    // what happens when the afternoon one is moved onto the morning one.
+    dupBook($user, $vehicle, $service, $date, '13:00', confirmSameDay: true)->assertOk();
 
     $afternoon = Booking::where('booking_time', 'like', '13:00%')->sole();
 
