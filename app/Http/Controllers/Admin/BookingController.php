@@ -493,6 +493,27 @@ class BookingController extends Controller
     public function rebook($id)
     {
         $original  = Booking::with(['user', 'vehicle', 'service', 'mechanic', 'services'])->findOrFail($id);
+
+        // Only a cancelled booking has anything to rebook.
+        //
+        // The route is a plain GET with the id in the address bar, and the only
+        // link to it sits on the cancelled list — so the guard was the list
+        // itself, which a typed URL, a bookmark or a stale tab walks straight
+        // past. Rebooking a live booking prefilled the form from it and created
+        // a second one for the same customer and car; on a different date
+        // nothing downstream objects, and the customer ends up with two. A
+        // completed booking is a record of work already done and should not be
+        // a starting point for anything.
+        if ($original->status !== 'cancelled') {
+            $label = self::STATUS_LABELS[$original->status] ?? $original->status;
+
+            return redirect()->route('admin.bookings.cancelled')->with('error',
+                $original->reference_number.' is '.$label.', not cancelled, so there is nothing to rebook. '
+                .($original->isLocked()
+                    ? 'A finished job is a record of work already done — start a new booking instead.'
+                    : 'Open the booking to change it, or cancel it first if the work is not going ahead.'));
+        }
+
         $services  = Service::orderBy('name')->get();
         $mechanics = Mechanic::active()->get();
 

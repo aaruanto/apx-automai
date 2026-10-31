@@ -242,5 +242,10 @@ function clearFilters() {
 }
 ['searchInput','filterService','filterDateFrom','filterDateTo']
     .forEach(id => document.getElementById(id).addEventListener('input', applyFilters));
+
+{{-- rebook() redirects here when the booking is not cancelled. Without this
+     the message was set on the session and shown nowhere, which is the same
+     thing as refusing in silence. --}}
+<x-flash-alert />
 </script>
 @endpush
