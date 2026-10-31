@@ -517,11 +517,73 @@ class BookingController extends Controller
         $services  = Service::orderBy('name')->get();
         $mechanics = Mechanic::active()->get();
 
+        [$prefillDate, $prefillTime] = $this->rebookSlot($original);
+
         return view('admin.bookings.create', [
-            'services'  => $services,
-            'mechanics' => $mechanics,
-            'prefill'   => $original,
+            'services'     => $services,
+            'mechanics'    => $mechanics,
+            'prefill'      => $original,
+            'prefillDate'  => $prefillDate,
+            'prefillTime'  => $prefillTime,
         ]);
+    }
+
+    /**
+     * The slot a rebook should open on: [date, time].
+     *
+     * The old booking's date is nearly always in the past, so the date resets
+     * — but to the next day the shop is actually open rather than to tomorrow
+     * flat. Tomorrow can be a closed day, and the form then rendered an empty
+     * calendar with no explanation.
+     *
+     * The time used to be carried over from the original with nothing checking
+     * it against the new date. Rebooking a cancelled afternoon booking onto a
+     * weekend, when the shop shuts at noon, prefilled an hour the shop is shut:
+     * the calendar drew nothing, the hidden time field still held the old
+     * value, and submitting was refused by assertWithinHours() — a form that
+     * could not be submitted and no word of why.
+     *
+     * So the time is carried over only when it is still a bookable slot on the
+     * resolved date, and left blank otherwise. Deliberately not rounded to the
+     * nearest open slot: a time the admin did not choose, on a confirmation
+     * screen, is worse than an empty field they have to fill in.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function rebookSlot(Booking $original): array
+    {
+        $availability = app(BookingAvailability::class);
+
+        $duration = (int) ($original->duration
+            ?: $availability->durationForServices($original->services->pluck('id')->all()));
+
+        if ($duration <= 0) {
+            $duration = $availability->gridMinutes();
+        }
+
+        // Tomorrow, then forward to the next day that takes bookings at all.
+        // Bounded: a shop configured closed every day should give the admin a
+        // date to look at and let the calendar say the rest, not spin.
+        $date = now()->addDay()->startOfDay();
+
+        for ($i = 0; $i < 14 && ! $availability->isOpenOn($date); $i++) {
+            $date->addDay();
+        }
+
+        $dateString = $date->toDateString();
+        $time       = substr((string) $original->booking_time, 0, 5);
+
+        // A day already at the shop-wide cap has no room whatever the grid
+        // says — dayAvailability() reads capacity and the clock, not Settings'
+        // daily limit — so carrying a time onto it would prefill a slot
+        // reserve() is bound to refuse.
+        $cap    = $availability->dailyCap();
+        $atCap  = $cap > 0 && $availability->bookingsOnDate($dateString) >= $cap;
+
+        $stillBookable = ! $atCap && collect($availability->dayAvailability($dateString, $duration))
+            ->contains(fn (array $slot) => $slot['start'] === $time && $slot['bookable']);
+
+        return [$dateString, $stillBookable ? $time : ''];
     }
 
     /**

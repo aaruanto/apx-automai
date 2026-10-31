@@ -298,8 +298,19 @@
                             <select class="form-control" name="mechanic_id">
                                 <option value="">— Unassigned —</option>
                                 @foreach($mechanics ?? [] as $emp)
+                                {{-- A rebook starts unassigned. The original's
+                                     mechanic was free at the OLD date and time,
+                                     and nothing re-checks them at the new one:
+                                     reserve() tests hours, shop capacity and the
+                                     vehicle, never the mechanic, and store()
+                                     calls neither mechanicConflict() nor
+                                     anything like it. Carrying the name over
+                                     therefore double-books them in silence, on
+                                     the one path that does not even warn. The
+                                     admin assigns one as they would for any new
+                                     booking. --}}
                                 <option value="{{ $emp->id }}"
-                                    {{ (string) old('mechanic_id', (isset($src) ? $src->mechanic_id : '')) === (string) $emp->id ? 'selected' : '' }}>
+                                    {{ (string) old('mechanic_id', ($isEdit && isset($src)) ? $src->mechanic_id : '') === (string) $emp->id ? 'selected' : '' }}>
                                     {{ $emp->name }} ({{ $emp->specialty ?? 'General' }})
                                 </option>
                                 @endforeach
@@ -327,8 +338,19 @@
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="form-label">Preferred Date &amp; Time <span style="color:var(--red)">*</span></label>
                             @php
-                                $prefillDate = $isEdit ? ($booking->booking_date ?? '') : ($isRebook ? now()->addDay()->toDateString() : '');
-                                $prefillTime = isset($src) ? substr($src->booking_time, 0, 5) : '';
+                                // A rebook is handed its slot by rebook(),
+                                // which asks BookingAvailability whether the
+                                // original's time is still bookable on the new
+                                // date. This used to be decided here: the date
+                                // reset to tomorrow and the time was carried
+                                // over unchecked, so a cancelled afternoon
+                                // booking rebooked onto a weekend prefilled an
+                                // hour the shop is shut. A Blade template is
+                                // the wrong place to ask that question anyway.
+                                $prefillDate = $prefillDate
+                                    ?? ($isEdit ? ($booking->booking_date ?? '') : '');
+                                $prefillTime = $prefillTime
+                                    ?? ($isEdit ? substr((string) $booking->booking_time, 0, 5) : '');
 
                                 // Same reason as the services above: the picker
                                 // reads these two hidden fields on load, so
@@ -554,14 +576,22 @@ const adminPicker = new AvailabilityPicker({
 
 // Editing/rebooking an existing booking — adopt its current date/time so the
 // calendar opens already showing (and highlighting) what's on file.
+// The date alone is enough to open on. A rebook deliberately arrives with no
+// time when the original's hour is not bookable on the new date, and requiring
+// both left the calendar sitting on the current month with nothing selected —
+// so the one case that most needs the admin pointed at a date showed them
+// nothing at all.
 const prefillDate = document.getElementById('adminBookingDate').value;
 const prefillTime = document.getElementById('adminBookingTime').value;
-if (prefillDate && prefillTime) {
+if (prefillDate) {
     const [py, pm] = prefillDate.split('-').map(Number);
     adminPicker.year = py;
     adminPicker.month = pm;
     adminPicker.selectedDate = prefillDate;
-    adminPicker.selectedTime = prefillTime;
+
+    if (prefillTime) {
+        adminPicker.selectedTime = prefillTime;
+    }
 }
 
 function refreshServiceSummary() {
