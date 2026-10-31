@@ -261,10 +261,30 @@
                                    value="{{ $settings['maintenance_subject'] ?? '' }}" />
                         </div>
 
+                        {{-- Labelled for what it is. These bodies go out through
+                             Mail::html(), which wraps them in nothing, so each
+                             one is a complete document — tables and inline
+                             styles, because that is what Outlook and Gmail
+                             actually render. The admin was shown that markup in
+                             a plain textarea with no preview and no explanation,
+                             which reads as the system displaying raw HTML by
+                             mistake. It is the email. --}}
                         <div class="form-group">
-                            <label class="form-label">Email Body</label>
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                                <label class="form-label" style="margin:0;">Email Body (HTML)</label>
+                                <button class="toolbar-btn" type="button" onclick="resetMaintenanceBody()"
+                                        style="font-size:.7rem;padding:5px 10px;">
+                                    <i class="fas fa-rotate-left"></i> Reset to default
+                                </button>
+                            </div>
                             <textarea class="form-control" id="maintenanceBody" rows="8"
+                                      oninput="updateEmailPreview()"
                                       style="resize:vertical;font-family:'Barlow',sans-serif;line-height:1.6;">{{ $settings['maintenance_body'] ?? '' }}</textarea>
+                            <div class="form-hint" style="margin-top:6px;">
+                                This is the email's HTML source — the preview on the right is what the
+                                customer sees. Mail clients ignore stylesheets, so the layout is written
+                                as tables with inline styles. If you mangle it, Reset brings the default back.
+                            </div>
                         </div>
 
                         <div class="form-group" style="margin-bottom:0;">
@@ -293,7 +313,8 @@
                             <div class="browser-dot" style="background:#ff5f56;"></div>
                             <div class="browser-dot" style="background:#ffbd2e;"></div>
                             <div class="browser-dot" style="background:#27c93f;"></div>
-                            <div style="flex:1;background:#f0f0f0;border-radius:4px;padding:4px 10px;font-size:.72rem;color:#999;">
+                            <div id="previewSubjectLine"
+                                 style="flex:1;background:#f0f0f0;border-radius:4px;padding:4px 10px;font-size:.72rem;color:#999;">
                                 APX AutoMai — Booking Reminder
                             </div>
                         </div>
@@ -532,6 +553,17 @@
     const _csrfToken   = '{{ csrf_token() }}';
     const _savedBody   = {!! json_encode($settings['email_body'] ?? '') !!};
     const _savedSms    = {!! json_encode($settings['sms_body'] ?? '') !!};
+
+    // The shipped Service Due body, straight from MessageTemplate::defaults(),
+    // so its Reset restores what the server would actually send rather than a
+    // second copy of the same markup kept in this file.
+    //
+    // It belongs in this block and not in the script below, which is a raw
+    // region where Blade compiles nothing: a directive written there is
+    // emitted as text, and text like that is a JavaScript syntax error that
+    // takes every function in the block down with it. Naming the directive in
+    // a comment is enough to trigger it, which is how this was learned.
+    const MAINTENANCE_DEFAULT_BODY = {!! json_encode($maintenanceDefault ?? '') !!};
 </script>
 <script>
 @verbatim
@@ -617,9 +649,27 @@ function insertDivider() {
     updateEmailPreview();
 }
 
+/* Which field the preview is showing.
+
+   The Service Due body is a plain textarea holding the same kind of markup
+   the appointment body holds, but the preview card was shown only on the
+   email tab — so the one tab whose editor shows raw HTML was also the one
+   with nothing to tell you what it would look like. Both tabs render through
+   here; only the source differs. */
+function activeBodyMarkup() {
+    const tab = document.querySelector('.msg-tab.active')?.dataset.tab;
+
+    if (tab === 'maintenance') {
+        // A textarea holds its markup as text, not as parsed nodes.
+        return document.getElementById('maintenanceBody').value;
+    }
+
+    return emailBody.innerHTML;
+}
+
 function updateEmailPreview() {
     const preview = document.getElementById('emailPreviewBody');
-    const body    = emailBody.innerHTML;
+    const body    = activeBodyMarkup();
     const sampleData = {
         '{name}': 'Juan dela Cruz', '{first_name}': 'Juan',
         '{service}': 'Full Car Wash', '{date}': 'May 5, 2026',
@@ -627,6 +677,13 @@ function updateEmailPreview() {
         '{vehicle}': 'Toyota Vios 2021', '{reference}': '#BK-0042',
         '{branch}': 'Tandang Sora Branch', '{contact}': '(02) 8123-4567',
         '{days_until}': '3',
+
+        // The Service Due tab's own three. The preview only ever showed the
+        // appointment set, so these stayed on screen as literal {due_date} —
+        // in the one preview whose whole job is showing what the customer gets.
+        '{due_date}': 'June 2, 2026',
+        '{reason}': '6 months since last service',
+        '{recommendation}': 'Basic PMS',
     };
     let previewHtml = body;
     Object.entries(sampleData).forEach(([k, v]) => {
@@ -649,7 +706,31 @@ function switchChannel(tab, btn) {
     document.querySelectorAll('.msg-tab').forEach(b => b.classList.remove('active'));
     document.getElementById('panel-' + tab).classList.add('active');
     btn.classList.add('active');
-    document.getElementById('emailPreviewCard').style.display = tab === 'email' ? '' : 'none';
+
+    // Both email tabs get the preview; SMS has its own character counter and
+    // nothing to render. This used to be `tab === 'email'`, which hid the card
+    // on the one tab that needed it most.
+    const showsEmail = tab === 'email' || tab === 'maintenance';
+    document.getElementById('emailPreviewCard').style.display = showsEmail ? '' : 'none';
+
+    if (showsEmail) {
+        // The card is shared, so say which message is in it.
+        const label = document.getElementById('previewSubjectLine');
+        if (label) {
+            label.textContent = tab === 'maintenance'
+                ? 'APX AutoMai — Service Due'
+                : 'APX AutoMai — Booking Reminder';
+        }
+        updateEmailPreview();
+    }
+}
+
+/* Matches resetEmailBody(), but the default comes from the server rather than
+   a copy in this file, so it cannot drift from what MessageTemplate would
+   actually send. */
+function resetMaintenanceBody() {
+    document.getElementById('maintenanceBody').value = MAINTENANCE_DEFAULT_BODY;
+    updateEmailPreview();
 }
 
 /* Insert a placeholder at the caret of whichever field was last focused.

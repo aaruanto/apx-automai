@@ -31,7 +31,14 @@ class MessageTemplateController extends Controller
         // Real figures rather than the hard-coded "Running" the card used to show.
         $scheduler = \App\Support\SchedulerStatus::summary();
 
-        return view('admin.templates.index', compact('settings', 'scheduler'));
+        // The shipped default, so the Service Due tab's Reset restores exactly
+        // what the server would send if the setting were missing. The
+        // appointment tab keeps a copy of its default in JavaScript; that is a
+        // second source of truth for the same string and is not worth
+        // repeating for this one.
+        $maintenanceDefault = \App\Support\MessageTemplate::defaults()['maintenance_body'] ?? '';
+
+        return view('admin.templates.index', compact('settings', 'scheduler', 'maintenanceDefault'));
     }
 
     // ── Save templates via AJAX ────────────────────────────────────────────
