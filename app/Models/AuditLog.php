@@ -98,6 +98,11 @@ class AuditLog extends Model
                                           .' '.($this->new_values['booking_time'] ?? ''),
             'booking.deleted'          => 'Booking deleted',
             'booking.cancelled'        => 'Booking cancelled',
+            'booking.created'          => 'Booking created by the shop',
+            // The one question anyone asks about a rebooking is which booking
+            // it replaced, so the trail answers it in the line itself rather
+            // than only in the reason underneath.
+            'booking.rebooked'         => 'Rebooked from '.($this->old_values['rebooked_from'] ?? '?'),
             'service.price_changed'    => 'Price changed from '.($this->old_values['price'] ?? '?')
                                           .' to '.($this->new_values['price'] ?? '?'),
             'service.deleted'          => 'Service removed from the price list',

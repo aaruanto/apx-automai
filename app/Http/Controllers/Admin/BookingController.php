@@ -167,6 +167,8 @@ class BookingController extends Controller
             return back()->withInput()->withErrors(['booking_time' => $e->getMessage()]);
         }
 
+        $this->recordCreation($booking, $request->input('rebooked_from'));
+
         $this->notifyAdminsOfBooking($booking);
         $this->notifyCustomerOfBooking($booking);
 
@@ -847,6 +849,47 @@ class BookingController extends Controller
         \Illuminate\Support\Facades\Notification::send(
             $admins,
             \App\Notifications\BookingNotification::requested($booking->fresh()->load(['user', 'services']))
+        );
+    }
+
+    /**
+     * Write the trail row for a booking the shop just created.
+     *
+     * store() wrote none at all, while cancel, delete, reschedule and mechanic
+     * assignment all do — so a booking could appear with nothing saying who
+     * made it. And a rebook left no trace of being one: the banner named the
+     * cancelled booking it came from, but nothing carried that into the
+     * submit, so afterwards there was no way to tell that this booking stood
+     * in for that one.
+     *
+     * The reference is checked, not trusted. It arrives in a hidden field, so
+     * it can be anything: a reference that names nothing, or names a booking
+     * that is not cancelled, is logged as an ordinary creation. A rebook must
+     * never fail over its own audit row — AuditLog::record() already swallows
+     * its own errors for the same reason.
+     *
+     * The new booking is the subject, so the trail already rendered on its
+     * edit screen shows this with no view changes.
+     */
+    private function recordCreation(Booking $booking, ?string $rebookedFrom): void
+    {
+        $original = $rebookedFrom
+            ? Booking::where('reference_number', $rebookedFrom)->where('status', 'cancelled')->first()
+            : null;
+
+        AuditLog::record(
+            $original ? 'booking.rebooked' : 'booking.created',
+            $booking,
+            $original ? ['rebooked_from' => $original->reference_number] : [],
+            [
+                'status'       => $booking->status,
+                'booking_date' => $booking->booking_date,
+                'booking_time' => $booking->booking_time,
+            ],
+            $original
+                ? 'Replaces cancelled booking '.$original->reference_number
+                : null,
+            label: $booking->reference_number,
         );
     }
 

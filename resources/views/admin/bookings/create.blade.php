@@ -90,7 +90,10 @@
     <div style="background:rgba(255,180,0,.08);border:1px solid rgba(255,180,0,.2);border-radius:8px;padding:12px 18px;margin-bottom:24px;display:flex;align-items:center;gap:12px;">
         <i class="fas fa-rotate-right" style="color:var(--warning);font-size:1rem;flex-shrink:0;"></i>
         <span style="font-size:.85rem;color:var(--text-muted);">
-            Rebooking from <strong style="color:var(--text);">{{ $prefill->reference_number }}</strong>. Review the details below and click <strong style="color:var(--text);">Create Booking</strong> to confirm.
+            {{-- Names the button that is actually on this form. It said
+                 "Create Booking", which is what the button reads on a plain
+                 new booking; on a rebook it reads "Confirm Rebook". --}}
+            Rebooking from <strong style="color:var(--text);">{{ $prefill->reference_number }}</strong>. Review the details below and click <strong style="color:var(--text);">Confirm Rebook</strong> to confirm.
         </span>
     </div>
     @endif
@@ -106,6 +109,19 @@
     <form method="POST" id="bookingForm" action="{{ $isEdit ? route('admin.bookings.update', $booking->id) : route('admin.bookings.store') }}">
         @csrf
         @if($isEdit) @method('PUT') @endif
+
+        {{-- The banner above says which booking this replaces, but nothing
+             carried that into the submit, so store() had no idea it was a
+             rebook and wrote no record of it. Afterwards there was no way to
+             tell that this booking stood in for a cancelled one, which is the
+             only question anyone asks about a rebooking.
+
+             A reference rather than an id: it is what the trail prints and
+             what an admin reads off the screen. store() looks it up and
+             checks it is genuinely cancelled rather than trusting it. --}}
+        @if($isRebook)
+            <input type="hidden" name="rebooked_from" value="{{ $prefill->reference_number }}" />
+        @endif
 
         <div class="booking-form-grid">
 
