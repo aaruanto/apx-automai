@@ -71,7 +71,7 @@
                         <div class="input-wrap">
                             <i class="fas fa-envelope input-icon"></i>
                             <input class="form-control" id="inputEmail" name="email" type="email"
-                                placeholder="you@example.com" value="{{ old('email') }}" required autofocus />
+                                placeholder="you@example.com" value="{{ old('email') }}" required autofocus autocomplete="username" />
                         </div>
                     </div>
 

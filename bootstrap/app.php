@@ -30,6 +30,11 @@ return Application::configure(basePath: dirname(__DIR__))
        'role' => \App\Http\Middleware\RoleMiddleware::class,
        'maintenance' => \App\Http\Middleware\MaintenanceMode::class,
        'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
+
+       // Attached to the guest auth group in routes/auth.php, not to the web
+       // group: the sign-in forms must not be restorable from the back/forward
+       // cache, while the landing page and its images keep caching normally.
+       'no-store' => \App\Http\Middleware\NoStoreAuthForms::class,
 ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

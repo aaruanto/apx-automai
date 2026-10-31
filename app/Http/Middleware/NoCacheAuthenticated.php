@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\NoStore;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,9 +27,9 @@ class NoCacheAuthenticated
             return $response;
         }
 
-        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-        $response->headers->set('Pragma', 'no-cache');
-        $response->headers->set('Expires', '0');
+        // The same header set NoStoreAuthForms applies to the sign-in pages,
+        // defined once in App\Support\NoStore so the two cannot drift.
+        NoStore::apply($response);
 
         return $response;
     }

@@ -218,6 +218,78 @@ and 8.0 no longer stamp or read mileage.
 
 ---
 
+## 10. Credentials reappearing on the login page — NOT A SYSTEM DEFECT
+
+**Likely panel question:** "Your login page fills in the previous user's email
+*and password* by itself, even in Incognito. Is the system storing passwords
+insecurely?"
+
+**No.** The values come from the browser, not from the application, and this
+was measured rather than reasoned about.
+
+Requesting `GET /login` with no cookies and reading the HTML that comes back,
+the email field is `value=""` and the password field carries **no `value`
+attribute at all** — `resources/views/auth/login.blade.php:91-92`. Laravel
+never flashes a password back either: `ValidationException` redirects with the
+input minus `dontFlash`, which lists `password`, `password_confirmation` and
+`current_password` (`Illuminate\Foundation\Exceptions\Handler.php:169`,
+applied at `:783`). The email field does repopulate after a *failed* sign-in,
+deliberately, through `old('email')` — that is correct behaviour and is the
+only server-side repopulation that exists. After a clean logout even that is
+empty, because `AuthenticatedSessionController::destroy()` invalidates the
+session and the flash bag with it.
+
+Credentials are never written anywhere by this application: not to the
+session, not to the database in plain form, and not to any log. The entire
+authentication path contains one logging call — `RegisteredUserController:140`
+— and it logs a mail exception's message, nothing of the request. No `Log::`
+call anywhere in `app/` references a password, and nothing logs a whole
+request payload.
+
+**Two separate mechanisms produce the symptom, and only one was ours.**
+
+The first is the browser's own password manager. Incognito isolates from the
+normal profile and forgets everything on close, but *within* one incognito
+window a credential the browser was allowed to save is still offered back.
+This is the likelier explanation of the original report, and no web
+application can switch it off: `autocomplete="off"` on a password field is
+deliberately ignored by Chrome, Firefox and Safari, on the grounds that
+password managers make people safer.
+
+The second was genuinely the system's. `NoCacheAuthenticated` sends `no-store`
+on pages rendered for a signed-in user, and deliberately skips everyone else so
+that the landing page and its images keep caching. That left the sign-in forms
+served with only `no-cache, private` — which means "revalidate before reusing"
+and does **not** prevent a back/forward-cache restore. In a browser profile
+with no saved passwords at all, typing credentials on `/login`, following a
+link away and pressing Back brought the page back with the typed password
+still in the field; a JavaScript variable set before leaving came back too,
+which is how one can tell the page was restored rather than re-fetched.
+
+**What was changed:** `no-store` is now sent on the four guest auth pages —
+login, register, forgot-password and reset-password — via
+`App\Http\Middleware\NoStoreAuthForms`, attached to the guest group in
+`routes/auth.php` so the landing page and static assets are untouched.
+`confirm-password` already had it, being an authenticated page. After the
+change the same Back navigation produces an empty password field and Chrome
+reports the reason it refused to restore the page as
+`CacheControlNoStoreHTTPOnlyCookieModified`. The four forms were also given
+the correct `autocomplete` attributes — `username` and `current-password` on
+login, `new-password` on the register and reset forms — which `reset-password`
+already carried. That does not suppress autofill; it makes autofill put the
+right credential in the right field.
+
+**What remains, honestly:** a password manager will still offer a saved
+password on a page it recognises, and that is the password manager working as
+designed rather than a flaw in this system. On a Back navigation the browser
+may also restore the *email* field from its own session history — this is
+distinct from the cache, applies only to ordinary text inputs and never to
+password fields, and cannot be disabled by any HTTP header. For a shared
+machine, the protection that actually matters is logging out, which this
+system does correctly.
+
+---
+
 ## Figures to regenerate
 
 All four diagrams in [`docs/diagrams/`](diagrams/) have been updated to match

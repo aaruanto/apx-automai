@@ -84,7 +84,7 @@
                         <div class="input-wrap">
                             <i class="fas fa-envelope input-icon"></i>
                             <input class="form-control" id="inputEmail" name="email" type="email" 
-                                placeholder="you@example.com" value="{{ old('email') }}" required />
+                                placeholder="you@example.com" value="{{ old('email') }}" required autocomplete="username" />
                         </div>
                     </div>
 
@@ -106,7 +106,7 @@
                             <div class="input-wrap">
                                 <i class="fas fa-lock input-icon"></i>
                                 <input class="form-control" id="inputPassword" name="password" type="password" data-pw-group="new" 
-                                    placeholder="••••••••" required oninput="checkStrength(this.value)" />
+                                    placeholder="••••••••" required autocomplete="new-password" oninput="checkStrength(this.value)" />
                                 <button type="button" class="pw-toggle">
                                     <i class="fas fa-eye"></i>
                                 </button>
@@ -118,7 +118,7 @@
                             <div class="input-wrap">
                                 <i class="fas fa-lock input-icon"></i>
                                 <input class="form-control" id="inputPasswordConfirm" name="password_confirmation" data-pw-group="new" 
-                                    type="password" placeholder="••••••••" required />
+                                    type="password" placeholder="••••••••" required autocomplete="new-password" />
                                 <button type="button" class="pw-toggle">
                                     <i class="fas fa-eye"></i>
                                 </button>

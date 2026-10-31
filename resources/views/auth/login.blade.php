@@ -80,7 +80,7 @@
                         <div class="input-wrap">
                             <i class="fas fa-envelope input-icon"></i>
                             <input class="form-control" id="inputEmail" name="email" type="email"
-                                placeholder="you@apxautomai.com" value="{{ old('email') }}" required />
+                                placeholder="you@apxautomai.com" value="{{ old('email') }}" required autocomplete="username" />
                         </div>
                     </div>
 
@@ -89,7 +89,7 @@
                         <div class="input-wrap">
                             <i class="fas fa-lock input-icon"></i>
                             <input class="form-control" id="inputPassword" name="password" type="password"
-                                placeholder="••••••••" required />
+                                placeholder="••••••••" required autocomplete="current-password" />
                             <button type="button" class="pw-toggle">
                                 <i class="fas fa-eye"></i>
                             </button>

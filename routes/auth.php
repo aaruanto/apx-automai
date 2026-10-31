@@ -11,7 +11,13 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('guest')->group(function () {
+// no-store as well as guest: these four are the pages someone types a password
+// or an email address into, and without it they are eligible for the
+// back/forward cache — press Back and the form comes back with the typed
+// values still in it, on whatever machine that was. NoCacheAuthenticated
+// covers the signed-in pages and deliberately skips everyone else, so it never
+// reached these.
+Route::middleware(['guest', 'no-store'])->group(function () {
     // Only customers register, so maintenance can close this outright. Login
     // below is deliberately left open: the role is unknown until credentials
     // are checked, and the admin has to be able to get in and switch
