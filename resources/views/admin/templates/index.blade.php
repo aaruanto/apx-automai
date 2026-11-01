@@ -572,7 +572,7 @@ function defaultEmailTemplate() {
 <div style="background:#f4f5f7;padding:32px 16px;font-family:sans-serif;">
   <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #e5e7eb;">
     <div style="background:#E8192C;padding:28px 32px;text-align:center;">
-      <div style="font-family:sans-serif;font-weight:900;font-size:1.4rem;color:#fff;letter-spacing:.04em;">APX <span style="font-weight:400;">AUTOMAI</span></div>
+      <div style="font-family:sans-serif;font-weight:900;font-size:1.4rem;color:#fff;letter-spacing:.04em;">APX <span style="font-weight:400;">AutoMai</span></div>
       <div style="color:rgba(255,255,255,.7);font-size:.8rem;margin-top:4px;letter-spacing:.1em;text-transform:uppercase;">Service Reminder</div>
     </div>
     <div style="padding:32px;">

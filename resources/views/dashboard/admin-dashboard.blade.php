@@ -68,7 +68,7 @@
     <!-- PAGE HEADER -->
     <div class="page-header">
         <div>
-            <h1 class="page-title"><span>APX</span> AUTOMAI</h1>
+            <h1 class="page-title"><span>APX</span> AutoMai</h1>
             <ol class="breadcrumb">
                 <li>Admin</li>
                 <li class="active">Dashboard</li>

@@ -6,13 +6,19 @@
 <head>
     <meta charset="utf-8">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>APX AUTOMAI</title>
+    <title>APX AutoMai — Car Service Booking</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <meta content="" name="keywords">
     <meta content="" name="description">
 
     <!-- Favicon -->
-    <link href="/assets/img/favicon.ico">
+    {{-- The red "A" from the brand mark. Both names begin with it, and
+         automai-logo.png already uses it as the A of AUTOMAI, so it stands for
+         the portal as much as for the shop. favicon.ico was a 0-byte file and
+         the link below had no rel, so every tab showed a generic globe. --}}
+    <link rel="icon" href="/assets/img/favicon.ico" sizes="any">
+    <link rel="icon" href="/assets/img/favicon-32.png" type="image/png">
+    <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
 
     <!-- Google Web Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -289,7 +295,7 @@
     <!-- Navbar Start -->
     <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
         <a href="#home" class="navbar-brand d-flex align-items-center px-4 px-lg-5">
-            <h2 class="m-0 text-primary"><img src="/assets/img/apx-black-logo.png" alt="apx logo" width="100" height="120">AUTOMAI</h2>
+            <h2 class="m-0 text-primary brand-lockup"><img src="/assets/img/apx-logo-light.png" alt="APX" class="brand-mark">AutoMai</h2>
         </a>
         <button type="button" class="navbar-toggler me-4" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
             <span class="navbar-toggler-icon"></span>
@@ -366,7 +372,7 @@
                     <div class="container">
                         <div class="row align-items-center justify-content-center justify-content-lg-start">
                             <div class="col-10 col-lg-7 text-center text-lg-start">
-                                <h6 class="text-white text-uppercase mb-3 animated slideInDown">APX Automai</h6>
+                                <h6 class="text-white text-uppercase mb-3 animated slideInDown">APX AutoMai</h6>
                                 <h1 class="display-3 text-white mb-4 pb-3 animated slideInDown">Your Trusted Auto Service Center in Quezon City</h1>
                                 <a href="#" class="btn btn-primary py-3 px-5 fw-bold animated slideInDown"
                                    data-bs-toggle="modal" data-bs-target="#bookingModal">
@@ -384,7 +390,7 @@
                     <div class="container">
                         <div class="row align-items-center justify-content-center justify-content-lg-start">
                             <div class="col-10 col-lg-7 text-center text-lg-start">
-                                <h6 class="text-white text-uppercase mb-3 animated slideInDown">APX Automai</h6>
+                                <h6 class="text-white text-uppercase mb-3 animated slideInDown">APX AutoMai</h6>
                                 <h1 class="display-3 text-white mb-4 pb-3 animated slideInDown">Engine Care, CVT Service & More — Done Right, Every Time</h1>
                                 <a href="#" class="btn btn-primary py-3 px-5 fw-bold animated slideInDown"
                                    data-bs-toggle="modal" data-bs-target="#bookingModal">
@@ -531,7 +537,7 @@
                     <div class="d-flex flex-column h-100 gap-3">
                         <!-- Address card -->
                         <div class="bg-light p-4" style="border-radius:12px; border-left:4px solid #e63946;">
-                            <h5 class="fw-bold mb-3" style="font-family:'Barlow',sans-serif;">APX Automai Service Center</h5>
+                            <h5 class="fw-bold mb-3" style="font-family:'Barlow',sans-serif;">APX AutoMai Service Center</h5>
                             <p class="mb-2"><i class="fa fa-map-marker-alt text-primary me-2"></i>5 Glenn St., Quezon City</p>
                             <p class="mb-2"><i class="fa fa-clock text-primary me-2"></i>Mon – Fri: 9:00 AM – 6:00 PM &nbsp;|&nbsp; Sat – Sun: 9:00 AM – 12:00 PM</p>
                             <p class="mb-0"><i class="fa fa-phone-alt text-primary me-2"></i>+63 9544 8888 50</p>
@@ -577,7 +583,7 @@
         <div class="container">
             <div class="apx-section-header mb-5">
                 <h6 class="text-primary text-uppercase mb-2">Simple &amp; Transparent</h6>
-                <h1>How APX Automai Works</h1>
+                <h1>How APX AutoMai Works</h1>
                 <p class="text-muted">Four easy steps from booking to getting your vehicle back in top shape.</p>
             </div>
             <div class="row g-4 justify-content-center">
@@ -713,7 +719,7 @@
         <div class="container">
             <div class="apx-section-header mb-5">
                 <h6 class="text-primary text-uppercase mb-2">Our Edge</h6>
-                <h1 class="text-white">Why Choose APX Automai</h1>
+                <h1 class="text-white">Why Choose APX AutoMai</h1>
             </div>
             <div class="row g-4">
                 <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
@@ -816,8 +822,8 @@
                 </div>
                 <div class="col-lg-6">
                     <h6 class="text-primary text-uppercase mb-2">About Us</h6>
-                    <h1 class="mb-4"><span class="text-primary">APX Automai</span> — Built Around Your Vehicle's Best Care</h1>
-                    <p class="mb-4">APX Automai is a Quezon City-based auto service center dedicated to keeping your car and motorcycle in peak condition. We combine certified technical expertise with honest, transparent service — so you always know what's being done and why.</p>
+                    <h1 class="mb-4"><span class="text-primary">APX AutoMai</span> — Built Around Your Vehicle's Best Care</h1>
+                    <p class="mb-4">APX AutoMai is a Quezon City-based auto service center dedicated to keeping your car and motorcycle in peak condition. We combine certified technical expertise with honest, transparent service — so you always know what's being done and why.</p>
                     <div class="row g-4 mb-3 pb-3">
                         <div class="col-12 wow fadeIn" data-wow-delay="0.1s">
                             <div class="d-flex">
@@ -929,7 +935,7 @@
         <div class="container py-5">
             <div class="row g-5">
                 <div class="col-lg-3 col-md-6">
-                    <h4 class="text-light mb-4">APX Automai</h4>
+                    <h4 class="text-light mb-4">APX AutoMai</h4>
                     <p class="mb-2"><i class="fa fa-map-marker-alt me-3"></i>5 Glenn St., Quezon City</p>
                     <p class="mb-2"><i class="fa fa-phone-alt me-3"></i>+63 9544 8888 50</p>
                     <p class="mb-2"><i class="fa fa-envelope me-3"></i>apxautomai@gmail.com</p>
@@ -949,7 +955,7 @@
             <div class="copyright">
                 <div class="row">
                     <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                        &copy; {{ date('Y') }} <a class="border-bottom" href="#home">APX Automai</a>. All Rights Reserved.
+                        &copy; {{ date('Y') }} <a class="border-bottom" href="#home">APX AutoMai</a>. All Rights Reserved.
                     </div>
                     <div class="col-md-6 text-center text-md-end">
                         <div class="footer-menu">
