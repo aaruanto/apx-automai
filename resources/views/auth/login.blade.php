@@ -11,11 +11,11 @@
     <link rel="icon" href="/assets/img/favicon.ico" sizes="any">
     <link rel="icon" href="/assets/img/favicon-32.png" type="image/png">
     <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
-    <title>Login — APX AUTOMAI</title>
+    <title>Login — APX AutoMai</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
-    <link href="{{ asset('assets/css/design-tokens.css') }}" rel="stylesheet" />
-    <link href="{{ asset('assets/css/auth.css') }}" rel="stylesheet" />
+    <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-02" rel="stylesheet" />
+    <link href="{{ asset('assets/css/auth.css') }}?v=2026-11-02" rel="stylesheet" />
     {{-- Before first paint, deliberately. Setting the class from a script
          at the end of the body would render the page dark and then repaint
          it light, which is a white flash for a returning dark user and a

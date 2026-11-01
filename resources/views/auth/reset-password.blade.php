@@ -11,11 +11,11 @@
     <link rel="icon" href="/assets/img/favicon.ico" sizes="any">
     <link rel="icon" href="/assets/img/favicon-32.png" type="image/png">
     <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
-    <title>Set a Password — APX AUTOMAI</title>
+    <title>Set a Password — APX AutoMai</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
-    <link href="{{ asset('assets/css/design-tokens.css') }}" rel="stylesheet" />
-    <link href="{{ asset('assets/css/auth.css') }}" rel="stylesheet" />
+    <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-02" rel="stylesheet" />
+    <link href="{{ asset('assets/css/auth.css') }}?v=2026-11-02" rel="stylesheet" />
     <script>
         (function () {
             // The shop-wide default, from Settings. A stored choice wins.

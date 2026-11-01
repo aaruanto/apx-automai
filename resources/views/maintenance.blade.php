@@ -10,9 +10,9 @@
     <link rel="icon" href="/assets/img/favicon.ico" sizes="any">
     <link rel="icon" href="/assets/img/favicon-32.png" type="image/png">
     <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
-    <title>Back Soon — APX Automai</title>
+    <title>Back Soon — APX AutoMai</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet" />
-    <link href="{{ asset('assets/css/design-tokens.css') }}" rel="stylesheet" />
+    <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-02" rel="stylesheet" />
     <style>
         body {
             margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;

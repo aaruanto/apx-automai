@@ -15,8 +15,8 @@
     <title>My Dashboard — APX AutoMai</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
-    <link href="{{ asset('assets/css/design-tokens.css') }}" rel="stylesheet" />
-    <link href="{{ asset('assets/css/customer-dashboard.css') }}" rel="stylesheet" />
+    <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-02" rel="stylesheet" />
+    <link href="{{ asset('assets/css/customer-dashboard.css') }}?v=2026-11-02" rel="stylesheet" />
     <link href="{{ asset('assets/css/availability-picker.css') }}" rel="stylesheet" />
     {{-- Before first paint. The theme used to be applied by the script at the
          bottom of this file, which was invisible only because the stylesheet's
@@ -48,7 +48,6 @@
         html.light-mode .topnav { box-shadow: 0 1px 6px rgba(0,0,0,.07); }
         html.light-mode #sidebarToggle { color: #6b7280; }
         html.light-mode .brand-auto { color: #1a1d23; }
-        html.light-mode .brand-badge { background: #e6e8ec; color: #6b7280; border-color: rgba(0,0,0,0.09); }
         html.light-mode .nav-link { color: #6b7280; }
         html.light-mode .nav-link:hover { color: #1a1d23; }
         html.light-mode .nav-link.active { color: #E8192C; }

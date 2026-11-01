@@ -16,8 +16,8 @@
     <title>@yield('title', 'Dashboard') — APX AutoMai</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
-    <link href="{{ asset('assets/css/design-tokens.css') }}" rel="stylesheet" />
-    <link href="{{ asset('assets/css/dashboard.css') }}" rel="stylesheet" />
+    <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-02" rel="stylesheet" />
+    <link href="{{ asset('assets/css/dashboard.css') }}?v=2026-11-02" rel="stylesheet" />
 
     {{-- Theme before first paint.
 
@@ -132,18 +132,6 @@
             font-weight: 700;
             font-size: 1.1rem;
             color: var(--text);
-        }
-
-        .brand-badge {
-            font-family: 'Barlow Condensed', sans-serif;
-            font-size: .6rem;
-            font-weight: 700;
-            letter-spacing: .12em;
-            background: var(--red-glow);
-            color: var(--red);
-            padding: 2px 6px;
-            border-radius: 3px;
-            border: 1px solid rgba(232, 25, 44, .18);
         }
 
         .topnav-actions {
@@ -1090,7 +1078,7 @@
         <button id="sidebarToggle"><i class="fas fa-bars"></i></button>
         <a class="brand" href="{{ route('admin.dashboard') }}">
             <span class="brand-apx">APX</span>
-            <span class="brand-auto">AUTOMAI</span>
+            <span class="brand-auto">AutoMai</span>
             <span class="brand-badge">ADMIN</span>
         </a>
         <div class="topnav-actions">

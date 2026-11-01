@@ -107,3 +107,27 @@
     .m-input-wrap > input,
     .input-wrap > input.form-control { padding-right: 52px; }
 }
+
+/* ── Brand badge ───────────────────────────────────────────────────────────
+   The pill beside the wordmark: ADMIN, CUSTOMER, PORTAL.
+
+   It was defined four times and looked different each time — solid red with
+   white text on the auth pages, a red tint with red text in the admin topnav,
+   and a grey tint with grey text on the customer dashboard, which a user sees
+   within one session of each other.
+
+   The tint wins over the solid fill because the solid red competes with the
+   primary action buttons, which are solid red and are the thing that should
+   draw the eye. Built from tokens, so it follows both themes without an
+   override. */
+.brand-badge {
+    font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+    font-size: .6rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    background: var(--red-glow, rgba(232, 25, 44, .10));
+    color: var(--red, #E8192C);
+    border: 1px solid rgba(232, 25, 44, .18);
+    padding: 2px 6px;
+    border-radius: 3px;
+}

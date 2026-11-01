@@ -12,7 +12,7 @@
     <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
+        <title>{{ config('app.name', 'APX AutoMai') }}</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -33,7 +33,7 @@
                 {{ $slot }}
             </div>
         </div>
-            <link href="{{ asset('assets/css/design-tokens.css') }}" rel="stylesheet" />
+            <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-02" rel="stylesheet" />
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
         <script src="{{ asset('assets/js/password-toggle.js') }}"></script>
     </body>

@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Privacy Policy — APX Automai</title>
+    <title>Privacy Policy — APX AutoMai</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
     <!-- Favicon -->
@@ -25,7 +25,7 @@
     <link href="/assets/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- Template Stylesheet -->
-    <link href="/assets/css/design-tokens.css" rel="stylesheet">
+    <link href="/assets/css/design-tokens.css?v=2026-11-02" rel="stylesheet">
     <link href="/assets/css/style.css" rel="stylesheet">
 
     <style>
@@ -244,7 +244,7 @@
         <div class="container py-5">
             <div class="row g-5">
                 <div class="col-lg-3 col-md-6">
-                    <h4 class="text-light mb-4">APX Automai</h4>
+                    <h4 class="text-light mb-4">APX AutoMai</h4>
                     <p class="mb-2"><i class="fa fa-map-marker-alt me-3"></i>5 Glenn St., Quezon City</p>
                     <p class="mb-2"><i class="fa fa-phone-alt me-3"></i>+63 9544 8888 50</p>
                     <p class="mb-2"><i class="fa fa-envelope me-3"></i>apxautomai@gmail.com</p>
@@ -262,7 +262,7 @@
             <div class="copyright">
                 <div class="row">
                     <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                        &copy; {{ date('Y') }} <a class="border-bottom" href="/">APX Automai</a>. All Rights Reserved.
+                        &copy; {{ date('Y') }} <a class="border-bottom" href="/">APX AutoMai</a>. All Rights Reserved.
                     </div>
                     <div class="col-md-6 text-center text-md-end">
                         <div class="footer-menu">
