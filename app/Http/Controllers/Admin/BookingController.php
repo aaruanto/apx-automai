@@ -152,6 +152,42 @@ class BookingController extends Controller
             ]);
         }
 
+        // Is the chosen mechanic already busy then?
+        //
+        // reserve() checks opening hours, shop capacity and the vehicle, and
+        // never the mechanic — update() and assignMechanic() each ran this
+        // check themselves, and store() ran neither. So creating a booking was
+        // the one path in the application that could double-book a mechanic in
+        // silence, which is also the path a rebook takes.
+        //
+        // Refused rather than offered, matching update(): both are form posts
+        // that come back to a filled-in form, and the message names the
+        // booking in the way so the admin can act on it. assignMechanic()
+        // asks "assign anyway?" instead because it is a single deliberate
+        // reassignment on an existing booking, not a new booking being made.
+        if ($request->filled('mechanic_id')) {
+            $availability = app(BookingAvailability::class);
+
+            [$mechStart, $mechEnd] = $availability->windowFor(
+                $request->booking_date,
+                $request->booking_time,
+                $availability->durationForServices((array) $request->service_ids)
+                    ?: $availability->gridMinutes()
+            );
+
+            $clash = $availability->mechanicConflict(
+                (int) $request->mechanic_id, $request->booking_date, $mechStart, $mechEnd
+            );
+
+            if ($clash) {
+                return back()->withInput()->withErrors([
+                    'mechanic_id' => 'That mechanic is already on '.$clash->reference_number
+                                  .' at '.Carbon::parse($clash->booking_time)->format('g:i A')
+                                  .' that day. Choose another, or change the time.',
+                ]);
+            }
+        }
+
         try {
             $booking = app(BookingAvailability::class)->reserve([
                 'user_id'      => $user->id,
