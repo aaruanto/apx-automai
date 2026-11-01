@@ -5,14 +5,13 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 
-    {{-- The red "A" from the brand mark. Both names begin with it, and
-         automai-logo.png already uses it as the A of AUTOMAI, so it stands for
-         the portal as much as for the shop. favicon.ico was a 0-byte file and
-         the link below had no rel, so every tab showed a generic globe. --}}
+    {{-- The red "A" from the brand mark. favicon.ico was a 0-byte file and the
+         link on the public pages had no rel attribute, so it was never a
+         favicon declaration at all — every tab showed a generic globe. --}}
     <link rel="icon" href="/assets/img/favicon.ico" sizes="any">
     <link rel="icon" href="/assets/img/favicon-32.png" type="image/png">
     <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
-    <title>Forgot Password — APX AutoMai</title>
+    <title>Forgot Password — APX AUTOMAI</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
     <link href="{{ asset('assets/css/design-tokens.css') }}" rel="stylesheet" />

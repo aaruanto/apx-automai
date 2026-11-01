@@ -381,25 +381,3 @@
     padding-right: 0;
     border-right: none;
 }
-/* ── Brand lockup ──────────────────────────────────────────────────────────
-   The header carried apx-black-logo.png: 1024x1024, 1.35MB, with a grey
-   blurred background baked in rather than transparency, squashed into 100x120
-   so a square was stretched to 5:6 — and downloaded in full on every page
-   view, on a free instance.
-
-   apx-logo-light.png is the same mark from the clean 17KB source, with the
-   white "PX" recoloured to the near-black this site uses for text so it reads
-   on a white navbar. Same logo, 1.6% of the bytes, correct proportions.
-
-   Height only, so the aspect ratio is the file's own and cannot be distorted
-   by a stray width attribute again. */
-.brand-mark {
-    height: 2.1rem;
-    width: auto;
-    margin-right: .5rem;
-    vertical-align: -.35rem;
-}
-
-@media (max-width: 575.98px) {
-    .brand-mark { height: 1.7rem; margin-right: .35rem; }
-}

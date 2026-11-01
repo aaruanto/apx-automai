@@ -3,17 +3,11 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Privacy Policy — APX AutoMai</title>
+    <title>Privacy Policy — APX Automai</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
     <!-- Favicon -->
-    {{-- The red "A" from the brand mark. Both names begin with it, and
-         automai-logo.png already uses it as the A of AUTOMAI, so it stands for
-         the portal as much as for the shop. favicon.ico was a 0-byte file and
-         the link below had no rel, so every tab showed a generic globe. --}}
-    <link rel="icon" href="/assets/img/favicon.ico" sizes="any">
-    <link rel="icon" href="/assets/img/favicon-32.png" type="image/png">
-    <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
+    <link href="/assets/img/favicon.ico" rel="icon">
 
     <!-- Google Web Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -73,7 +67,7 @@
     <!-- Navbar Start -->
     <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
         <a href="/" class="navbar-brand d-flex align-items-center px-4 px-lg-5">
-            <h2 class="m-0 text-primary brand-lockup"><img src="/assets/img/apx-logo-light.png" alt="APX" class="brand-mark">AutoMai</h2>
+            <h2 class="m-0 text-primary"><img src="/assets/img/apx-black-logo.png" alt="apx logo" width="100" height="120">AUTOMAI</h2>
         </a>
         <button type="button" class="navbar-toggler me-4" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
             <span class="navbar-toggler-icon"></span>
@@ -250,7 +244,7 @@
         <div class="container py-5">
             <div class="row g-5">
                 <div class="col-lg-3 col-md-6">
-                    <h4 class="text-light mb-4">APX AutoMai</h4>
+                    <h4 class="text-light mb-4">APX Automai</h4>
                     <p class="mb-2"><i class="fa fa-map-marker-alt me-3"></i>5 Glenn St., Quezon City</p>
                     <p class="mb-2"><i class="fa fa-phone-alt me-3"></i>+63 9544 8888 50</p>
                     <p class="mb-2"><i class="fa fa-envelope me-3"></i>apxautomai@gmail.com</p>
@@ -268,7 +262,7 @@
             <div class="copyright">
                 <div class="row">
                     <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                        &copy; {{ date('Y') }} <a class="border-bottom" href="/">APX AutoMai</a>. All Rights Reserved.
+                        &copy; {{ date('Y') }} <a class="border-bottom" href="/">APX Automai</a>. All Rights Reserved.
                     </div>
                     <div class="col-md-6 text-center text-md-end">
                         <div class="footer-menu">

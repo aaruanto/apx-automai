@@ -6,10 +6,9 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 
-    {{-- The red "A" from the brand mark. Both names begin with it, and
-         automai-logo.png already uses it as the A of AUTOMAI, so it stands for
-         the portal as much as for the shop. favicon.ico was a 0-byte file and
-         the link below had no rel, so every tab showed a generic globe. --}}
+    {{-- The red "A" from the brand mark. favicon.ico was a 0-byte file and the
+         link on the public pages had no rel attribute, so it was never a
+         favicon declaration at all — every tab showed a generic globe. --}}
     <link rel="icon" href="/assets/img/favicon.ico" sizes="any">
     <link rel="icon" href="/assets/img/favicon-32.png" type="image/png">
     <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
@@ -1091,7 +1090,7 @@
         <button id="sidebarToggle"><i class="fas fa-bars"></i></button>
         <a class="brand" href="{{ route('admin.dashboard') }}">
             <span class="brand-apx">APX</span>
-            <span class="brand-auto">AutoMai</span>
+            <span class="brand-auto">AUTOMAI</span>
             <span class="brand-badge">ADMIN</span>
         </a>
         <div class="topnav-actions">
