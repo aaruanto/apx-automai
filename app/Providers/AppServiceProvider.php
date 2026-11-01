@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use App\Models\Setting;
@@ -38,10 +39,47 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
+     * Shout if the live site is running with debugging on.
+     *
+     * APP_DEBUG=true in production turns every uncaught exception into a page
+     * showing the stack trace and the request payload — and on the login POST
+     * the request payload is somebody's password. Nothing in this application
+     * writes a credential anywhere, so the debug page would be the one place
+     * one could appear.
+     *
+     * render.yaml sets APP_ENV=production and APP_DEBUG=false, but a blueprint
+     * is only what the dashboard was last synced to: the database plan drifted
+     * out of agreement with it once already. So this does not trust the file,
+     * it checks what actually booted.
+     *
+     * Logged once per process rather than per request — it should never fire,
+     * and if it does the point is to be visible in Render's log, not to drown
+     * it.
+     */
+    private function warnIfDebuggingInProduction(): void
+    {
+        static $warned = false;
+
+        if ($warned || ! app()->environment('production') || ! config('app.debug')) {
+            return;
+        }
+
+        $warned = true;
+
+        Log::critical(
+            'APP_DEBUG is true in production. An uncaught exception will render the '
+            .'request payload, which on the login form is a password. Set APP_DEBUG=false '
+            .'in the Render dashboard, not only in render.yaml.'
+        );
+    }
+
+    /**
      * Bootstrap any application services.
      */
     public function boot(): void
     {
+        $this->warnIfDebuggingInProduction();
+
         // The scheduler trigger. Generous enough for a once-a-minute cron with
         // room for a retry, tight enough that a leaked token cannot be used to
         // hammer the app into sending mail. Keyed on IP so one misbehaving
