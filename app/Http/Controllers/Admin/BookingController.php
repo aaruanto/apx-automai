@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Support\EmailRule;
 use App\Support\PlateNumber;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
@@ -89,25 +90,122 @@ class BookingController extends Controller
             'car_model'      => 'nullable|string|max:100',
             'car_year'       => 'nullable|integer|min:1990|max:'.(date('Y') + 1),
             'car_type'       => 'nullable|in:car,motorcycle',
+
+            // Was not validated at all — read only as a firstOrCreate default,
+            // so a malformed address went into the users table and an address
+            // already belonging to someone hit the unique index and returned a
+            // 500. Not unique: a rebook legitimately posts the customer's own
+            // existing address, and that must go through. The collision is
+            // caught below, where it is known whether a row is being created.
+            'customer_email' => ['nullable', EmailRule::strict()],
+
+            // Who this booking is for, when the form already knows. The rebook
+            // form posts both; a plain walk-in posts neither.
+            'user_id'        => 'nullable|integer',
+            'vehicle_id'     => 'nullable|integer',
         ]);
 
-        $user = \App\Models\User::firstOrCreate(
-            ['phone' => $request->customer_phone],
-            [
-                'name'     => $request->customer_name,
-                'email'    => $request->customer_email
-                              ?: $this->placeholderEmailFor($request->customer_name, $request->customer_phone),
-                'role'     => 'customer',
-                // A literal "password" here meant anyone who worked out the
-                // email pattern could sign in as that customer. Random and
-                // never displayed: the account carries bookings but cannot be
-                // logged into until the customer claims it by registering with
-                // this email, or an admin resets it. Matches what
-                // GuestBookingController already does.
-                'password' => Str::password(32),
-            ]
-        );
+        // Who is this booking for?
+        //
+        // A rebook already knows: the cancelled booking it was opened from
+        // names the customer and the vehicle, and the form now posts both. It
+        // used to post neither, so the identity was re-derived from the typed
+        // phone number — and any time that guess landed on a different row
+        // than the vehicle's owner, the plate check below refused the booking
+        // and named the customer the admin was already looking at.
+        //
+        // Three ways the guess went wrong, all three real in this data: an
+        // account with no phone on record (10 of 16 users locally), the same
+        // person existing two or three times under different identity keys
+        // (three accounts are called "Gelo Ruanto"), and the admin correcting
+        // a number in the form.
+        //
+        // Checked, not trusted: a posted id that names nobody falls back to
+        // the old behaviour, so a forged value cannot attach a booking to a
+        // stranger's account — it can only fail to help.
+        $user = $request->filled('user_id')
+            ? User::find((int) $request->user_id)
+            : null;
 
+        if (! $user) {
+            $user = $this->resolveWalkInAccount($request);
+        }
+
+        $plate = PlateNumber::normalise($request->plate);
+
+        // The vehicle, the same way. Honoured only when it really belongs to
+        // this customer and still carries the plate on the form — so renaming
+        // the plate on a rebook falls through to the lookup below and is
+        // judged on its merits.
+        $vehicle = null;
+
+        if ($request->filled('vehicle_id')) {
+            $vehicle = Vehicle::withTrashed()
+                ->where('id', (int) $request->vehicle_id)
+                ->where('user_id', $user->id)
+                ->where('plate_number', $plate)
+                ->first();
+
+            if ($vehicle && $vehicle->trashed()) {
+                $vehicle->restore();
+            }
+        }
+
+        return $this->createBookingFor($request, $user, $vehicle);
+    }
+
+    /**
+     * The account for a walk-in, resolved from what was typed.
+     *
+     * Keyed on the phone number, which is what this form has always done. It
+     * is only reached when no usable user_id was posted — a plain walk-in, or
+     * a rebook whose posted id named nobody.
+     */
+    private function resolveWalkInAccount(Request $request): User
+    {
+        $existing = User::where('phone', $request->customer_phone)->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        // About to create. This is the only point at which a posted address
+        // can collide with one already in the users table, and it used to do
+        // so against the unique index — a 500 on the form with nothing saved.
+        if ($request->filled('customer_email')
+            && User::withTrashed()->where('email', $request->customer_email)->exists()) {
+            abort(redirect()->back()->withInput()->withErrors([
+                'customer_email' => 'That email address already belongs to another customer. '
+                                    .'Leave it blank, or use the address on their existing account.',
+            ]));
+        }
+
+        return User::create([
+            'name'     => $request->customer_name,
+            'phone'    => $request->customer_phone,
+            'email'    => $request->customer_email
+                          ?: $this->placeholderEmailFor($request->customer_name, $request->customer_phone),
+            'role'     => 'customer',
+            // A literal "password" here meant anyone who worked out the
+            // email pattern could sign in as that customer. Random and
+            // never displayed: the account carries bookings but cannot be
+            // logged into until the customer claims it by registering with
+            // this email, or an admin resets it. Matches what
+            // GuestBookingController already does.
+            'password' => Str::password(32),
+        ]);
+    }
+
+    /**
+     * Create the booking, once the customer and possibly the vehicle are known.
+     *
+     * $vehicle is already resolved only when the form named one that really
+     * belongs to this customer and still carries the plate that was typed —
+     * which is the rebook case. Everything else resolves the plate here, and
+     * is refused if it belongs to somebody else.
+     */
+    private function createBookingFor(Request $request, User $user, ?Vehicle $vehicle)
+    {
         $plate = PlateNumber::normalise($request->plate);
 
         // firstOrCreate scoped to this user asked a narrower question than the
@@ -116,7 +214,7 @@ class BookingController extends Controller
         // vehicle still holds its plate. Finding nothing, it inserted, the
         // constraint threw, and booking a walk-in whose plate was already in
         // the system returned a 500 with no booking created. Ask who holds it.
-        $held = Vehicle::holdingPlate($plate);
+        $held = $vehicle ? null : Vehicle::holdingPlate($plate);
 
         if ($held && $held->user_id !== $user->id) {
             // Named, not merely refused. Admin can already see every customer
@@ -137,7 +235,7 @@ class BookingController extends Controller
             // record for it — which the unique index would refuse anyway.
             $held->restore();
             $vehicle = $held;
-        } else {
+        } elseif (! $vehicle) {
             $vehicle = $user->vehicles()->create([
                 'plate_number' => $plate,
                 // One field called "Car Model" used to be written into both

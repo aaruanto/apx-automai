@@ -121,6 +121,23 @@
              checks it is genuinely cancelled rather than trusting it. --}}
         @if($isRebook)
             <input type="hidden" name="rebooked_from" value="{{ $prefill->reference_number }}" />
+
+            {{-- Who this is for, and which car.
+
+                 The form knew both — they are on the cancelled booking it was
+                 opened from — and posted neither, so store() re-derived the
+                 customer from the typed phone number. Any time that guess
+                 landed on a different row than the vehicle's owner, the plate
+                 check refused the booking and named the customer the admin was
+                 already looking at. It happens when the account has no phone
+                 on record, when the same person exists twice under different
+                 identity keys, or when the admin corrects a number.
+
+                 store() checks both rather than trusting them: an id naming
+                 nobody, or a vehicle belonging to someone else, falls back to
+                 resolving the plate as any walk-in would. --}}
+            <input type="hidden" name="user_id" value="{{ $prefill->user_id }}" />
+            <input type="hidden" name="vehicle_id" value="{{ $prefill->vehicle_id }}" />
         @endif
 
         <div class="booking-form-grid">
