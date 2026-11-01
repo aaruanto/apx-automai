@@ -75,7 +75,22 @@
                              Creating a customer still needs the input: there is
                              no address yet to protect. --}}
                         <div class="form-group">
-                            <label class="form-label">Email Address</label>
+                            {{-- Required, and store() has always said so:
+                                 'email' => ['required', EmailRule::strict(),
+                                 'unique:users,email']. The label carried no
+                                 asterisk and the input said "optional", so an
+                                 admin left it blank in good faith and the form
+                                 came back refused. The server rule is the
+                                 correct one; the three client-side signals
+                                 were the ones disagreeing with it.
+
+                                 Only on create. On an existing customer the
+                                 address is shown and not edited, for the
+                                 reason set out above. --}}
+                            <label class="form-label">
+                                Email Address
+                                @unless ($isEdit)<span style="color:var(--red)">*</span>@endunless
+                            </label>
                             @if ($isEdit)
                                 <div class="form-control" aria-readonly="true"
                                      style="background:var(--surface-2);color:var(--text-muted);
@@ -88,9 +103,9 @@
                                     The customer changes this from their own account.
                                 </div>
                             @else
-                                <input class="form-control" type="email" name="email"
+                                <input class="form-control" type="email" name="email" id="custCreateEmail"
                                        value="{{ old('email') }}"
-                                       placeholder="optional" />
+                                       placeholder="e.g. juan@gmail.com" required />
                             @endif
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
@@ -268,6 +283,15 @@ PlateInput.attach(document.getElementById('custCreatePlate'));
 FormValidate.register(document.getElementById('custCreateName'), { rules: [FormValidate.rules.required('Full name is required.')] });
 FormValidate.register(document.getElementById('custCreatePhone'), { rules: [FormValidate.rules.required('Phone number is required.'), FormValidate.rules.phonePH()] });
 FormValidate.register(document.getElementById('custCreatePlate'), { rules: [FormValidate.rules.required('Plate number is required.'), FormValidate.rules.plate()] });
+// Email was the one required field the browser never checked, so the only
+// thing that caught a blank or malformed address was the round trip. The
+// shared rule, not a second regex: it is written to refuse what
+// EmailRule::strict() would refuse, and two patterns would drift.
+// Absent when editing, where the address is read-only.
+const custCreateEmail = document.getElementById('custCreateEmail');
+if (custCreateEmail) {
+    FormValidate.register(custCreateEmail, { rules: [FormValidate.rules.required('Email address is required.'), FormValidate.rules.email()] });
+}
 FormValidate.bindSubmit(document.getElementById('customerForm'), document.getElementById('customerSubmitBtn'));
 </script>
 @endpush
