@@ -75,7 +75,7 @@ class BookingNotification extends Notification
      * bookings; nobody reads it. Mailing it fails slowly against a real SMTP
      * server. The same suffix BookingConfirmed already skips.
      */
-    private const PLACEHOLDER_DOMAIN = '@apxautomai.local';
+    public const PLACEHOLDER_DOMAIN = '@apxautomai.local';
 
     public function via(object $notifiable): array
     {

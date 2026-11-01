@@ -96,7 +96,7 @@ class BookingController extends Controller
             [
                 'name'     => $request->customer_name,
                 'email'    => $request->customer_email
-                              ?? strtolower(str_replace(' ', '', $request->customer_name)) . '@apxautomai.local',
+                              ?: $this->placeholderEmailFor($request->customer_name, $request->customer_phone),
                 'role'     => 'customer',
                 // A literal "password" here meant anyone who worked out the
                 // email pattern could sign in as that customer. Random and
@@ -530,6 +530,37 @@ class BookingController extends Controller
             'prefillDate'  => $prefillDate,
             'prefillTime'  => $prefillTime,
         ]);
+    }
+
+    /**
+     * A stand-in address for a walk-in who did not give one.
+     *
+     * The account exists so the booking has somewhere to live; nobody reads
+     * the address, and BookingNotification refuses to mail anything ending in
+     * the placeholder domain.
+     *
+     * It has to be unique, because users.email is. This was built from the
+     * name alone, so a second customer called Maria Santos — not a remote
+     * possibility in Quezon City — collided with the first and the New Booking
+     * form returned a 500 with nothing created. The phone number is what the
+     * account is actually keyed on, so it is what disambiguates.
+     *
+     * withTrashed for the same reason the plate lookup needs it: a soft-deleted
+     * user still occupies the unique index, so an address that looks free is
+     * not necessarily free.
+     */
+    private function placeholderEmailFor(?string $name, ?string $phone): string
+    {
+        $base = strtolower(preg_replace('/[^a-z0-9]/i', '', (string) $name)) ?: 'walkin';
+        $domain = BookingNotification::PLACEHOLDER_DOMAIN;
+
+        if (! User::withTrashed()->where('email', $base.$domain)->exists()) {
+            return $base.$domain;
+        }
+
+        $digits = preg_replace('/\D/', '', (string) $phone);
+
+        return $base.'.'.($digits ?: uniqid()).$domain;
     }
 
     /**
