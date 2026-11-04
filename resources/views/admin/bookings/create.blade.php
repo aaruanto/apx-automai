@@ -444,15 +444,39 @@
                         <div class="card-header-title"><i class="fas fa-tag"></i> Status</div>
                     </div>
                     <div class="card-body">
+                        @php
+                            // The ladder a booking may be moved along, and
+                            // nothing else. 'cancelled' used to sit at the end
+                            // of this list while update() validated
+                            // in:pending,confirmed,in_progress,completed — so
+                            // choosing it posted a value the server refuses and
+                            // the form came back "The selected status is
+                            // invalid" having saved nothing. Cancelling demands
+                            // a reason, which a dropdown cannot ask for; it
+                            // belongs to Cancel This Booking below.
+                            //
+                            // A booking that is already cancelled still has to
+                            // show its own status. Dropping the option outright
+                            // would leave the select falling back to Pending and
+                            // misreporting the record on screen.
+                            $statusOptions = $isEdit && $booking->status === 'cancelled'
+                                ? ['cancelled' => 'Cancelled']
+                                : ['pending' => 'Pending', 'confirmed' => 'Confirmed', 'in_progress' => 'In Progress', 'completed' => 'Completed'];
+                        @endphp
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="form-label">Booking Status</label>
                             <select class="form-control" name="status">
-                                @foreach(['pending'=>'Pending','confirmed'=>'Confirmed','in_progress'=>'In Progress','completed'=>'Completed','cancelled'=>'Cancelled'] as $val => $label)
+                                @foreach($statusOptions as $val => $label)
                                 <option value="{{ $val }}" {{ ($booking->status ?? '') === $val ? 'selected' : '' }}>
                                     {{ $label }}
                                 </option>
                                 @endforeach
                             </select>
+                            @if($isEdit && $booking->status !== 'cancelled')
+                            <p style="font-size:.76rem;color:var(--text-muted);margin:6px 0 0;">
+                                Not going ahead? Use <strong>Cancel This Booking</strong> — it records a reason and frees the slot.
+                            </p>
+                            @endif
                         </div>
                     </div>
                 </div>

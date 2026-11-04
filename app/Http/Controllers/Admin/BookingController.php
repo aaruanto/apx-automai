@@ -349,10 +349,21 @@ class BookingController extends Controller
             'service_ids.*' => 'integer|exists:services,id',
             'booking_date' => 'required|date',
             'booking_time' => 'required',
-            // 'cancelled' is deliberately absent. Reaching it through this
-            // dropdown skipped the required-reason flow entirely, which is the
-            // whole point of the cancel action. Use that instead.
-            'status'       => 'required|in:pending,confirmed,in_progress,completed',
+            // 'cancelled' is deliberately absent from the ladder. Reaching it
+            // through this dropdown skipped the required-reason flow entirely,
+            // which is the whole point of the cancel action. Use that instead.
+            //
+            // A booking that is already cancelled is the exception, and keeps
+            // its own status as the only value it may post. It cannot move
+            // anywhere — canMoveTo() refuses, because cancelled is not on
+            // STATUS_ORDER — but the form still has to submit. Refusing it
+            // outright meant the edit screen for a cancelled booking could not
+            // be saved at all: the select correctly showed "Cancelled", and
+            // submitting it unchanged, even just to correct a note, failed with
+            // "The selected status is invalid".
+            'status'       => ['required', Rule::in(
+                $booking->status === 'cancelled' ? ['cancelled'] : Booking::STATUS_ORDER
+            )],
             'mechanic_id'     => ['nullable', 'integer', Rule::exists('mechanics', 'id')->where('status', 'active')],
             'notes'        => 'nullable|string|max:2000',
         ]);
@@ -369,6 +380,21 @@ class BookingController extends Controller
                 'success',
                 'Notes saved. '.$booking->reference_number.' is completed, so its status, '
                 .'services and schedule are locked to keep the record and the revenue figures intact.'
+            );
+        }
+
+        // A cancelled booking is the record of work that is not happening.
+        // Same treatment as a completed one: the notes stay open so an admin
+        // can still write down what was agreed, and everything else stands.
+        // Falling through to the rest of this method would re-run the capacity
+        // check and hand the booking back the slot that cancelling just freed.
+        if ($booking->status === 'cancelled') {
+            $booking->update(['notes' => $request->notes]);
+
+            return redirect()->route('admin.bookings.cancelled')->with(
+                'success',
+                'Notes saved. '.$booking->reference_number.' is cancelled, so its status, '
+                .'services and schedule stay as they are.'
             );
         }
 
