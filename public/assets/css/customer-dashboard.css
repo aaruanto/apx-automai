@@ -409,6 +409,19 @@
             line-height: 1;
             margin-bottom: 10px;
         }
+        /* What the number above actually counts. The three cards use three
+           different rules — Upcoming leaves cancelled out, Total takes them in
+           — so Upcoming plus Completed never added up to Total and the gap had
+           nothing on screen to explain it. The admin dashboard already states
+           its rule under each figure; this is the same line in the same place.
+           The margin comes off .stat-value so the note sits with its number
+           rather than floating between the two. */
+        .stat-value.has-note { margin-bottom: 3px; }
+        .stat-note {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
         .stat-footer {
             display: flex;
             align-items: center;

@@ -16,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
     <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-02" rel="stylesheet" />
-    <link href="{{ asset('assets/css/customer-dashboard.css') }}?v=2026-11-02" rel="stylesheet" />
+    <link href="{{ asset('assets/css/customer-dashboard.css') }}?v=2026-11-04" rel="stylesheet" />
     <link href="{{ asset('assets/css/availability-picker.css') }}" rel="stylesheet" />
     {{-- Before first paint. The theme used to be applied by the script at the
          bottom of this file, which was invisible only because the stylesheet's
@@ -406,7 +406,16 @@
                             <div class="stat-label">Upcoming</div>
                             <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
                         </div>
-                        <div class="stat-value" id="cstatUpcoming">{{ $upcoming }}</div>
+                        {{-- Each card says what it counts. The three rules are
+                             genuinely different — Upcoming leaves cancelled
+                             out, Total takes them in — so Upcoming plus
+                             Completed does not add up to Total, and with
+                             nothing on screen to explain the gap the totals
+                             read as wrong. A customer whose only bookings had
+                             been cancelled saw Upcoming sitting at zero beside
+                             a Total that counted them. --}}
+                        <div class="stat-value has-note" id="cstatUpcoming">{{ $upcoming }}</div>
+                        <div class="stat-note">Pending and confirmed</div>
                         <div class="stat-footer">
                             <a href="#" onclick="switchSection(event,'bookings'); filterBookings('upcoming')">View Bookings <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
                         </div>
@@ -416,7 +425,8 @@
                             <div class="stat-label">Completed</div>
                             <div class="stat-icon"><i class="fas fa-circle-check"></i></div>
                         </div>
-                        <div class="stat-value" id="cstatCompleted">{{ $completed }}</div>
+                        <div class="stat-value has-note" id="cstatCompleted">{{ $completed }}</div>
+                        <div class="stat-note">Service finished</div>
                         <div class="stat-footer">
                             <a href="#" onclick="switchSection(event,'bookings'); filterBookings('completed')">View History <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
                         </div>
@@ -426,7 +436,13 @@
                             <div class="stat-label">Total Bookings</div>
                             <div class="stat-icon"><i class="fas fa-list-check"></i></div>
                         </div>
-                        <div class="stat-value" id="cstatTotal">{{ $totalBookings }}</div>
+                        {{-- Everything on record, cancelled included. That is
+                             the rule the All tab and the My Bookings badge
+                             already use, so narrowing it here would leave the
+                             card disagreeing with the list View All opens —
+                             the same complaint the other way round. --}}
+                        <div class="stat-value has-note" id="cstatTotal">{{ $totalBookings }}</div>
+                        <div class="stat-note">All time, including cancelled</div>
                         <div class="stat-footer">
                             <a href="#" onclick="switchSection(event,'bookings'); filterBookings('all')">View All <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
                         </div>
@@ -436,7 +452,8 @@
                             <div class="stat-label">Total Spent</div>
                             <div class="stat-icon"><i class="fas fa-peso-sign"></i></div>
                         </div>
-                        <div class="stat-value" id="cstatSpent">₱{{ number_format($totalSpent ?? 0, 0) }}</div>
+                        <div class="stat-value has-note" id="cstatSpent">₱{{ number_format($totalSpent ?? 0, 0) }}</div>
+                        <div class="stat-note">Completed work only</div>
                         <div class="stat-footer">
                             <a href="#">View Invoices <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
                         </div>
