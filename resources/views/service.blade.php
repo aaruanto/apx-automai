@@ -70,8 +70,17 @@
 
     <!-- Navbar Start -->
     <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
+        {{-- This </a> was missing, and the page paid for it 128px at a time.
+             An unclosed anchor is a formatting element, so the parser carries
+             it into the markup that follows and reopens it inside the next
+             block — which left an empty copy of .navbar-brand, padding and
+             all, as the first item of .navbar-nav. 96px of px-lg-5 nobody
+             asked for, pushing the Login button off the right of the screen
+             and the whole document 128px wide at 1024 and 159px at 992.
+             Every other public page closes it; only this one did not. --}}
         <a href="/" class="navbar-brand d-flex align-items-center px-4 px-lg-5">
             <h2 class="m-0 text-primary"><img src="/assets/img/apx-black-logo.png" alt="apx logo" width="100" height="120">AUTOMAI</h2>
+        </a>
         <button type="button" class="navbar-toggler me-4" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
             <span class="navbar-toggler-icon"></span>
         </button>

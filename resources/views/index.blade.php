@@ -292,7 +292,18 @@
     <!-- Sticky Book CTA End -->
 
     <!-- Navbar Start -->
-    <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
+    {{-- expand-xl, not expand-lg, on this page alone. It carries six links
+         where the other public pages carry four, plus the brand's px-lg-5 and
+         the Login button, and at 992 — where expand-lg swaps the hamburger
+         for the full bar — that is 10px more than the screen has, so the
+         Login button hung off the right edge until about 1005px.
+
+         Trimming the padding across that band was tried first and made it
+         worse: the brand is what was absorbing the slack, so narrowing it let
+         .navbar-collapse grow to its content instead and the overflow went
+         from 10px to 58px. The bar simply needs more room than 992 has, so it
+         keeps the hamburger until it has it. --}}
+    <nav class="navbar navbar-expand-xl bg-white navbar-light shadow sticky-top p-0">
         <a href="#home" class="navbar-brand d-flex align-items-center px-4 px-lg-5">
             <h2 class="m-0 text-primary"><img src="/assets/img/apx-black-logo.png" alt="apx logo" width="100" height="120">AutoMai</h2>
         </a>
@@ -591,7 +602,16 @@
                         <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto" style="width:72px;height:72px;">
                             <i class="fa fa-calendar-check fa-2x text-white"></i>
                         </div>
-                        <div class="position-absolute top-0 end-0 me-n2" style="transform:translate(30%,-20%);">
+                        {{-- Pinned to the circle, not to the column. end-0
+                             anchored this to the right edge of the whole
+                             column, which on a wide screen happened to sit
+                             near the circle and on a phone did not: the badge
+                             drifted away from the numbered step it belongs to
+                             and, with me-n2 and a 30% nudge on top, carried
+                             the page 12px past the right of the screen. The
+                             circle is 72px and centred, so half the column
+                             plus 20px is its shoulder at every width. --}}
+                        <div class="position-absolute top-0" style="left:50%; transform:translate(20px,-20%);">
                             <span class="badge rounded-pill" style="background:#e63946; font-family:'Barlow',sans-serif; font-size:0.85rem;">01</span>
                         </div>
                     </div>
@@ -603,7 +623,16 @@
                         <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto" style="width:72px;height:72px;">
                             <i class="fa fa-car fa-2x text-white"></i>
                         </div>
-                        <div class="position-absolute top-0 end-0 me-n2" style="transform:translate(30%,-20%);">
+                        {{-- Pinned to the circle, not to the column. end-0
+                             anchored this to the right edge of the whole
+                             column, which on a wide screen happened to sit
+                             near the circle and on a phone did not: the badge
+                             drifted away from the numbered step it belongs to
+                             and, with me-n2 and a 30% nudge on top, carried
+                             the page 12px past the right of the screen. The
+                             circle is 72px and centred, so half the column
+                             plus 20px is its shoulder at every width. --}}
+                        <div class="position-absolute top-0" style="left:50%; transform:translate(20px,-20%);">
                             <span class="badge rounded-pill" style="background:#e63946; font-family:'Barlow',sans-serif; font-size:0.85rem;">02</span>
                         </div>
                     </div>
@@ -615,7 +644,16 @@
                         <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto" style="width:72px;height:72px;">
                             <i class="fa fa-tools fa-2x text-white"></i>
                         </div>
-                        <div class="position-absolute top-0 end-0 me-n2" style="transform:translate(30%,-20%);">
+                        {{-- Pinned to the circle, not to the column. end-0
+                             anchored this to the right edge of the whole
+                             column, which on a wide screen happened to sit
+                             near the circle and on a phone did not: the badge
+                             drifted away from the numbered step it belongs to
+                             and, with me-n2 and a 30% nudge on top, carried
+                             the page 12px past the right of the screen. The
+                             circle is 72px and centred, so half the column
+                             plus 20px is its shoulder at every width. --}}
+                        <div class="position-absolute top-0" style="left:50%; transform:translate(20px,-20%);">
                             <span class="badge rounded-pill" style="background:#e63946; font-family:'Barlow',sans-serif; font-size:0.85rem;">03</span>
                         </div>
                     </div>
@@ -627,7 +665,16 @@
                         <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto" style="width:72px;height:72px;">
                             <i class="fa fa-check-circle fa-2x text-white"></i>
                         </div>
-                        <div class="position-absolute top-0 end-0 me-n2" style="transform:translate(30%,-20%);">
+                        {{-- Pinned to the circle, not to the column. end-0
+                             anchored this to the right edge of the whole
+                             column, which on a wide screen happened to sit
+                             near the circle and on a phone did not: the badge
+                             drifted away from the numbered step it belongs to
+                             and, with me-n2 and a 30% nudge on top, carried
+                             the page 12px past the right of the screen. The
+                             circle is 72px and centred, so half the column
+                             plus 20px is its shoulder at every width. --}}
+                        <div class="position-absolute top-0" style="left:50%; transform:translate(20px,-20%);">
                             <span class="badge rounded-pill" style="background:#e63946; font-family:'Barlow',sans-serif; font-size:0.85rem;">04</span>
                         </div>
                     </div>
@@ -798,7 +845,19 @@
     ============================================================ -->
     <div id="about" class="apx-section wow fadeInUp" data-wow-delay="0.1s">
         <div class="container">
-            <div class="row g-5">
+            {{-- g-5 is a 48px gutter, which gives the row -24px of margin on
+                 each side while .container only pads 12px. From 576px up the
+                 container has a max-width and the slack either side absorbs
+                 the difference; below that it is full-bleed, there is no
+                 slack, and 12px of row hangs off each edge of the screen.
+                 That is the 12px of horizontal overflow at phone width — the
+                 note in CLAUDE.md blames the template's absolutely positioned
+                 badges, which turns out to be the wrong culprit.
+
+                 The wide gutter is kept wherever it was doing something. The
+                 columns stack below lg anyway, so a 48px horizontal gutter on
+                 a phone was spacing nothing from nothing. --}}
+            <div class="row g-4 g-sm-5">
                 <div class="col-lg-6 pt-4" style="min-height: 400px;">
                     <div class="position-relative h-100 wow fadeIn" data-wow-delay="0.1s">
                         {{-- The shop's own signage. It lives here rather than in
@@ -813,7 +872,14 @@
                              replacement number would be the same mistake, so
                              what it says now is true of the shop whatever year
                              it opened: it takes both kinds of vehicle. --}}
-                        <div class="position-absolute top-0 end-0 mt-n4 me-n4 py-4 px-5" style="background: rgba(0, 0, 0, .35);">
+                        {{-- me-n4 hangs this off the corner of the photo,
+                             which is the intended look and 24px of overhang
+                             the screen has room for on a desktop. On a phone
+                             the photo already reaches both edges, so the same
+                             24px went straight off the side of the page. The
+                             overhang is kept where there is room for it and
+                             dropped where there is not. --}}
+                        <div class="position-absolute top-0 end-0 mt-n4 me-0 me-lg-n4 py-4 px-5" style="background: rgba(0, 0, 0, .35);">
                             <h4 class="text-white mb-0">Cars &amp;</h4>
                             <h4 class="text-white mb-0">Motorcycles</h4>
                         </div>

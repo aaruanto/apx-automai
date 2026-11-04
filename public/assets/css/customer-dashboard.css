@@ -264,6 +264,34 @@
         }
         .main-content.expanded { margin-left: 60px; }
 
+        /* Flex and grid items both default to a min size of their content, so
+           without this the dashboard kept its intrinsic width and pushed the
+           page wider than the viewport rather than letting its columns narrow.
+
+           The admin layout already carries this rule, with the same reasoning
+           written beside it; this side never got it. The gap it left was a
+           band rather than a cliff, which is why it survived: everything from
+           about 1100px down to 993px overflowed — 8px at 1100, 84px at 1024,
+           108px at 1000 — and then came right again at 992, where the
+           breakpoint below drops the sidebar and folds the grids to one and
+           two columns. Tested wide and tested on a phone, both fine; the
+           laptop sizes in between were the ones nobody opened.
+
+           Unconditional, not inside a breakpoint, for the same reason it is
+           unconditional over there: one rule cannot drift out of step with
+           the breakpoint that was supposed to accompany it. */
+        .main-content,
+        main,
+        .card {
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .cards-grid > *,
+        .content-grid > * {
+            min-width: 0;
+        }
+
         /* main is a flex column with footer pushed via margin-top:auto — the
            standard flexbox sticky-footer technique, so the footer sits at
            the bottom of the viewport on short pages and flows naturally
