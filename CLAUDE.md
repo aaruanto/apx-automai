@@ -34,7 +34,7 @@ includes `migrate:fresh` anywhere but a local SQLite file.
 duplicating it.
 
 **Tests must pass before anything is pushed.** `php artisan test` — currently
-553. A push to `main` deploys to the live site, so a broken push is a broken
+940. A push to `main` deploys to the live site, so a broken push is a broken
 demo.
 
 ## Verify, don't assume
@@ -156,14 +156,23 @@ and the old `employees` table (now `mechanics`) are the same story.
 
 ## Known-sloppy things, if you are looking for work
 
-- The landing page carries invented statistics from the original template —
-  "15 Years Experience", "4.8/5 from 500+ Reviews", "5,000+ Happy Customers" —
-  now sitting next to real photographs of the shop.
-- The footer shows `hello@apxautomai.com`, while the shop's own sign says
-  `Hi@APXMOTORS.COM`, and the copyright year is 2025.
-- `apx-black-logo.png` is 1.3 MB and loads on every page. `favicon.ico` is a
-  0-byte file.
-- A 12px horizontal overflow at phone width, from the template's absolutely
-  positioned badges.
+- `apx-black-logo.png` is 1.3 MB and loads on every page.
 - `CONTRIBUTING.md` still describes a `node_modules` cleanup that has already
   been done.
+- The public pages load Font Awesome 5 while the admin side loads 6. A 6-only
+  icon name — `fa-xmark` rather than `fa-times` — renders a correctly sized,
+  perfectly invisible glyph on a public page. No current icon is affected;
+  every `fa-xmark` is on an admin screen. The trap is for the next person.
+- The landing page 404s on every load for a Cloudflare `email-decode` script
+  baked into the template. Harmless, and it fails on the live site too.
+- The bookings list loads every booking and filters in the browser. Fine at
+  today's volume; server-side filtering would have to bring pagination with it.
+
+The invented statistics, the footer address, the 2025 copyright year, the
+0-byte favicon and the 12px phone overflow were all on this list and are all
+fixed. The overflow is worth a note, because what is written here about it was
+wrong: it was not the template's absolutely positioned badges. `g-5` gives a
+row -24px of margin per side while `.container` pads 12px, and above 576px the
+container's max-width absorbs the difference — below it there is no slack and
+12px hangs off each edge. The badges were a separate fault found while looking
+for that one.
