@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AuditLog;
 use App\Models\Booking;
 use App\Notifications\BookingNotification;
+use App\Support\MessageTemplate;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -31,8 +32,10 @@ use Illuminate\Support\Facades\Log;
  */
 class BookingCancellation
 {
-    public function __construct(private LoyaltyService $loyalty)
-    {
+    public function __construct(
+        private LoyaltyService $loyalty,
+        private SmsService $sms,
+    ) {
     }
 
     /**
@@ -74,6 +77,35 @@ class BookingCancellation
                 $booking->user->notify(BookingNotification::cancelled($booking->fresh()));
             } catch (\Throwable $e) {
                 Log::error('Cancellation notice failed for '.$booking->reference_number.': '.$e->getMessage());
+            }
+
+            // And by text, under the same guard: $notify already means "the
+            // customer should be told", so the account-deletion sweep that
+            // passes notify: false stays silent on both channels without
+            // knowing SMS exists.
+            //
+            // Its own try, separate from the email above. These are two
+            // independent ways of reaching the same person, and a failure in
+            // one must not swallow the other — nor turn a cancellation that
+            // is already committed into a 500.
+            try {
+                $template = MessageTemplate::load();
+                $phone    = $booking->user->phone ?: $booking->user->customer?->phone;
+
+                if (
+                    $phone
+                    && ! empty($template['channels']['send_sms'])
+                    && ! empty($template['triggers']['cancel_booking'])
+                    && $this->sms->configured()
+                ) {
+                    $this->sms->send(
+                        $phone,
+                        MessageTemplate::fill($template['cancellation_sms'], $booking->fresh()),
+                        ['booking_id' => $booking->id, 'trigger' => 'cancel_booking'],
+                    );
+                }
+            } catch (\Throwable $e) {
+                Log::error('Cancellation text failed for '.$booking->reference_number.': '.$e->getMessage());
             }
         }
 

@@ -34,7 +34,7 @@ includes `migrate:fresh` anywhere but a local SQLite file.
 duplicating it.
 
 **Tests must pass before anything is pushed.** `php artisan test` — currently
-940. A push to `main` deploys to the live site, so a broken push is a broken
+981. A push to `main` deploys to the live site, so a broken push is a broken
 demo.
 
 ## Verify, don't assume

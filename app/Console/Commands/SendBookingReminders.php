@@ -224,31 +224,13 @@ class SendBookingReminders extends Command
         ];
     }
 
+    /**
+     * Delegates to MessageTemplate::fill(). The map used to live here, then
+     * booking confirmation needed the identical substitutions and a second
+     * copy would have been one more thing to keep in step.
+     */
     private function fill(string $text, Booking $booking): string
     {
-        $user    = $booking->user;
-        $service = $booking->service;
-        $vehicle = $booking->vehicle;
-
-        $map = [
-            '{name}'       => $user->name ?? 'Customer',
-            '{first_name}' => explode(' ', $user->name ?? 'Customer')[0],
-            '{service}'    => $service->name ?? 'service',
-            '{date}'       => Carbon::parse($booking->booking_date)->format('F j, Y'),
-            '{time}'       => Carbon::parse($booking->booking_time)->format('g:i A'),
-            '{plate}'      => $vehicle->plate_number ?? '-',
-            // Collapsed, not just trimmed: a vehicle with no model on file
-            // rendered as "Honda Click  2023", with a gap in the middle of
-            // the customer's own reminder.
-            '{vehicle}'    => trim(preg_replace('/\s+/', ' ',
-                ($vehicle->make ?? '').' '.($vehicle->model ?? '').' '.($vehicle->year ?? '')
-            )),
-            '{reference}'  => $booking->reference_number ?? '#BK-'.str_pad((string) $booking->id, 4, '0', STR_PAD_LEFT),
-            '{branch}'     => config('apx.branch_name', 'APX Motors — Tandang Sora'),
-            '{contact}'    => config('apx.contact_number', ''),
-            '{days_until}' => (string) Carbon::today()->diffInDays(Carbon::parse($booking->booking_date)),
-        ];
-
-        return str_replace(array_keys($map), array_values($map), $text);
+        return MessageTemplate::fill($text, $booking);
     }
 }

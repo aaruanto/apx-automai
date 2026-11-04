@@ -18,6 +18,8 @@ use App\Mail\BookingReceived;
 use App\Services\BookingAvailability;
 use App\Services\BookingCancellation;
 use App\Services\LoyaltyService;
+use App\Services\SmsService;
+use App\Support\MessageTemplate;
 use App\Exceptions\SlotUnavailableException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -333,7 +335,7 @@ class BookingController extends Controller
         ));
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $id, SmsService $sms)
     {
         $booking   = Booking::findOrFail($id);
         $oldStatus = $booking->status;
@@ -603,9 +605,11 @@ class BookingController extends Controller
         // shared Vehicle row, changing the plate on every other booking for
         // that car. A plate belongs to the vehicle, not to one booking.
 
-        // Send confirmation email when status changes to 'confirmed'
+        // Tell the customer, by email and by text, when the status
+        // changes to 'confirmed'.
         if ($oldStatus !== 'confirmed' && $request->status === 'confirmed') {
             $booking->load(['user', 'service', 'vehicle']);
+            $template = MessageTemplate::load();
             if (
                 $booking->user &&
                 $booking->user->email &&
@@ -615,6 +619,34 @@ class BookingController extends Controller
                     Mail::to($booking->user->email)->send(new BookingConfirmed($booking));
                 } catch (\Exception $e) {
                     \Log::error('Booking confirmation email failed: ' . $e->getMessage());
+                }
+            }
+
+            // The same news by text. Email and SMS are deliberately not
+            // all-or-nothing here: a customer with a bad address should still
+            // get the text, and a failed send must never roll back a
+            // confirmation the admin has already made. SmsService does not
+            // throw and writes its own sms_logs row either way.
+            //
+            // No ReminderLedger claim. A reminder matches a date window that
+            // stays true all day, so without a claim it re-sends on every
+            // tick; a confirmation fires on a status transition that happens
+            // once. The `$oldStatus !== 'confirmed'` guard above is what makes
+            // it exactly-once, and re-confirming a booking that was moved back
+            // to pending is a real event worth a second text.
+            if (
+                ! empty($template['channels']['send_sms'])
+                && ! empty($template['triggers']['confirm_booking'])
+                && $sms->configured()
+            ) {
+                $phone = $booking->user?->phone ?: $booking->user?->customer?->phone;
+
+                if ($phone) {
+                    $sms->send(
+                        $phone,
+                        MessageTemplate::fill($template['confirmation_sms'], $booking),
+                        ['booking_id' => $booking->id, 'trigger' => 'confirm_booking'],
+                    );
                 }
             }
         }

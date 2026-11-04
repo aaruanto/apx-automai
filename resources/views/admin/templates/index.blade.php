@@ -234,11 +234,36 @@
                                       style="resize:none;font-family:'Barlow',sans-serif;line-height:1.6;">{{ $settings['sms_body'] ?? 'Hi {name}! This is a reminder from APX AutoMai. Your {service} appointment is scheduled on {date} at {time}. Please arrive 10 minutes early. Reply STOP to unsubscribe.' }}</textarea>
                             <div class="sms-counter" id="smsCounter">0 / 160 characters (1 SMS)</div>
                         </div>
+
                         <div style="margin-top:12px;background:var(--surface-2);border-radius:8px;padding:12px;">
                             <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">SMS Preview</div>
                             <div style="background:#e5e5ea;border-radius:14px 14px 2px 14px;padding:10px 14px;font-size:.84rem;line-height:1.5;max-width:280px;color:#000;" id="smsPreview">
                                 Hi {name}! This is a reminder from APX AutoMai...
                             </div>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;margin-top:18px;padding-top:18px;border-top:1px solid var(--border);">
+                            <label class="form-label">Booking Confirmation SMS</label>
+                            <div style="font-size:.73rem;color:var(--text-muted);margin-bottom:8px;">
+                                Sent once when a booking is confirmed, alongside the confirmation email.
+                                Switched on and off by the <strong>Booking confirmed</strong> trigger.
+                            </div>
+                            <textarea class="form-control" id="confirmationSms" rows="4"
+                                      oninput="updateConfirmationSmsCounter(this)"
+                                      style="resize:none;font-family:'Barlow',sans-serif;line-height:1.6;">{{ $settings['confirmation_sms'] ?? '' }}</textarea>
+                            <div class="sms-counter" id="confirmationSmsCounter">0 / 160 characters (1 SMS)</div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom:0;margin-top:18px;padding-top:18px;border-top:1px solid var(--border);">
+                            <label class="form-label">Booking Cancellation SMS</label>
+                            <div style="font-size:.73rem;color:var(--text-muted);margin-bottom:8px;">
+                                Sent whenever a booking is cancelled &mdash; by the shop, by the customer,
+                                or by the no-show sweep. Switched on and off by the
+                                <strong>Booking cancelled</strong> trigger.
+                            </div>
+                            <textarea class="form-control" id="cancellationSms" rows="4"
+                                      oninput="updateCancellationSmsCounter(this)"
+                                      style="resize:none;font-family:'Barlow',sans-serif;line-height:1.6;">{{ $settings['cancellation_sms'] ?? '' }}</textarea>
+                            <div class="sms-counter" id="cancellationSmsCounter">0 / 160 characters (1 SMS)</div>
                         </div>
                     </div>
                 </div>
@@ -362,10 +387,16 @@
                 </div>
                 <div class="card-body" style="padding:14px;display:flex;flex-direction:column;gap:10px;">
                     <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:4px;">
-                        Enable which reminders are sent automatically.
+                        Enable which automatic messages are sent.
                     </div>
                     @php
                         $triggerDefs = [
+                            // Not a reminder: this one fires on a status change rather
+                            // than a clock, when an admin confirms a booking.
+                            ['key'=>'confirm_booking','label'=>'Booking confirmed','desc'=>'Sent once, when an admin confirms a booking','icon'=>'fa-circle-check'],
+                            // Covers every route to a cancellation: the shop, the
+                            // customer's own dashboard and the no-show sweep.
+                            ['key'=>'cancel_booking','label'=>'Booking cancelled','desc'=>'Sent when a booking is cancelled, however it was cancelled','icon'=>'fa-circle-xmark'],
                             ['key'=>'remind_7d','label'=>'7 days before','desc'=>'One week reminder','icon'=>'fa-calendar-week'],
                             ['key'=>'remind_3d','label'=>'3 days before','desc'=>'Three day reminder','icon'=>'fa-calendar-days'],
                             ['key'=>'remind_1d','label'=>'24 hours before','desc'=>'Day-of reminder','icon'=>'fa-calendar-day'],
@@ -626,6 +657,8 @@ if (_savedSms && _savedSms.trim() !== '') {
 updateEmailPreview();
 updateSmsCounter(document.getElementById('smsBody'));
 updateMaintenanceSmsCounter(document.getElementById('maintenanceSms'));
+updateConfirmationSmsCounter(document.getElementById('confirmationSms'));
+updateCancellationSmsCounter(document.getElementById('cancellationSms'));
 
 function resetEmailBody() {
     emailBody.innerHTML = defaultEmailTemplate();
@@ -757,9 +790,25 @@ function insertPlaceholder(tag) {
     }
 
     if (activeTab === 'sms') {
-        const ta = document.getElementById('smsBody');
+        // Same shape as the maintenance branch above: honour the caret, and
+        // fall back to the reminder body. Hardcoding smsBody here meant a chip
+        // clicked while editing the confirmation text silently edited the
+        // reminder instead.
+        const fields = ['smsBody', 'confirmationSms', 'cancellationSms'].map(id => document.getElementById(id));
+        const ta = fields.includes(document.activeElement)
+            ? document.activeElement
+            : document.getElementById('smsBody');
+
         insertAtCaret(ta, tag);
-        updateSmsCounter(ta);
+
+        if (ta.id === 'confirmationSms') {
+            updateConfirmationSmsCounter(ta);
+        } else if (ta.id === 'cancellationSms') {
+            updateCancellationSmsCounter(ta);
+        } else {
+            updateSmsCounter(ta);
+        }
+
         return;
     }
 
@@ -785,6 +834,24 @@ function updateSmsCounter(ta) {
     counter.className   = 'sms-counter' + (len > 160 ? ' warn' : '') + (len > 320 ? ' over' : '');
     document.getElementById('smsPreview').textContent =
         ta.value.substring(0, 120) + (ta.value.length > 120 ? '...' : '');
+}
+
+/* Same arithmetic again, for the cancellation text. */
+function updateCancellationSmsCounter(ta) {
+    const len     = ta.value.length;
+    const sms     = Math.ceil(len / 160) || 1;
+    const counter = document.getElementById('cancellationSmsCounter');
+    counter.textContent = `${len} / ${sms * 160} characters (${sms} SMS)`;
+    counter.className   = 'sms-counter' + (len > 160 ? ' warn' : '') + (len > 320 ? ' over' : '');
+}
+
+/* Same arithmetic again, for the confirmation text. */
+function updateConfirmationSmsCounter(ta) {
+    const len     = ta.value.length;
+    const sms     = Math.ceil(len / 160) || 1;
+    const counter = document.getElementById('confirmationSmsCounter');
+    counter.textContent = `${len} / ${sms * 160} characters (${sms} SMS)`;
+    counter.className   = 'sms-counter' + (len > 160 ? ' warn' : '') + (len > 320 ? ' over' : '');
 }
 
 /* Same arithmetic as the appointment SMS counter. Worth showing here too: a
@@ -850,12 +917,16 @@ function saveAllTemplates() {
         email_preheader: document.getElementById('emailPreheader').value,
         email_body:      emailBody.innerHTML,
         sms_body:        document.getElementById('smsBody').value,
+        confirmation_sms: document.getElementById('confirmationSms').value,
+        cancellation_sms: document.getElementById('cancellationSms').value,
 
         maintenance_subject: document.getElementById('maintenanceSubject').value,
         maintenance_body:    document.getElementById('maintenanceBody').value,
         maintenance_sms:     document.getElementById('maintenanceSms').value,
 
         triggers: {
+            confirm_booking: document.querySelector('[name="confirm_booking"]').checked,
+            cancel_booking:  document.querySelector('[name="cancel_booking"]').checked,
             remind_7d: document.querySelector('[name="remind_7d"]').checked,
             remind_3d: document.querySelector('[name="remind_3d"]').checked,
             remind_1d: document.querySelector('[name="remind_1d"]').checked,

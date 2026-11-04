@@ -50,6 +50,12 @@ class MessageTemplateController extends Controller
             'email_body'      => 'required|string',
             'sms_body'        => 'required|string|max:480',
 
+            // "sometimes" for the same reason as the maintenance set below:
+            // load() fills an absent key from the defaults, but a payload
+            // that does send it must not send it empty.
+            'confirmation_sms' => 'sometimes|required|string|max:480',
+            'cancellation_sms' => 'sometimes|required|string|max:480',
+
             // The service-due template. Validated as its own set rather than
             // folded into the ones above: it is a different message with
             // different placeholders, and leaving these out of the rules

@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Models\Booking;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -73,6 +75,43 @@ class MessageTemplate
         Storage::put(self::PATH, json_encode($template, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     }
 
+    /**
+     * Fill a template body's placeholders for one booking.
+     *
+     * This was a private helper on SendBookingReminders until booking
+     * confirmation needed the same substitutions. It moved here rather than
+     * being copied: two maps drift, and the one that drifts sends a customer
+     * a message with a literal {reference} in it. It sits beside
+     * PLACEHOLDERS, which is the list it has to honour.
+     */
+    public static function fill(string $text, Booking $booking): string
+    {
+        $user    = $booking->user;
+        $service = $booking->service;
+        $vehicle = $booking->vehicle;
+
+        $map = [
+            '{name}'       => $user->name ?? 'Customer',
+            '{first_name}' => explode(' ', $user->name ?? 'Customer')[0],
+            '{service}'    => $service->name ?? 'service',
+            '{date}'       => Carbon::parse($booking->booking_date)->format('F j, Y'),
+            '{time}'       => Carbon::parse($booking->booking_time)->format('g:i A'),
+            '{plate}'      => $vehicle->plate_number ?? '-',
+            // Collapsed, not just trimmed: a vehicle with no model on file
+            // rendered as "Honda Click  2023", with a gap in the middle of
+            // the customer's own reminder.
+            '{vehicle}'    => trim(preg_replace('/\s+/', ' ',
+                ($vehicle->make ?? '').' '.($vehicle->model ?? '').' '.($vehicle->year ?? '')
+            )),
+            '{reference}'  => $booking->reference_number ?? '#BK-'.str_pad((string) $booking->id, 4, '0', STR_PAD_LEFT),
+            '{branch}'     => config('apx.branch_name', 'APX Motors — Tandang Sora'),
+            '{contact}'    => config('apx.contact_number', ''),
+            '{days_until}' => (string) Carbon::today()->diffInDays(Carbon::parse($booking->booking_date)),
+        ];
+
+        return str_replace(array_keys($map), array_values($map), $text);
+    }
+
     public static function defaults(): array
     {
         return [
@@ -89,6 +128,33 @@ class MessageTemplate
             // sent it reads like a scam. Email keeps the portal name — it has
             // no sender-ID approval to satisfy and shows a full from-address.
             'sms_body'        => 'Hi {first_name}! APX Motors: your {service} is on {date}, {time}. Ref {reference}. Please arrive 10 mins early.',
+            // ── Booking confirmed ──────────────────────────────────────────
+            // Sent once, when an admin moves a booking to "confirmed". Email
+            // already does this; the text exists because a confirmation is the
+            // message a customer is actively waiting for, and the one most
+            // worth the credit.
+            //
+            // Same constraints as the reminder above: one segment, "APX
+            // Motors" to match the sender ID, and neither {branch} nor
+            // {contact} — the branch name carries an em-dash that would force
+            // UCS-2, and an unset contact number leaves a dangling "on .".
+            'confirmation_sms' => 'Hi {first_name}! APX Motors: your {service} on {date}, {time} is CONFIRMED. Ref {reference}. See you then!',
+            // ── Booking cancelled ──────────────────────────────────────────
+            // Goes out from BookingCancellation, so it covers the shop
+            // cancelling, the customer cancelling and the no-show sweep alike.
+            //
+            // {reason} is deliberately absent. A cancellation reason is free
+            // text an admin types, so putting it in a 160-character budget
+            // means one long reason silently costs three segments — and a
+            // reason written for the audit trail is not always one you would
+            // text the customer. They are told to call instead.
+            //
+            // {time} is dropped, unlike the confirmation above. At 163
+            // characters the first draft was two segments against the
+            // longest service name on file, and a cancellation has no
+            // appointment to turn up for — the date and reference are
+            // enough to say which booking. 140 worst case, 20 to spare.
+            'cancellation_sms' => 'Hi {first_name}! APX Motors: your {service} on {date} is CANCELLED. Ref {reference}. Call us to rebook.',
 
             // ── Maintenance ────────────────────────────────────────────────
             'maintenance_subject' => 'Your {vehicle} is due for servicing',
@@ -98,6 +164,8 @@ class MessageTemplate
             'maintenance_sms'     => 'Hi {first_name}! Your {plate} is due for servicing on {due_date}. We suggest {recommendation}. Reply or drop by APX Motors to book.',
 
             'triggers' => [
+                'confirm_booking'  => true,
+                'cancel_booking'   => true,
                 'remind_7d'        => true,
                 'remind_3d'        => true,
                 'remind_1d'        => true,
