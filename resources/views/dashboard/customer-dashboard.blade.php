@@ -599,8 +599,12 @@
                     <div class="avf-grid">
                         <div class="m-form-group">
                             <label class="m-label">Vehicle Type</label>
-                            <div class="m-input-wrap"><i class="fas fa-car"></i>
-                                <select class="m-control" id="avfType">
+                            {{-- The icon follows the choice. This is the field
+                                 that states the vehicle type, so a car sitting
+                                 beside it while Motorcycle is selected is the
+                                 field contradicting itself. --}}
+                            <div class="m-input-wrap"><i class="fas fa-car" id="avfTypeIcon"></i>
+                                <select class="m-control" id="avfType" onchange="avfSyncTypeIcon()">
                                     <option value="car">Car</option>
                                     <option value="motorcycle">Motorcycle</option>
                                 </select>
@@ -615,13 +619,26 @@
                              and are only suggestions — anything may be typed,
                              because the list cannot know every car in Quezon
                              City. --}}
+                        {{-- Neutral icons. Make carried a motorcycle and Model
+                             a car, on a form whose type defaults to Car — so
+                             the motorcycle sat directly under a Car selection
+                             and read as the wrong type having been chosen. The
+                             suggestions behind these two fields are
+                             deliberately both types at once (see
+                             x-vehicle-datalists), so neither field should be
+                             asserting one. A manufacturer and a model name are
+                             what they are; the icons say that instead.
+
+                             The examples match the default too: Honda Civic is
+                             a car, where Honda Click 125i was a scooter being
+                             suggested under Car. --}}
                         <div class="m-form-group">
                             <label class="m-label">Make</label>
-                            <div class="m-input-wrap"><i class="fas fa-motorcycle"></i><input class="m-control" id="avfMake" type="text" list="avfMakeList" placeholder="e.g. Honda" /></div>
+                            <div class="m-input-wrap"><i class="fas fa-industry"></i><input class="m-control" id="avfMake" type="text" list="avfMakeList" placeholder="e.g. Honda" /></div>
                         </div>
                         <div class="m-form-group">
                             <label class="m-label">Model</label>
-                            <div class="m-input-wrap"><i class="fas fa-car-side"></i><input class="m-control" id="avfModel" type="text" list="avfModelList" placeholder="e.g. Click 125i" /></div>
+                            <div class="m-input-wrap"><i class="fas fa-tag"></i><input class="m-control" id="avfModel" type="text" list="avfModelList" placeholder="e.g. Civic" /></div>
                         </div>
                         <x-vehicle-datalists makes="avfMakeList" models="avfModelList" />
                         <div class="m-form-group">
@@ -2218,6 +2235,17 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             : '<i class="fas fa-circle-plus"></i> Register a New Vehicle';
     }
 
+    /* Keeps the Vehicle Type icon showing the type that is actually selected.
+       Called wherever avfType is set, not only on change, because opening the
+       form resets it to Car and editing a vehicle adopts that vehicle's type —
+       both of which would otherwise leave the previous icon in place. */
+    function avfSyncTypeIcon() {
+        const icon = document.getElementById('avfTypeIcon');
+        if (!icon) return;
+        const isMoto = document.getElementById('avfType').value === 'motorcycle';
+        icon.className = 'fas ' + (isMoto ? 'fa-motorcycle' : 'fa-car');
+    }
+
     function toggleAddVehicleForm() {
         const form = document.getElementById('addVehicleForm');
         form.classList.toggle('open');
@@ -2226,6 +2254,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             setVehicleFormMode('add');
             ['avfMake','avfModel','avfYear','avfPlate','avfColor','avfMileage'].forEach(id => document.getElementById(id).value = '');
             document.getElementById('avfType').value = 'car';
+            avfSyncTypeIcon();
             setTimeout(() => document.getElementById('avfMake').focus(), 100);
         }
     }
@@ -2248,6 +2277,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         document.getElementById('avfPlate').value = (v.plate && v.plate !== 'Not provided') ? v.plate : '';
         document.getElementById('avfColor').value = v.color || '';
         document.getElementById('avfType').value  = v.type  || 'car';
+        avfSyncTypeIcon();
         document.getElementById('avfMileage').value = v.mileage || '';
 
         form.scrollIntoView({ behavior: 'smooth', block: 'center' });
