@@ -2104,6 +2104,24 @@
             // Coming back to step 1 with a free-only selection must re-block;
             // leaving step 1 must release the button for its own checks.
             apxRefreshFreeOnly();
+
+            // The picker only exists on step 2, and what it shows depends on
+            // the selection step 1 made — so step 2 is where the two have to
+            // be reconciled, whatever step 1 did to get here.
+            //
+            // It used to be each path's own job to say so. apxToggle() and
+            // apxToggleBundle() called refresh(); apxStartCheckup() set
+            // `selected` directly and did not, so the guided check-up reached
+            // step 2 with the chrome _monthChrome() paints when nothing is
+            // chosen — a blank calendar reading "Choose a service first to see
+            // availability." under a selection of one service. Check-up ->
+            // Browse -> Check-up was the same fault wearing a disguise: the
+            // panel looked right because it still held the month fetched for
+            // the browsed service, which is not the one being booked.
+            //
+            // Refreshing here holds for paths nobody has written yet, because
+            // a path cannot show the picker without coming through this line.
+            if (n === 2) guestPicker.refresh();
         }
 
         window.apxNext = function() {
