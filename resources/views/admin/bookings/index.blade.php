@@ -52,35 +52,60 @@
         </div>
  
         <!-- FILTERS -->
+        {{-- Every control says what it filters. They used to rely on their
+             first option for that — "All Statuses", "All Services" — which is
+             exactly the text that disappears once a value is chosen, so a
+             filtered list gave no account of what it was filtered by. The two
+             dates had nothing at all: a pair of identical empty mm/dd/yyyy
+             boxes whose from/to distinction lived in a title attribute, which
+             only shows if you already suspect it is there and hover. --}}
         <div class="filters-bar">
-            <div style="position:relative;">
-                <i class="fas fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:.75rem;"></i>
-                <input class="filter-input" type="text" id="searchInput" placeholder="Search by customer or booking ID..." style="padding-left:32px;" />
+            <div class="filter-field">
+                <label class="filter-label" for="searchInput">Search</label>
+                <div style="position:relative;">
+                    <i class="fas fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:.75rem;"></i>
+                    <input class="filter-input" type="text" id="searchInput" placeholder="Customer or booking ID..." style="padding-left:32px;" />
+                </div>
             </div>
             {{-- Preselected from ?status= so the dashboard cards can open
                  this list already filtered, rather than showing everything. --}}
             @php $preStatus = request('status'); @endphp
-            <select class="filter-select" id="filterStatus">
-                <option value="">All Statuses</option>
-                @foreach (['confirmed'=>'Confirmed', 'pending'=>'Pending', 'in_progress'=>'In Progress', 'completed'=>'Completed', 'cancelled'=>'Cancelled'] as $v => $l)
-                <option value="{{ $v }}" @selected($preStatus === $v)>{{ $l }}</option>
-                @endforeach
-            </select>
-            <select class="filter-select" id="filterService">
-                <option value="">All Services</option>
-                @foreach($services as $service)
-                <option value="{{ $service->name }}">{{ $service->name }}</option>
-                @endforeach
-            </select>
-            <select class="filter-select" id="filterMechanic">
-                <option value="">All Mechanics</option>
-                <option value="__unassigned">Unassigned</option>
-                @foreach($mechanics as $sm)
-                <option value="{{ $sm->id }}">{{ $sm->name }}</option>
-                @endforeach
-            </select>
-            <input class="filter-select" type="date" id="filterDateFrom" title="Date from" />
-            <input class="filter-select" type="date" id="filterDateTo"   title="Date to"   />
+            <div class="filter-field">
+                <label class="filter-label" for="filterStatus">Status</label>
+                <select class="filter-select" id="filterStatus">
+                    <option value="">All Statuses</option>
+                    @foreach (['confirmed'=>'Confirmed', 'pending'=>'Pending', 'in_progress'=>'In Progress', 'completed'=>'Completed', 'cancelled'=>'Cancelled'] as $v => $l)
+                    <option value="{{ $v }}" @selected($preStatus === $v)>{{ $l }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="filter-field">
+                <label class="filter-label" for="filterService">Service</label>
+                <select class="filter-select" id="filterService">
+                    <option value="">All Services</option>
+                    @foreach($services as $service)
+                    <option value="{{ $service->name }}">{{ $service->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="filter-field">
+                <label class="filter-label" for="filterMechanic">Mechanic</label>
+                <select class="filter-select" id="filterMechanic">
+                    <option value="">All Mechanics</option>
+                    <option value="__unassigned">Unassigned</option>
+                    @foreach($mechanics as $sm)
+                    <option value="{{ $sm->id }}">{{ $sm->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="filter-field">
+                <label class="filter-label" for="filterDateFrom">Date from</label>
+                <input class="filter-select" type="date" id="filterDateFrom" />
+            </div>
+            <div class="filter-field">
+                <label class="filter-label" for="filterDateTo">Date to</label>
+                <input class="filter-select" type="date" id="filterDateTo" />
+            </div>
             <button class="btn btn-ghost btn-sm" onclick="clearFilters()"><i class="fas fa-xmark"></i> Clear</button>
         </div>
  

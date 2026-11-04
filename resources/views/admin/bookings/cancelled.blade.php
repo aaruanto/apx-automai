@@ -26,19 +26,34 @@
 
     <!-- FILTERS -->
     <div class="card" style="margin-bottom:20px;">
+        {{-- Same labelled fields as All Bookings. This bar had the same
+             problem and a little more of it: its two date inputs did not even
+             carry the title attribute the other page's had. --}}
         <div class="filters-bar" style="border:none;">
-            <div style="position:relative;">
-                <i class="fas fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:.75rem;"></i>
-                <input class="filter-input" type="text" id="searchInput" placeholder="Search by customer or booking ID..." style="padding-left:32px;" />
+            <div class="filter-field">
+                <label class="filter-label" for="searchInput">Search</label>
+                <div style="position:relative;">
+                    <i class="fas fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:.75rem;"></i>
+                    <input class="filter-input" type="text" id="searchInput" placeholder="Customer or booking ID..." style="padding-left:32px;" />
+                </div>
             </div>
-            <select class="filter-select" id="filterService">
-                <option value="">All Services</option>
-                @foreach($services as $service)
-                <option value="{{ $service->name }}">{{ $service->name }}</option>
-                @endforeach
-            </select>
-            <input class="filter-select" type="date" id="filterDateFrom" />
-            <input class="filter-select" type="date" id="filterDateTo" />
+            <div class="filter-field">
+                <label class="filter-label" for="filterService">Service</label>
+                <select class="filter-select" id="filterService">
+                    <option value="">All Services</option>
+                    @foreach($services as $service)
+                    <option value="{{ $service->name }}">{{ $service->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="filter-field">
+                <label class="filter-label" for="filterDateFrom">Scheduled from</label>
+                <input class="filter-select" type="date" id="filterDateFrom" />
+            </div>
+            <div class="filter-field">
+                <label class="filter-label" for="filterDateTo">Scheduled to</label>
+                <input class="filter-select" type="date" id="filterDateTo" />
+            </div>
             <button class="btn btn-ghost btn-sm" onclick="clearFilters()"><i class="fas fa-xmark"></i> Clear</button>
             <span style="font-size:.8rem;color:var(--text-muted);" id="rowCount">{{ $cancelled->count() }} records</span>
         </div>

@@ -666,9 +666,36 @@
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            align-items: center;
+            /* Bottom, not centre: a labelled field is taller than a bare
+               button, and centring left the Clear button floating halfway up
+               the row. */
+            align-items: flex-end;
             padding: 12px 18px;
             border-bottom: 1px solid var(--border);
+        }
+
+        /* One filter: its label and its control.
+           The bare controls used to carry their meaning in the first option —
+           "All Statuses", "All Services" — which vanishes the moment a value
+           is picked, so a filtered list could not say what it was filtered by.
+           The two date inputs were worse: both rendered as an identical empty
+           mm/dd/yyyy with the from/to distinction in a title attribute, which
+           is a tooltip you have to already suspect is there. This is the same
+           label the dashboard's filter bar has always used, moved here so the
+           bookings screens share it rather than growing a second copy. */
+        .filter-field {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-label {
+            display: block;
+            font-size: .68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
         }
 
         .filter-input,
@@ -1038,9 +1065,26 @@
                 gap: 10px;
             }
 
-            .filters-bar .filter-select,
-            .filters-bar .filter-input {
+            /* Whatever is a direct child of the bar is the thing that
+               stretches. On the bookings screens that is now the labelled
+               field; the customers list still puts its controls in bare, so
+               both shapes are named. Targeting the control alone would have
+               set a 140px flex-basis on a child of .filter-field, whose main
+               axis is vertical — a 140px-tall select. */
+            .filters-bar > .filter-field,
+            .filters-bar > .filter-select,
+            .filters-bar > .filter-input {
                 flex: 1 1 140px;
+                min-width: 0;
+            }
+
+            /* And the control fills the width its field was handed, rather
+               than holding .filter-input's fixed 220px. The search box sits
+               one level deeper, inside the wrapper that positions its icon. */
+            .filter-field .filter-select,
+            .filter-field .filter-input,
+            .filter-field > div {
+                width: 100%;
                 min-width: 0;
             }
 
