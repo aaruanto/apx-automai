@@ -46,8 +46,17 @@
         <div class="card-header">
             <div class="card-header-title"><i class="fas fa-table-list"></i> Booking Records</div>
             <div style="display:flex;gap:8px;">
+                {{-- A "Filter" button used to sit here. It had no onclick, no
+                     id and no listener anywhere — decoration inherited from
+                     the template, next to an Export CSV that does something.
+                     The filters below apply as you type, so there was never
+                     anything for it to do.
+
+                     The tester asked for Clear to be moved up here beside it.
+                     That would have paired the control that works with the one
+                     that does not; Clear belongs with the fields it clears,
+                     which is where it already is. --}}
                 <a href="{{ route('admin.bookings.export') }}" class="btn btn-ghost btn-sm"><i class="fas fa-file-export"></i> Export CSV</a>
-                <button class="btn btn-ghost btn-sm"><i class="fas fa-filter"></i> Filter</button>
             </div>
         </div>
  
