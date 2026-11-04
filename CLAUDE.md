@@ -156,7 +156,12 @@ and the old `employees` table (now `mechanics`) are the same story.
 
 ## Known-sloppy things, if you are looking for work
 
-- `apx-black-logo.png` is 1.3 MB and loads on every page.
+- The brand mark is stretched on every public page. `apx-black-logo-240.png`
+  is square and the navbar renders it at `width="100" height="120"`, so it is
+  drawn 20% taller than its true proportions. Undistorting it means choosing a
+  square box — 100 or 120 — and either choice changes how the navbar looks, so
+  it is a decision for the client rather than a fix. The 1.3 MB original is
+  still in `public/assets/img/` as the master; nothing serves it.
 - `CONTRIBUTING.md` still describes a `node_modules` cleanup that has already
   been done.
 - The public pages load Font Awesome 5 while the admin side loads 6. A 6-only
