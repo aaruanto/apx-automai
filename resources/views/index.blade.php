@@ -371,7 +371,7 @@
          keeps the hamburger until it has it. --}}
     <nav class="navbar navbar-expand-xl bg-white navbar-light shadow sticky-top p-0">
         <a href="#home" class="navbar-brand d-flex align-items-center px-4 px-lg-5">
-            <h2 class="m-0 text-primary"><img src="/assets/img/apx-black-logo.png" alt="apx logo" width="100" height="120">AutoMai</h2>
+            <h2 class="m-0 text-primary"><img src="/assets/img/apx-black-logo-240.png" alt="apx logo" width="100" height="120">AutoMai</h2>
         </a>
         <button type="button" class="navbar-toggler me-4" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
             <span class="navbar-toggler-icon"></span>
