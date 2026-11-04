@@ -37,7 +37,7 @@
 
         <!-- TABLE -->
         <div class="table-wrap">
-            <table class="apx-table">
+            <table class="apx-table apx-table--actions">
                 <thead>
                     <tr>
                         <th>Customer</th>

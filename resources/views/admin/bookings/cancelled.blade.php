@@ -66,7 +66,7 @@
             <a href="{{ route('admin.bookings.cancelled.export') }}" class="btn btn-ghost btn-sm"><i class="fas fa-file-export"></i> Export CSV</a>
         </div>
         <div class="table-wrap">
-            <table class="apx-table">
+            <table class="apx-table apx-table--actions">
                 <thead>
                     <tr>
                         <th>Customer</th>

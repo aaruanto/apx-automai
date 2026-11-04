@@ -49,7 +49,7 @@
 
         <div class="card-body" style="padding:0;">
             <div style="overflow-x:auto;">
-                <table class="apx-table" style="min-width:760px;">
+                <table class="apx-table apx-table--actions" style="min-width:760px;">
                     <thead>
                         <tr>
                             <th>Bundle</th>

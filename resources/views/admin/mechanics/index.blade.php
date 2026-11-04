@@ -36,7 +36,7 @@
             {{-- The table is the one element allowed to scroll sideways; the
                  page itself must not, at any width. --}}
             <div style="overflow-x:auto;">
-                <table class="apx-table" style="min-width:620px;">
+                <table class="apx-table apx-table--actions" style="min-width:620px;">
                     <thead>
                         <tr>
                             <th>Name</th>

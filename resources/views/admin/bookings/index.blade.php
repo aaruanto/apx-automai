@@ -144,7 +144,7 @@
  
         <!-- TABLE -->
         <div class="table-wrap">
-            <table class="apx-table" id="bookingsTable">
+            <table class="apx-table apx-table--actions" id="bookingsTable">
                 <thead>
                     <tr>
                         <th>Customer</th>
@@ -167,14 +167,14 @@
                         <div class="primary-col">{{ $b->customer->name ?? 'N/A' }}</div>
                         <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;">{{ $b->reference_number }}</div>
                     </td>
-                    <td style="white-space:nowrap;">{{ $b->vehicle?->display_name ?? '—' }}</td>
+                    <td>{{ $b->vehicle?->display_name ?? '—' }}</td>
                     <td style="white-space:nowrap;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.04em;">{{ $b->vehicle?->display_plate ?? 'Not provided' }}</td>
                     <td>{{ $b->service_list }}</td>
-                    <td style="white-space:nowrap;">{{ $b->booking_date }} {{ $b->booking_time }}</td>
+                    <td>{{ $b->booking_date }} {{ $b->booking_time }}</td>
                     <td>
                         {{-- Assignable in place; opening the full edit form just
                              to put a mechanic on a job is more than it needs. --}}
-                        <select class="filter-select mechanic-assign" style="min-width:150px;font-size:.78rem;"
+                        <select class="filter-select mechanic-assign" style="font-size:.78rem;"
                                 data-booking="{{ $b->id }}" onchange="assignMechanic(this)">
                             <option value="" {{ $b->mechanic_id ? '' : 'selected' }}>— Unassigned —</option>
                             @foreach($mechanics as $sm)

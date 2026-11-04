@@ -678,6 +678,110 @@
             box-shadow: inset 3px 0 0 var(--red, #E8192C);
         }
 
+        /* ── Reachable actions on a table too wide for the screen ──
+           Opt in with .apx-table--actions, on any table whose LAST column is
+           the row's action buttons.
+
+           What was broken: .table-wrap{overflow-x:auto} stops the page
+           overflowing, but it does not make the far column reachable — it just
+           moves the problem inside the wrapper. The bookings table wants
+           1091px of content and the content area is 1000px at a 1280 viewport
+           with the sidebar out, so View / Edit / Arrived / Cancel sat off the
+           right edge of the wrapper and every one of the 15 rows needed a
+           sideways swipe before it could be clicked. Measured before this:
+           1024px expanded was 347px short, 1024 collapsed 171px, 1280
+           expanded 91px — and Cancelled was 78px short at 1024.
+
+           Pinning the column to the right edge makes that structural rather
+           than a matter of how much room is left: however narrow the wrapper
+           gets, and whatever is added to the middle columns later, the
+           buttons stay where the admin can hit them. The width-shedding below
+           is what keeps the pin from being needed at ordinary sizes; this is
+           what makes it safe when it is.
+
+           The cell must paint an opaque background or the row it is covering
+           shows through it, so every row state that colours the row repeats
+           its colour here. row-focus is a translucent wash, so it goes on as
+           an image over an opaque surface rather than as the background. */
+        .apx-table--actions thead th:last-child,
+        .apx-table--actions tbody td:last-child {
+            position: sticky;
+            right: 0;
+            /* Over the cells it covers, and the header over the body. */
+            z-index: 1;
+            /* A border would widen the table it is trying to fit; a shadow
+               draws the same line out of flow. The second, softer shadow is
+               what says the column is pinned rather than simply last: with
+               the hairline alone the Status column sliding under it read as
+               a rendering fault rather than as something scrolled away. */
+            box-shadow: -1px 0 0 var(--border),
+                        -10px 0 12px -10px rgba(0, 0, 0, .28);
+        }
+
+        .apx-table--actions thead th:last-child {
+            background: var(--surface-2);
+            z-index: 2;
+        }
+
+        .apx-table--actions tbody td:last-child {
+            background: var(--surface);
+        }
+
+        .apx-table--actions tbody tr:hover td:last-child {
+            background: var(--surface-2);
+        }
+
+        .apx-table--actions tbody tr.row-focus td:last-child,
+        .apx-table--actions tbody tr.row-focus:hover td:last-child {
+            background-color: var(--surface);
+            background-image: linear-gradient(var(--red-glow, rgba(232, 25, 44, .10)),
+                                              var(--red-glow, rgba(232, 25, 44, .10)));
+        }
+
+        /* ── Shedding the width that made the pin necessary ──
+           Below 1400px the content area stops being wide enough for eight
+           columns at 14px of padding a side, so the padding goes first: it is
+           the only width in the table that carries no information. 8 columns
+           × 8px is 64px back on the bookings list, which is most of the 91px
+           it was over at 1280. Under 1100px it tightens again rather than
+           starting to truncate anything.
+
+           Deliberately not applied to the icon buttons: .btn-icon stays 30px
+           square, because an action you can see and cannot reliably hit is
+           not much better than one you cannot see. */
+        @media (max-width: 1400px) {
+            .apx-table th,
+            .apx-table td {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+        }
+
+        @media (max-width: 1100px) {
+            .apx-table th,
+            .apx-table td {
+                padding-left: 8px;
+                padding-right: 8px;
+            }
+        }
+
+        /* A <select> in a table cell sizes itself to its longest option and
+           refuses to shrink below it, which on the bookings list meant one
+           mechanic with a long name set the width of the whole column. Let it
+           take the column instead: the full name is still there when the list
+           is open, and the row beside it gets the space back.
+
+           The floor is not 0. Tried that first and the table, already over
+           its space at 1024px, squeezed the mechanic column to a 10px stub —
+           the far column was reachable and the control next to it had become
+           impossible to read or hit, which is the same bug moved one column
+           left. 110px is what still reads as "— Unassigned —", and it is the
+           sticky rule above, not this, that guarantees the actions. */
+        .apx-table .filter-select {
+            max-width: 100%;
+            min-width: 110px;
+        }
+
         .primary-col {
             font-weight: 600;
             color: var(--text);

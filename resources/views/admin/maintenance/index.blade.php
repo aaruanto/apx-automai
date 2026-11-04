@@ -71,7 +71,7 @@
             {{-- The table is the one element allowed to scroll sideways; the
                  page itself must not, at any width. --}}
             <div style="overflow-x:auto;">
-                <table class="apx-table" style="min-width:780px;">
+                <table class="apx-table apx-table--actions" style="min-width:780px;">
                     <thead>
                         <tr>
                             <th>Interval</th>
