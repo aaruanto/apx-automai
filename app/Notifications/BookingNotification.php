@@ -150,6 +150,31 @@ class BookingNotification extends Notification
         ];
     }
 
+    /**
+     * Where a stored notification actually points.
+     *
+     * The link in the payload is the bare list URL: "a booking was cancelled"
+     * dropped the admin at the top of every booking there has ever been, with
+     * nothing to say which one it meant. The reference has always been stored
+     * beside it, so the destination can name the booking.
+     *
+     * Resolved here at read time rather than written into the payload, because
+     * every notification already in the table was written with the old link
+     * and those are the ones an admin is reading today. Computing it from
+     * 'reference' fixes the history as well as the next one sent.
+     */
+    public static function linkFor(array $data): ?string
+    {
+        $link = $data['link'] ?? null;
+        $ref  = $data['reference'] ?? null;
+
+        if (! $link || ! $ref || str_contains($link, 'ref=')) {
+            return $link;
+        }
+
+        return $link.(str_contains($link, '?') ? '&' : '?').'ref='.urlencode($ref);
+    }
+
     // ── Builders, so callers do not assemble copy at each call site ──────
 
     public static function requested(Booking $booking): self

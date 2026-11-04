@@ -16,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
     <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-02" rel="stylesheet" />
-    <link href="{{ asset('assets/css/customer-dashboard.css') }}?v=2026-11-02" rel="stylesheet" />
+    <link href="{{ asset('assets/css/customer-dashboard.css') }}?v=2026-11-04" rel="stylesheet" />
     <link href="{{ asset('assets/css/availability-picker.css') }}" rel="stylesheet" />
     {{-- Before first paint. The theme used to be applied by the script at the
          bottom of this file, which was invisible only because the stylesheet's
@@ -43,7 +43,7 @@
         /* Fix time/date picker icons showing through dark theme */
         input[type="time"].m-control, input[type="date"].m-control { color-scheme: dark; }
         html.light-mode input[type="time"].m-control, html.light-mode input[type="date"].m-control { color-scheme: light; }
-        html.light-mode { --black: #f4f5f7; --surface: #ffffff; --surface-2: #f0f1f3; --surface-3: #e6e8ec; --border: rgba(0,0,0,0.09); --text: #1a1d23; --text-muted: #6b7280; --red-glow: rgba(232,25,44,0.10); }
+        html.light-mode { --black: #f4f5f7; --surface: #ffffff; --surface-2: #f0f1f3; --surface-3: #e6e8ec; --border: rgba(0,0,0,0.09); --text: #1a1d23; --text-muted: #6b7280; --red-glow: rgba(232,25,44,0.10); --scrollbar-thumb: #848a93; }
         html.light-mode body { background: #f4f5f7; }
         html.light-mode .topnav { box-shadow: 0 1px 6px rgba(0,0,0,.07); }
         html.light-mode #sidebarToggle { color: #6b7280; }
@@ -107,7 +107,10 @@
         html.light-mode .empty-state i { color: #d1d5db; }
         html.light-mode .services-empty i { color: #d1d5db; }
         html.light-mode ::-webkit-scrollbar-track { background: #f4f5f7; }
-        html.light-mode ::-webkit-scrollbar-thumb { background: #d1d5db; }
+        {{-- The thumb's hard-coded #d1d5db used to sit here. At 1.35:1 on the
+             track above it was the best of the four themes and still nowhere
+             near the 3:1 a non-text control needs, so it now comes from
+             --scrollbar-thumb with the rest of the light-mode tokens. --}}
         .btn-book-service { background: var(--red); color: #fff; border: none; padding: 6px 14px; border-radius: 6px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; display: flex; align-items: center; gap: 5px; opacity: 0; transform: translateY(4px); transition: background 0.2s, transform 0.2s, opacity 0.2s; pointer-events: none; }
         .service-card:hover .btn-book-service { opacity: 1; transform: translateY(0); pointer-events: auto; }
         .btn-book-service:hover { background: var(--red-dark); transform: scale(1.03); }
@@ -232,7 +235,11 @@
         }
         .bundle-strip-rail > .promo-card { flex: 0 0 272px; scroll-snap-align: start; }
         .bundle-strip-rail::-webkit-scrollbar { height: 6px; }
-        .bundle-strip-rail::-webkit-scrollbar-thumb { background: var(--border-hover, rgba(128,128,128,0.35)); border-radius: 3px; }
+        {{-- Same token as every other thumb. --border-hover is not defined
+             anywhere, so this was always the 35% grey fallback — which is the
+             one scrollbar on the page a customer has to drag, because the
+             bundle strip does not scroll any other way. --}}
+        .bundle-strip-rail::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
 
         .promo-card--compact .promo-card-body { padding: 13px 15px 12px; }
         .promo-card--compact .promo-desc { margin-bottom: 12px; }
@@ -406,7 +413,16 @@
                             <div class="stat-label">Upcoming</div>
                             <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
                         </div>
-                        <div class="stat-value" id="cstatUpcoming">{{ $upcoming }}</div>
+                        {{-- Each card says what it counts. The three rules are
+                             genuinely different — Upcoming leaves cancelled
+                             out, Total takes them in — so Upcoming plus
+                             Completed does not add up to Total, and with
+                             nothing on screen to explain the gap the totals
+                             read as wrong. A customer whose only bookings had
+                             been cancelled saw Upcoming sitting at zero beside
+                             a Total that counted them. --}}
+                        <div class="stat-value has-note" id="cstatUpcoming">{{ $upcoming }}</div>
+                        <div class="stat-note">Pending and confirmed</div>
                         <div class="stat-footer">
                             <a href="#" onclick="switchSection(event,'bookings'); filterBookings('upcoming')">View Bookings <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
                         </div>
@@ -416,7 +432,8 @@
                             <div class="stat-label">Completed</div>
                             <div class="stat-icon"><i class="fas fa-circle-check"></i></div>
                         </div>
-                        <div class="stat-value" id="cstatCompleted">{{ $completed }}</div>
+                        <div class="stat-value has-note" id="cstatCompleted">{{ $completed }}</div>
+                        <div class="stat-note">Service finished</div>
                         <div class="stat-footer">
                             <a href="#" onclick="switchSection(event,'bookings'); filterBookings('completed')">View History <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
                         </div>
@@ -426,7 +443,13 @@
                             <div class="stat-label">Total Bookings</div>
                             <div class="stat-icon"><i class="fas fa-list-check"></i></div>
                         </div>
-                        <div class="stat-value" id="cstatTotal">{{ $totalBookings }}</div>
+                        {{-- Everything on record, cancelled included. That is
+                             the rule the All tab and the My Bookings badge
+                             already use, so narrowing it here would leave the
+                             card disagreeing with the list View All opens —
+                             the same complaint the other way round. --}}
+                        <div class="stat-value has-note" id="cstatTotal">{{ $totalBookings }}</div>
+                        <div class="stat-note">All time, including cancelled</div>
                         <div class="stat-footer">
                             <a href="#" onclick="switchSection(event,'bookings'); filterBookings('all')">View All <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
                         </div>
@@ -436,7 +459,8 @@
                             <div class="stat-label">Total Spent</div>
                             <div class="stat-icon"><i class="fas fa-peso-sign"></i></div>
                         </div>
-                        <div class="stat-value" id="cstatSpent">₱{{ number_format($totalSpent ?? 0, 0) }}</div>
+                        <div class="stat-value has-note" id="cstatSpent">₱{{ number_format($totalSpent ?? 0, 0) }}</div>
+                        <div class="stat-note">Completed work only</div>
                         <div class="stat-footer">
                             <a href="#">View Invoices <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
                         </div>
@@ -582,8 +606,12 @@
                     <div class="avf-grid">
                         <div class="m-form-group">
                             <label class="m-label">Vehicle Type</label>
-                            <div class="m-input-wrap"><i class="fas fa-car"></i>
-                                <select class="m-control" id="avfType">
+                            {{-- The icon follows the choice. This is the field
+                                 that states the vehicle type, so a car sitting
+                                 beside it while Motorcycle is selected is the
+                                 field contradicting itself. --}}
+                            <div class="m-input-wrap"><i class="fas fa-car" id="avfTypeIcon"></i>
+                                <select class="m-control" id="avfType" onchange="avfSyncTypeIcon()">
                                     <option value="car">Car</option>
                                     <option value="motorcycle">Motorcycle</option>
                                 </select>
@@ -598,13 +626,26 @@
                              and are only suggestions — anything may be typed,
                              because the list cannot know every car in Quezon
                              City. --}}
+                        {{-- Neutral icons. Make carried a motorcycle and Model
+                             a car, on a form whose type defaults to Car — so
+                             the motorcycle sat directly under a Car selection
+                             and read as the wrong type having been chosen. The
+                             suggestions behind these two fields are
+                             deliberately both types at once (see
+                             x-vehicle-datalists), so neither field should be
+                             asserting one. A manufacturer and a model name are
+                             what they are; the icons say that instead.
+
+                             The examples match the default too: Honda Civic is
+                             a car, where Honda Click 125i was a scooter being
+                             suggested under Car. --}}
                         <div class="m-form-group">
                             <label class="m-label">Make</label>
-                            <div class="m-input-wrap"><i class="fas fa-motorcycle"></i><input class="m-control" id="avfMake" type="text" list="avfMakeList" placeholder="e.g. Honda" /></div>
+                            <div class="m-input-wrap"><i class="fas fa-industry"></i><input class="m-control" id="avfMake" type="text" list="avfMakeList" placeholder="e.g. Honda" /></div>
                         </div>
                         <div class="m-form-group">
                             <label class="m-label">Model</label>
-                            <div class="m-input-wrap"><i class="fas fa-car-side"></i><input class="m-control" id="avfModel" type="text" list="avfModelList" placeholder="e.g. Click 125i" /></div>
+                            <div class="m-input-wrap"><i class="fas fa-tag"></i><input class="m-control" id="avfModel" type="text" list="avfModelList" placeholder="e.g. Civic" /></div>
                         </div>
                         <x-vehicle-datalists makes="avfMakeList" models="avfModelList" />
                         <div class="m-form-group">
@@ -1201,7 +1242,7 @@
 
 <!-- SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-<script src="{{ asset('assets/js/availability-picker.js') }}"></script>
+<script src="{{ asset('assets/js/availability-picker.js') }}?v=2026-11-04"></script>
 <script src="{{ asset('assets/js/form-validate.js') }}"></script>
 <script src="{{ asset('assets/js/plate-input.js') }}"></script>
 <script src="{{ asset('assets/js/password-toggle.js') }}"></script>
@@ -2201,6 +2242,17 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             : '<i class="fas fa-circle-plus"></i> Register a New Vehicle';
     }
 
+    /* Keeps the Vehicle Type icon showing the type that is actually selected.
+       Called wherever avfType is set, not only on change, because opening the
+       form resets it to Car and editing a vehicle adopts that vehicle's type —
+       both of which would otherwise leave the previous icon in place. */
+    function avfSyncTypeIcon() {
+        const icon = document.getElementById('avfTypeIcon');
+        if (!icon) return;
+        const isMoto = document.getElementById('avfType').value === 'motorcycle';
+        icon.className = 'fas ' + (isMoto ? 'fa-motorcycle' : 'fa-car');
+    }
+
     function toggleAddVehicleForm() {
         const form = document.getElementById('addVehicleForm');
         form.classList.toggle('open');
@@ -2209,6 +2261,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             setVehicleFormMode('add');
             ['avfMake','avfModel','avfYear','avfPlate','avfColor','avfMileage'].forEach(id => document.getElementById(id).value = '');
             document.getElementById('avfType').value = 'car';
+            avfSyncTypeIcon();
             setTimeout(() => document.getElementById('avfMake').focus(), 100);
         }
     }
@@ -2231,6 +2284,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         document.getElementById('avfPlate').value = (v.plate && v.plate !== 'Not provided') ? v.plate : '';
         document.getElementById('avfColor').value = v.color || '';
         document.getElementById('avfType').value  = v.type  || 'car';
+        avfSyncTypeIcon();
         document.getElementById('avfMileage').value = v.mileage || '';
 
         form.scrollIntoView({ behavior: 'smooth', block: 'center' });

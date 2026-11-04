@@ -69,6 +69,30 @@
             max-height: calc(100vh - 120px);
             overflow-y: auto;
         }
+        /* Sits inside the card's own padding rather than hanging off its
+           corner, so it cannot be the next thing overlapping something. */
+        .apx-sc-close {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 50%;
+            background: transparent;
+            color: #9aa0a6;
+            font-size: 0.95rem;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s, color 0.15s;
+        }
+        .apx-sc-close:hover { background: #f1f3f4; color: #1a1a1a; }
+        .apx-sc-close:focus-visible { outline: 2px solid #e63946; outline-offset: 2px; }
+        /* The heading starts below the button rather than behind it. */
+        .apx-sticky-card h5 { padding-right: 26px; }
         .apx-sticky-card h5 {
             font-family: 'Barlow', sans-serif;
             font-weight: 700;
@@ -195,7 +219,19 @@
             .back-to-top { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
         }
     </style>
-    <div class="apx-sticky-card">
+    {{-- A 300x430 panel fixed over the right of every screen wider than
+         1200px, with no way to shut it. It sits on top of the page it is
+         advertising — including the photographs of the shop — and the only
+         thing a visitor who did not want it could do was scroll underneath
+         it forever. Dismissing it is remembered, because a close button that
+         forgets by the next page is not a close button. --}}
+    <div class="apx-sticky-card" id="apxStickyCard">
+        {{-- A literal multiplication sign, not an icon font. This page loads
+             Font Awesome 5, where fa-xmark does not exist — it is a 6 name,
+             and the admin side loads 6, which is how it reads as available.
+             The first version of this button used it and rendered a correctly
+             sized, perfectly invisible glyph. --}}
+        <button type="button" class="apx-sc-close" id="apxStickyClose" aria-label="Close this panel">&times;</button>
         <h5>Experience The Best<br>Auto Service In QC</h5>
         <p>Get instant quotes for your vehicle</p>
         <select class="form-select" id="apx-sc-vtype" onchange="apxStickyVtype(this.value)">
@@ -236,6 +272,20 @@
         </div>
     </div>
     <script>
+    /* Before first paint, deliberately — the same reason the theme script at
+       the top of the page runs where it does. Hiding this from the handler
+       below would let a visitor who already dismissed the panel watch it
+       appear and then vanish on every page they open. */
+    (function () {
+        try {
+            if (localStorage.getItem('apx-sticky-card-dismissed') === '1') {
+                var c = document.getElementById('apxStickyCard');
+                if (c) c.style.display = 'none';
+            }
+        } catch (e) {}
+    })();
+    </script>
+    <script>
     (function() {
         var SC_VEHICLES = @json(config('vehicles'));
         /* The vehicles the shop sees, from config/vehicles.php. This list
@@ -243,6 +293,22 @@
            customer dashboard and the admin forms could not reach either
            copy — so each invented its own idea of a make and a model. */
         var scVtype = 'car';
+
+        /* Close, and stay closed. Hidden before first paint further down
+           rather than here, so a returning visitor who dismissed it never
+           sees it flash up and disappear. Storage is wrapped because it
+           throws in a private window, and a panel that will not close is a
+           worse outcome than one that forgets. */
+        var SC_DISMISSED = 'apx-sticky-card-dismissed';
+        var scCard  = document.getElementById('apxStickyCard');
+        var scClose = document.getElementById('apxStickyClose');
+
+        if (scClose && scCard) {
+            scClose.addEventListener('click', function () {
+                scCard.style.display = 'none';
+                try { localStorage.setItem(SC_DISMISSED, '1'); } catch (e) {}
+            });
+        }
 
         function scPopMakes() {
             var sel = document.getElementById('apx-sc-make');
@@ -292,9 +358,20 @@
     <!-- Sticky Book CTA End -->
 
     <!-- Navbar Start -->
-    <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
+    {{-- expand-xl, not expand-lg, on this page alone. It carries six links
+         where the other public pages carry four, plus the brand's px-lg-5 and
+         the Login button, and at 992 — where expand-lg swaps the hamburger
+         for the full bar — that is 10px more than the screen has, so the
+         Login button hung off the right edge until about 1005px.
+
+         Trimming the padding across that band was tried first and made it
+         worse: the brand is what was absorbing the slack, so narrowing it let
+         .navbar-collapse grow to its content instead and the overflow went
+         from 10px to 58px. The bar simply needs more room than 992 has, so it
+         keeps the hamburger until it has it. --}}
+    <nav class="navbar navbar-expand-xl bg-white navbar-light shadow sticky-top p-0">
         <a href="#home" class="navbar-brand d-flex align-items-center px-4 px-lg-5">
-            <h2 class="m-0 text-primary"><img src="/assets/img/apx-black-logo.png" alt="apx logo" width="100" height="120">AutoMai</h2>
+            <h2 class="m-0 text-primary"><img src="/assets/img/apx-black-logo-240.png" alt="apx logo" width="100" height="120">AutoMai</h2>
         </a>
         <button type="button" class="navbar-toggler me-4" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
             <span class="navbar-toggler-icon"></span>
@@ -591,7 +668,16 @@
                         <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto" style="width:72px;height:72px;">
                             <i class="fa fa-calendar-check fa-2x text-white"></i>
                         </div>
-                        <div class="position-absolute top-0 end-0 me-n2" style="transform:translate(30%,-20%);">
+                        {{-- Pinned to the circle, not to the column. end-0
+                             anchored this to the right edge of the whole
+                             column, which on a wide screen happened to sit
+                             near the circle and on a phone did not: the badge
+                             drifted away from the numbered step it belongs to
+                             and, with me-n2 and a 30% nudge on top, carried
+                             the page 12px past the right of the screen. The
+                             circle is 72px and centred, so half the column
+                             plus 20px is its shoulder at every width. --}}
+                        <div class="position-absolute top-0" style="left:50%; transform:translate(20px,-20%);">
                             <span class="badge rounded-pill" style="background:#e63946; font-family:'Barlow',sans-serif; font-size:0.85rem;">01</span>
                         </div>
                     </div>
@@ -603,7 +689,16 @@
                         <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto" style="width:72px;height:72px;">
                             <i class="fa fa-car fa-2x text-white"></i>
                         </div>
-                        <div class="position-absolute top-0 end-0 me-n2" style="transform:translate(30%,-20%);">
+                        {{-- Pinned to the circle, not to the column. end-0
+                             anchored this to the right edge of the whole
+                             column, which on a wide screen happened to sit
+                             near the circle and on a phone did not: the badge
+                             drifted away from the numbered step it belongs to
+                             and, with me-n2 and a 30% nudge on top, carried
+                             the page 12px past the right of the screen. The
+                             circle is 72px and centred, so half the column
+                             plus 20px is its shoulder at every width. --}}
+                        <div class="position-absolute top-0" style="left:50%; transform:translate(20px,-20%);">
                             <span class="badge rounded-pill" style="background:#e63946; font-family:'Barlow',sans-serif; font-size:0.85rem;">02</span>
                         </div>
                     </div>
@@ -615,7 +710,16 @@
                         <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto" style="width:72px;height:72px;">
                             <i class="fa fa-tools fa-2x text-white"></i>
                         </div>
-                        <div class="position-absolute top-0 end-0 me-n2" style="transform:translate(30%,-20%);">
+                        {{-- Pinned to the circle, not to the column. end-0
+                             anchored this to the right edge of the whole
+                             column, which on a wide screen happened to sit
+                             near the circle and on a phone did not: the badge
+                             drifted away from the numbered step it belongs to
+                             and, with me-n2 and a 30% nudge on top, carried
+                             the page 12px past the right of the screen. The
+                             circle is 72px and centred, so half the column
+                             plus 20px is its shoulder at every width. --}}
+                        <div class="position-absolute top-0" style="left:50%; transform:translate(20px,-20%);">
                             <span class="badge rounded-pill" style="background:#e63946; font-family:'Barlow',sans-serif; font-size:0.85rem;">03</span>
                         </div>
                     </div>
@@ -627,7 +731,16 @@
                         <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto" style="width:72px;height:72px;">
                             <i class="fa fa-check-circle fa-2x text-white"></i>
                         </div>
-                        <div class="position-absolute top-0 end-0 me-n2" style="transform:translate(30%,-20%);">
+                        {{-- Pinned to the circle, not to the column. end-0
+                             anchored this to the right edge of the whole
+                             column, which on a wide screen happened to sit
+                             near the circle and on a phone did not: the badge
+                             drifted away from the numbered step it belongs to
+                             and, with me-n2 and a 30% nudge on top, carried
+                             the page 12px past the right of the screen. The
+                             circle is 72px and centred, so half the column
+                             plus 20px is its shoulder at every width. --}}
+                        <div class="position-absolute top-0" style="left:50%; transform:translate(20px,-20%);">
                             <span class="badge rounded-pill" style="background:#e63946; font-family:'Barlow',sans-serif; font-size:0.85rem;">04</span>
                         </div>
                     </div>
@@ -798,7 +911,19 @@
     ============================================================ -->
     <div id="about" class="apx-section wow fadeInUp" data-wow-delay="0.1s">
         <div class="container">
-            <div class="row g-5">
+            {{-- g-5 is a 48px gutter, which gives the row -24px of margin on
+                 each side while .container only pads 12px. From 576px up the
+                 container has a max-width and the slack either side absorbs
+                 the difference; below that it is full-bleed, there is no
+                 slack, and 12px of row hangs off each edge of the screen.
+                 That is the 12px of horizontal overflow at phone width — the
+                 note in CLAUDE.md blames the template's absolutely positioned
+                 badges, which turns out to be the wrong culprit.
+
+                 The wide gutter is kept wherever it was doing something. The
+                 columns stack below lg anyway, so a 48px horizontal gutter on
+                 a phone was spacing nothing from nothing. --}}
+            <div class="row g-4 g-sm-5">
                 <div class="col-lg-6 pt-4" style="min-height: 400px;">
                     <div class="position-relative h-100 wow fadeIn" data-wow-delay="0.1s">
                         {{-- The shop's own signage. It lives here rather than in
@@ -813,7 +938,14 @@
                              replacement number would be the same mistake, so
                              what it says now is true of the shop whatever year
                              it opened: it takes both kinds of vehicle. --}}
-                        <div class="position-absolute top-0 end-0 mt-n4 me-n4 py-4 px-5" style="background: rgba(0, 0, 0, .35);">
+                        {{-- me-n4 hangs this off the corner of the photo,
+                             which is the intended look and 24px of overhang
+                             the screen has room for on a desktop. On a phone
+                             the photo already reaches both edges, so the same
+                             24px went straight off the side of the page. The
+                             overhang is kept where there is room for it and
+                             dropped where there is not. --}}
+                        <div class="position-absolute top-0 end-0 mt-n4 me-0 me-lg-n4 py-4 px-5" style="background: rgba(0, 0, 0, .35);">
                             <h4 class="text-white mb-0">Cars &amp;</h4>
                             <h4 class="text-white mb-0">Motorcycles</h4>
                         </div>
@@ -994,7 +1126,7 @@
     <script src="/assets/lib/tempusdominus/js/moment.min.js"></script>    <script src="/assets/lib/tempusdominus/js/moment-timezone.min.js"></script>
     <script src="/assets/lib/tempusdominus/js/tempusdominus-bootstrap-4.min.js"></script>
     <script src="/assets/js/main.js"></script>
-    <script src="/assets/js/availability-picker.js"></script>
+    <script src="/assets/js/availability-picker.js?v=2026-11-04"></script>
     <script src="/assets/js/form-validate.js"></script>
     <script src="/assets/js/plate-input.js"></script>
     <script src="/assets/js/alert-modal.js"></script>
@@ -2092,7 +2224,14 @@
                     ['apx-view-1','apx-view-2','apx-view-3'].forEach(function(id){ document.getElementById(id).style.display='none'; });
                     document.getElementById('apx-view-success').style.display = '';
                     document.getElementById('apx-modal-footer').style.display = 'none';
-                    document.getElementById('apx-step-label').textContent = 'Done';
+                    // Cleared, not set to "Done". The step counter has nothing
+                    // left to count once the booking is made, and the word sat
+                    // immediately left of the close X — so the header read
+                    // "Done ✕", which looks like a button you are meant to
+                    // press rather than a description of where you are. The
+                    // step bar below already says it, and says it better:
+                    // all three dots turn green on this same line.
+                    document.getElementById('apx-step-label').textContent = '';
                     ['apx-s1','apx-s2','apx-s3'].forEach(function(id){ document.getElementById(id).className='apx-step-item done'; });
                 } else {
                     ApxAlertModal.show({ variant: 'error', title: 'Booking failed', message: data.message || 'Booking failed. Please try again.' });

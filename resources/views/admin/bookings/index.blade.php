@@ -21,6 +21,11 @@
     <!-- SUMMARY MINI-CARDS -->
     <div class="stat-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
         @php
+            // Read once, up here, because the summary cards below highlight
+            // the active one and the filter bar further down preselects from
+            // the same value.
+            $preStatus = request('status');
+
             $mini = [
                 ['label'=>'Confirmed',   'key'=>'confirmed',   'icon'=>'fa-circle-check',  'color'=>'var(--success)'],
                 ['label'=>'Pending',     'key'=>'pending',     'icon'=>'fa-hourglass-half','color'=>'var(--warning)'],
@@ -28,8 +33,27 @@
                 ['label'=>'Cancelled',   'key'=>'cancelled',   'icon'=>'fa-ban',           'color'=>'var(--red)'],
             ];
         @endphp
+        {{-- Each card opens the list filtered to its own status. They looked
+             like the dashboard's cards, which have always been links, but
+             these four were plain divs — so the one place showing a count per
+             status was the one place you could not click to see them. The
+             filtering itself already existed; ?status= has been read and
+             preselected here for some time. This is what was missing.
+
+             Cancelled goes to its own page rather than to ?status=cancelled.
+             That page is not this table with a filter on it: it carries the
+             cancellation reason, who cancelled and when, and offers Rebook
+             and Delete permanently. Sending the card to the lesser view would
+             be hiding the better one. --}}
         @foreach($mini as $m)
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px;display:flex;align-items:center;gap:14px;">
+        @php
+            $isActive = $preStatus === $m['key'];
+            $target   = $m['key'] === 'cancelled'
+                ? route('admin.bookings.cancelled')
+                : route('admin.bookings.index', ['status' => $m['key']]);
+        @endphp
+        <a href="{{ $target }}" class="stat-mini{{ $isActive ? ' stat-mini-active' : '' }}"
+           title="Show only {{ $m['label'] }} bookings">
             <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;color:{{ $m['color'] }};font-size:.9rem;">
                 <i class="fas {{ $m['icon'] }}"></i>
             </div>
@@ -37,7 +61,7 @@
                 <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.5rem;font-weight:800;line-height:1;">{{ $counts[$m['key']] ?? 0 }}</div>
                 <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">{{ $m['label'] }}</div>
             </div>
-        </div>
+        </a>
         @endforeach
     </div>
  
@@ -46,41 +70,75 @@
         <div class="card-header">
             <div class="card-header-title"><i class="fas fa-table-list"></i> Booking Records</div>
             <div style="display:flex;gap:8px;">
+                {{-- A "Filter" button used to sit here. It had no onclick, no
+                     id and no listener anywhere — decoration inherited from
+                     the template, next to an Export CSV that does something.
+                     The filters below apply as you type, so there was never
+                     anything for it to do.
+
+                     The tester asked for Clear to be moved up here beside it.
+                     That would have paired the control that works with the one
+                     that does not; Clear belongs with the fields it clears,
+                     which is where it already is. --}}
                 <a href="{{ route('admin.bookings.export') }}" class="btn btn-ghost btn-sm"><i class="fas fa-file-export"></i> Export CSV</a>
-                <button class="btn btn-ghost btn-sm"><i class="fas fa-filter"></i> Filter</button>
             </div>
         </div>
  
         <!-- FILTERS -->
+        {{-- Every control says what it filters. They used to rely on their
+             first option for that — "All Statuses", "All Services" — which is
+             exactly the text that disappears once a value is chosen, so a
+             filtered list gave no account of what it was filtered by. The two
+             dates had nothing at all: a pair of identical empty mm/dd/yyyy
+             boxes whose from/to distinction lived in a title attribute, which
+             only shows if you already suspect it is there and hover. --}}
         <div class="filters-bar">
-            <div style="position:relative;">
-                <i class="fas fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:.75rem;"></i>
-                <input class="filter-input" type="text" id="searchInput" placeholder="Search by customer or booking ID..." style="padding-left:32px;" />
+            <div class="filter-field">
+                <label class="filter-label" for="searchInput">Search</label>
+                <div style="position:relative;">
+                    <i class="fas fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:.75rem;"></i>
+                    <input class="filter-input" type="text" id="searchInput" placeholder="Customer or booking ID..." style="padding-left:32px;" />
+                </div>
             </div>
-            {{-- Preselected from ?status= so the dashboard cards can open
-                 this list already filtered, rather than showing everything. --}}
-            @php $preStatus = request('status'); @endphp
-            <select class="filter-select" id="filterStatus">
-                <option value="">All Statuses</option>
-                @foreach (['confirmed'=>'Confirmed', 'pending'=>'Pending', 'in_progress'=>'In Progress', 'completed'=>'Completed', 'cancelled'=>'Cancelled'] as $v => $l)
-                <option value="{{ $v }}" @selected($preStatus === $v)>{{ $l }}</option>
-                @endforeach
-            </select>
-            <select class="filter-select" id="filterService">
-                <option value="">All Services</option>
-                @foreach($services as $service)
-                <option value="{{ $service->name }}">{{ $service->name }}</option>
-                @endforeach
-            </select>
-            <select class="filter-select" id="filterMechanic">
-                <option value="">All Mechanics</option>
-                <option value="__unassigned">Unassigned</option>
-                @foreach($mechanics as $sm)
-                <option value="{{ $sm->id }}">{{ $sm->name }}</option>
-                @endforeach
-            </select>
-            <input class="filter-select" type="date" id="filterDateFrom" title="Date from" />
-            <input class="filter-select" type="date" id="filterDateTo"   title="Date to"   />
+            {{-- Preselected from ?status= (read at the top of this view) so
+                 the dashboard cards, and the summary cards above, can open
+                 this list already filtered rather than showing everything. --}}
+            <div class="filter-field">
+                <label class="filter-label" for="filterStatus">Status</label>
+                <select class="filter-select" id="filterStatus">
+                    <option value="">All Statuses</option>
+                    @foreach (['confirmed'=>'Confirmed', 'pending'=>'Pending', 'in_progress'=>'In Progress', 'completed'=>'Completed', 'cancelled'=>'Cancelled'] as $v => $l)
+                    <option value="{{ $v }}" @selected($preStatus === $v)>{{ $l }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="filter-field">
+                <label class="filter-label" for="filterService">Service</label>
+                <select class="filter-select" id="filterService">
+                    <option value="">All Services</option>
+                    @foreach($services as $service)
+                    <option value="{{ $service->name }}">{{ $service->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="filter-field">
+                <label class="filter-label" for="filterMechanic">Mechanic</label>
+                <select class="filter-select" id="filterMechanic">
+                    <option value="">All Mechanics</option>
+                    <option value="__unassigned">Unassigned</option>
+                    @foreach($mechanics as $sm)
+                    <option value="{{ $sm->id }}">{{ $sm->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="filter-field">
+                <label class="filter-label" for="filterDateFrom">Date from</label>
+                <input class="filter-select" type="date" id="filterDateFrom" />
+            </div>
+            <div class="filter-field">
+                <label class="filter-label" for="filterDateTo">Date to</label>
+                <input class="filter-select" type="date" id="filterDateTo" />
+            </div>
             <button class="btn btn-ghost btn-sm" onclick="clearFilters()"><i class="fas fa-xmark"></i> Clear</button>
         </div>
  
@@ -104,7 +162,7 @@
                 {{-- data-date is the raw YYYY-MM-DD, which is the same shape an
                      <input type="date"> reports, so the filter below compares
                      the two as strings and needs no date parsing at all. --}}
-                <tr data-mechanic="{{ $b->mechanic_id ?? '__unassigned' }}" data-status="{{ $b->status }}" data-service="{{ $b->services->pluck('name')->implode('|') }}" data-date="{{ $b->booking_date }}" data-search="{{ strtolower(($b->customer->name ?? '').' '.$b->reference_number) }}">
+                <tr data-ref="{{ $b->reference_number }}" data-mechanic="{{ $b->mechanic_id ?? '__unassigned' }}" data-status="{{ $b->status }}" data-service="{{ $b->services->pluck('name')->implode('|') }}" data-date="{{ $b->booking_date }}" data-search="{{ strtolower(($b->customer->name ?? '').' '.$b->reference_number) }}">
                     <td>
                         <div class="primary-col">{{ $b->customer->name ?? 'N/A' }}</div>
                         <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;">{{ $b->reference_number }}</div>
@@ -435,5 +493,28 @@ function markArrived(id, btn) {
 // A ?status= in the URL is already selected above; apply it so the list
 // opens filtered rather than showing everything.
 applyFilters();
+
+// A notification names the booking it is about, and arrives here with its
+// reference in ?ref=. Following one used to land at the top of an unchanged
+// list of every booking, leaving the admin to find for themselves the row the
+// notification had just told them about.
+(function focusNotifiedRow() {
+    const ref = new URLSearchParams(location.search).get('ref');
+    if (!ref) return;
+
+    const row = document.querySelector('#tableBody tr[data-ref="' + CSS.escape(ref) + '"]');
+    if (!row) return;
+
+    // A status filter from the same URL could be hiding the very row we were
+    // sent to look at. The reference is the more specific instruction, so it
+    // wins and the filter is dropped rather than leaving an empty table.
+    if (row.style.display === 'none') {
+        document.getElementById('filterStatus').value = '';
+        applyFilters();
+    }
+
+    row.classList.add('row-focus');
+    row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+})();
 </script>
 @endpush

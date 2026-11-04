@@ -526,7 +526,12 @@
         /* Scrollbar styling */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: var(--black); }
-        ::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
+        /* Its own token, not --surface-3. A surface colour is a near neighbour
+           of the background it sits on, which is the opposite of what a
+           control you have to see needs: the thumb measured 1.12:1 against its
+           track in light mode and 1.24:1 in dark. Falls back to the old value
+           so a page that has not defined the token still renders a thumb. */
+        ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb, var(--surface-3)); border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--red); }
 
         /* Responsive */

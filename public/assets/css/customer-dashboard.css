@@ -7,6 +7,11 @@
             --border:     rgba(255,255,255,0.07);
             --text:       #F0F0F0;
             --text-muted: #888888;
+            /* 3.20:1 on this theme's #0A0A0A track. It borrowed --surface-3
+               before, which put it at 1.24:1 — a scrollbar the same colour as
+               the panel behind it. The light theme sets its own further down
+               the blade, beside the rest of the light-mode tokens. */
+            --scrollbar-thumb: #616161;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -264,6 +269,34 @@
         }
         .main-content.expanded { margin-left: 60px; }
 
+        /* Flex and grid items both default to a min size of their content, so
+           without this the dashboard kept its intrinsic width and pushed the
+           page wider than the viewport rather than letting its columns narrow.
+
+           The admin layout already carries this rule, with the same reasoning
+           written beside it; this side never got it. The gap it left was a
+           band rather than a cliff, which is why it survived: everything from
+           about 1100px down to 993px overflowed — 8px at 1100, 84px at 1024,
+           108px at 1000 — and then came right again at 992, where the
+           breakpoint below drops the sidebar and folds the grids to one and
+           two columns. Tested wide and tested on a phone, both fine; the
+           laptop sizes in between were the ones nobody opened.
+
+           Unconditional, not inside a breakpoint, for the same reason it is
+           unconditional over there: one rule cannot drift out of step with
+           the breakpoint that was supposed to accompany it. */
+        .main-content,
+        main,
+        .card {
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .cards-grid > *,
+        .content-grid > * {
+            min-width: 0;
+        }
+
         /* main is a flex column with footer pushed via margin-top:auto — the
            standard flexbox sticky-footer technique, so the footer sits at
            the bottom of the viewport on short pages and flows naturally
@@ -407,6 +440,19 @@
             font-size: 2.1rem;
             font-weight: 800;
             line-height: 1;
+            margin-bottom: 10px;
+        }
+        /* What the number above actually counts. The three cards use three
+           different rules — Upcoming leaves cancelled out, Total takes them in
+           — so Upcoming plus Completed never added up to Total and the gap had
+           nothing on screen to explain it. The admin dashboard already states
+           its rule under each figure; this is the same line in the same place.
+           The margin comes off .stat-value so the note sits with its number
+           rather than floating between the two. */
+        .stat-value.has-note { margin-bottom: 3px; }
+        .stat-note {
+            font-size: 0.72rem;
+            color: var(--text-muted);
             margin-bottom: 10px;
         }
         .stat-footer {

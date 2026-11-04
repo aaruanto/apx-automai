@@ -77,6 +77,17 @@
         .n-row:last-child { border-bottom: none; }
         .n-row.unread { background: var(--red-glow, rgba(232,25,44,.06)); }
         .n-row:hover { background: var(--surface-2); }
+
+        /* The one you last opened.
+           Opening a notification marks it read, which removed the only thing
+           that distinguished it — so the row you had just acted on became
+           less visible than the ones you had not, and coming back from the
+           booking list left you hunting for your place. The marker is the
+           accent an unread row cannot have, so the two never read as the same
+           state. Remembered per browser; nothing about which row a particular
+           admin last looked at belongs in the database. */
+        .n-row { border-left: 3px solid transparent; }
+        .n-row.opened { border-left-color: var(--red, #E8192C); background: var(--surface-2); }
         .n-title { font-weight: 700; font-size: .9rem; }
         .n-row.unread .n-title::after {
             content: ''; display: inline-block; width: 7px; height: 7px;
@@ -125,7 +136,7 @@
         <div class="card">
             @forelse($notifications as $n)
             <a class="n-row {{ $n->read_at ? '' : 'unread' }}"
-               href="{{ $n->data['link'] ?? '#' }}"
+               href="{{ \App\Notifications\BookingNotification::linkFor($n->data) ?? '#' }}"
                data-id="{{ $n->id }}">
                 <i class="fas {{ $n->data['icon'] ?? 'fa-bell' }}" style="color:var(--red);margin-top:3px;width:16px;"></i>
                 <div style="flex:1;min-width:0;">
@@ -148,9 +159,30 @@
     </div>
 
     <script>
+        // Which row was opened last, so returning to this page shows where you
+        // were. Wrapped because storage throws in a private window, and a
+        // marker is not worth a broken page.
+        var OPENED_KEY = 'apx-notification-opened';
+
+        try {
+            var lastOpened = localStorage.getItem(OPENED_KEY);
+            if (lastOpened) {
+                var prev = document.querySelector('.n-row[data-id="' + CSS.escape(lastOpened) + '"]');
+                if (prev) prev.classList.add('opened');
+            }
+        } catch (e) {}
+
         // Opening one marks it read on the way through; the link still follows.
         document.querySelectorAll('.n-row[data-id]').forEach(function (row) {
             row.addEventListener('click', function () {
+                // Mark it before anything else, so the row stays distinguished
+                // once markAsRead has taken its unread tint away.
+                document.querySelectorAll('.n-row.opened').forEach(function (r) {
+                    r.classList.remove('opened');
+                });
+                row.classList.add('opened');
+                try { localStorage.setItem(OPENED_KEY, row.dataset.id); } catch (e) {}
+
                 if (!row.classList.contains('unread')) return;
                 // keepalive, not sendBeacon: a beacon cannot carry the CSRF
                 // header, so Laravel would reject it with a 419.

@@ -4,7 +4,10 @@
 
 @push('styles')
 <style>
-    .dash-f-label { display:block; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:4px; }
+    /* .dash-f-label used to be defined here. It is now .filter-label in
+       layouts/admin.blade.php, beside .filter-input and .filter-select, so
+       the bookings filter bars label their controls with the same thing this
+       page does rather than a near-copy of it. */
 
     /* The customer dashboard greets the person by name in a banner; this one
        showed only the product name, so the two halves of the app addressed
@@ -102,18 +105,18 @@
           style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:20px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;">
 
         <div>
-            <label class="dash-f-label">From</label>
+            <label class="filter-label">From</label>
             <input class="filter-select" type="date" name="from"
                    value="{{ $filters['from']->toDateString() }}" required />
         </div>
         <div>
-            <label class="dash-f-label">To</label>
+            <label class="filter-label">To</label>
             <input class="filter-select" type="date" name="to"
                    value="{{ $filters['to']->toDateString() }}" required />
         </div>
 
         <div>
-            <label class="dash-f-label">Status</label>
+            <label class="filter-label">Status</label>
             <select class="filter-select" name="status">
                 <option value="">All statuses</option>
                 @foreach (['pending'=>'Pending','confirmed'=>'Confirmed','in_progress'=>'In Progress','completed'=>'Completed','cancelled'=>'Cancelled'] as $v => $l)
@@ -123,7 +126,7 @@
         </div>
 
         <div>
-            <label class="dash-f-label">Service</label>
+            <label class="filter-label">Service</label>
             <select class="filter-select" name="service">
                 <option value="">All services</option>
                 @foreach ($services as $svc)
@@ -133,7 +136,7 @@
         </div>
 
         <div>
-            <label class="dash-f-label">Customer <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+            <label class="filter-label">Customer <span style="font-weight:400;text-transform:none;">(optional)</span></label>
             <select class="filter-select" name="customer">
                 <option value="">All customers</option>
                 @foreach ($customers as $cust)
@@ -143,7 +146,7 @@
         </div>
 
         <div>
-            <label class="dash-f-label">Group by</label>
+            <label class="filter-label">Group by</label>
             <select class="filter-select" name="range">
                 @foreach ($ranges as $r)
                 <option value="{{ $r }}" @selected($filters['range'] === $r)>{{ ucfirst($r) }}</option>

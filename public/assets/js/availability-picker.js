@@ -49,6 +49,11 @@
     }
 
     AvailabilityPicker.prototype._changeMonth = function (delta) {
+        // Refuse while there is nothing to draw. The nav buttons are disabled
+        // in _monthChrome() for the same reason; this is the half that still
+        // holds for a keyboard, or for any caller that reaches this directly.
+        if (!this._serviceIds().length) return;
+
         this.month += delta;
         if (this.month < 1) { this.month = 12; this.year--; }
         if (this.month > 12) { this.month = 1; this.year++; }
@@ -155,6 +160,16 @@
             // anyone was looking.
             if (this.els.calEmpty) this.els.calEmpty.hidden = false;
 
+            // There is no month to page through yet, so neither arrow does
+            // anything but lie. _changeMonth() used to advance this.month
+            // against the empty grid: the calendar stayed blank, which read as
+            // a calendar that would not load, and the month quietly moved
+            // anyway — so the first month it finally drew, once a service was
+            // picked, was wherever the paging had left it. Two clicks while
+            // deciding and the booking opened on December.
+            this.els.prevBtn.disabled = true;
+            this.els.nextBtn.disabled = true;
+
             // Not "Select a date": there are no dates to select yet, and
             // telling someone to do an impossible thing is what made this read
             // as broken rather than as waiting.
@@ -167,6 +182,12 @@
         // left over from when nothing was chosen — it used to sit there saying
         // "choose a service first" after one had been chosen.
         if (this.els.calEmpty) this.els.calEmpty.hidden = true;
+
+        // And the month can be paged again. Nothing else ever disables
+        // nextBtn, so without this it would stay dead for the rest of the
+        // session once the branch above had switched it off. prevBtn is left
+        // to isCurrentMonth above, which is its own rule.
+        this.els.nextBtn.disabled = false;
 
         if (!this.selectedDate) {
             this.els.slotsHeader.textContent = 'Select a date';
