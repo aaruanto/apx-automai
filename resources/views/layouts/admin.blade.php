@@ -48,6 +48,13 @@
             --text: #1a1d23;
             --text-muted: #6b7280;
             --red-glow: rgba(232, 25, 44, 0.10);
+            /* The scrollbar thumb gets its own colour rather than borrowing
+               --surface-3. A surface token is by definition a near neighbour
+               of the background it sits on, so using one for a control you
+               have to see put the thumb at 1.12:1 against its track —
+               a 6px bar you could not find. WCAG 2.1 asks 3:1 of a non-text
+               control (1.4.11); this is 3.19:1. */
+            --scrollbar-thumb: #848a93;
         }
 
         /* ── Dark mode overrides ── */
@@ -60,6 +67,9 @@
             --text: #e8eaed;
             --text-muted: #6b7280;
             --red-glow: rgba(232, 25, 44, 0.15);
+            /* 3.17:1 on this theme's darker track. Dark mode had the same
+               fault as light — 1.33:1 — it was just less obvious. */
+            --scrollbar-thumb: #5a6478;
         }
 
         *,
@@ -674,6 +684,32 @@
             font-size: .85rem;
         }
 
+        /* A summary card that is also a link to what it counts. Shared rather
+           than inlined on the bookings list, because the next screen that
+           shows a count per status should look and behave the same. */
+        .stat-mini {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .stat-mini:hover {
+            border-color: rgba(232, 25, 44, .35);
+        }
+
+        /* Which filter the list is currently showing. Without this the cards
+           say what the counts are but not which of them you are looking at. */
+        .stat-mini-active {
+            border-color: var(--red);
+            box-shadow: inset 0 0 0 1px var(--red);
+        }
+
         /* ── Filters bar ── */
         .filters-bar {
             display: flex;
@@ -1046,8 +1082,12 @@
         }
 
         ::-webkit-scrollbar-thumb {
-            background: var(--surface-3);
+            background: var(--scrollbar-thumb);
             border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--red);
         }
 
         /* ── Responsive ── */

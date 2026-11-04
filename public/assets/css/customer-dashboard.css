@@ -7,6 +7,11 @@
             --border:     rgba(255,255,255,0.07);
             --text:       #F0F0F0;
             --text-muted: #888888;
+            /* 3.20:1 on this theme's #0A0A0A track. It borrowed --surface-3
+               before, which put it at 1.24:1 — a scrollbar the same colour as
+               the panel behind it. The light theme sets its own further down
+               the blade, beside the rest of the light-mode tokens. */
+            --scrollbar-thumb: #616161;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }

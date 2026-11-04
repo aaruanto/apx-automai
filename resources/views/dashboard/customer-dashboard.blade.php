@@ -43,7 +43,7 @@
         /* Fix time/date picker icons showing through dark theme */
         input[type="time"].m-control, input[type="date"].m-control { color-scheme: dark; }
         html.light-mode input[type="time"].m-control, html.light-mode input[type="date"].m-control { color-scheme: light; }
-        html.light-mode { --black: #f4f5f7; --surface: #ffffff; --surface-2: #f0f1f3; --surface-3: #e6e8ec; --border: rgba(0,0,0,0.09); --text: #1a1d23; --text-muted: #6b7280; --red-glow: rgba(232,25,44,0.10); }
+        html.light-mode { --black: #f4f5f7; --surface: #ffffff; --surface-2: #f0f1f3; --surface-3: #e6e8ec; --border: rgba(0,0,0,0.09); --text: #1a1d23; --text-muted: #6b7280; --red-glow: rgba(232,25,44,0.10); --scrollbar-thumb: #848a93; }
         html.light-mode body { background: #f4f5f7; }
         html.light-mode .topnav { box-shadow: 0 1px 6px rgba(0,0,0,.07); }
         html.light-mode #sidebarToggle { color: #6b7280; }
@@ -107,7 +107,10 @@
         html.light-mode .empty-state i { color: #d1d5db; }
         html.light-mode .services-empty i { color: #d1d5db; }
         html.light-mode ::-webkit-scrollbar-track { background: #f4f5f7; }
-        html.light-mode ::-webkit-scrollbar-thumb { background: #d1d5db; }
+        {{-- The thumb's hard-coded #d1d5db used to sit here. At 1.35:1 on the
+             track above it was the best of the four themes and still nowhere
+             near the 3:1 a non-text control needs, so it now comes from
+             --scrollbar-thumb with the rest of the light-mode tokens. --}}
         .btn-book-service { background: var(--red); color: #fff; border: none; padding: 6px 14px; border-radius: 6px; font-family: 'Barlow Condensed', sans-serif; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; display: flex; align-items: center; gap: 5px; opacity: 0; transform: translateY(4px); transition: background 0.2s, transform 0.2s, opacity 0.2s; pointer-events: none; }
         .service-card:hover .btn-book-service { opacity: 1; transform: translateY(0); pointer-events: auto; }
         .btn-book-service:hover { background: var(--red-dark); transform: scale(1.03); }
@@ -232,7 +235,11 @@
         }
         .bundle-strip-rail > .promo-card { flex: 0 0 272px; scroll-snap-align: start; }
         .bundle-strip-rail::-webkit-scrollbar { height: 6px; }
-        .bundle-strip-rail::-webkit-scrollbar-thumb { background: var(--border-hover, rgba(128,128,128,0.35)); border-radius: 3px; }
+        {{-- Same token as every other thumb. --border-hover is not defined
+             anywhere, so this was always the 35% grey fallback — which is the
+             one scrollbar on the page a customer has to drag, because the
+             bundle strip does not scroll any other way. --}}
+        .bundle-strip-rail::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
 
         .promo-card--compact .promo-card-body { padding: 13px 15px 12px; }
         .promo-card--compact .promo-desc { margin-bottom: 12px; }
