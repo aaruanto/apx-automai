@@ -34,7 +34,9 @@ class NotificationController extends Controller
                 'title'   => $n->data['title'] ?? 'Notification',
                 'body'    => $n->data['body'] ?? '',
                 'icon'    => $n->data['icon'] ?? 'fa-bell',
-                'link'    => $n->data['link'] ?? null,
+                // Carries the booking's reference, so the list it opens can
+                // mark the row this notification is about.
+                'link'    => \App\Notifications\BookingNotification::linkFor($n->data),
                 'unread'  => $n->read_at === null,
                 'ago'     => $n->created_at->diffForHumans(null, true).' ago',
             ])->values(),
@@ -49,7 +51,10 @@ class NotificationController extends Controller
 
         return response()->json([
             'success' => true,
-            'link'    => $notification->data['link'] ?? null,
+            // Same reference-carrying link the feed hands out, so following a
+            // notification from the bell lands on the same marked row as
+            // following it from the list.
+            'link'    => \App\Notifications\BookingNotification::linkFor($notification->data),
             'unread'  => $request->user()->unreadNotifications()->count(),
         ]);
     }

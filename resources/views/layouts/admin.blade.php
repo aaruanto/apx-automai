@@ -655,6 +655,19 @@
             border-bottom: none;
         }
 
+        /* The row a notification sent you to.
+           Following one landed at the top of an unchanged list of every
+           booking, so the admin had to go and find the row they had just been
+           told about. This marks it. It holds rather than fading: the point is
+           to still be showing which booking is meant once the page has
+           finished scrolling to it, and a highlight that times out is a
+           highlight you can miss by looking away. */
+        .apx-table tbody tr.row-focus,
+        .apx-table tbody tr.row-focus:hover {
+            background: var(--red-glow, rgba(232, 25, 44, .10));
+            box-shadow: inset 3px 0 0 var(--red, #E8192C);
+        }
+
         .primary-col {
             font-weight: 600;
             color: var(--text);

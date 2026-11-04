@@ -129,7 +129,7 @@
                 {{-- data-date is the raw YYYY-MM-DD, which is the same shape an
                      <input type="date"> reports, so the filter below compares
                      the two as strings and needs no date parsing at all. --}}
-                <tr data-mechanic="{{ $b->mechanic_id ?? '__unassigned' }}" data-status="{{ $b->status }}" data-service="{{ $b->services->pluck('name')->implode('|') }}" data-date="{{ $b->booking_date }}" data-search="{{ strtolower(($b->customer->name ?? '').' '.$b->reference_number) }}">
+                <tr data-ref="{{ $b->reference_number }}" data-mechanic="{{ $b->mechanic_id ?? '__unassigned' }}" data-status="{{ $b->status }}" data-service="{{ $b->services->pluck('name')->implode('|') }}" data-date="{{ $b->booking_date }}" data-search="{{ strtolower(($b->customer->name ?? '').' '.$b->reference_number) }}">
                     <td>
                         <div class="primary-col">{{ $b->customer->name ?? 'N/A' }}</div>
                         <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;">{{ $b->reference_number }}</div>
@@ -460,5 +460,28 @@ function markArrived(id, btn) {
 // A ?status= in the URL is already selected above; apply it so the list
 // opens filtered rather than showing everything.
 applyFilters();
+
+// A notification names the booking it is about, and arrives here with its
+// reference in ?ref=. Following one used to land at the top of an unchanged
+// list of every booking, leaving the admin to find for themselves the row the
+// notification had just told them about.
+(function focusNotifiedRow() {
+    const ref = new URLSearchParams(location.search).get('ref');
+    if (!ref) return;
+
+    const row = document.querySelector('#tableBody tr[data-ref="' + CSS.escape(ref) + '"]');
+    if (!row) return;
+
+    // A status filter from the same URL could be hiding the very row we were
+    // sent to look at. The reference is the more specific instruction, so it
+    // wins and the filter is dropped rather than leaving an empty table.
+    if (row.style.display === 'none') {
+        document.getElementById('filterStatus').value = '';
+        applyFilters();
+    }
+
+    row.classList.add('row-focus');
+    row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+})();
 </script>
 @endpush
