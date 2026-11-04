@@ -2224,7 +2224,14 @@
                     ['apx-view-1','apx-view-2','apx-view-3'].forEach(function(id){ document.getElementById(id).style.display='none'; });
                     document.getElementById('apx-view-success').style.display = '';
                     document.getElementById('apx-modal-footer').style.display = 'none';
-                    document.getElementById('apx-step-label').textContent = 'Done';
+                    // Cleared, not set to "Done". The step counter has nothing
+                    // left to count once the booking is made, and the word sat
+                    // immediately left of the close X — so the header read
+                    // "Done ✕", which looks like a button you are meant to
+                    // press rather than a description of where you are. The
+                    // step bar below already says it, and says it better:
+                    // all three dots turn green on this same line.
+                    document.getElementById('apx-step-label').textContent = '';
                     ['apx-s1','apx-s2','apx-s3'].forEach(function(id){ document.getElementById(id).className='apx-step-item done'; });
                 } else {
                     ApxAlertModal.show({ variant: 'error', title: 'Booking failed', message: data.message || 'Booking failed. Please try again.' });
