@@ -572,7 +572,7 @@
      the reason and reports what actually happened. --}}
 
 @push('scripts')
-<script src="{{ asset('assets/js/availability-picker.js') }}"></script>
+<script src="{{ asset('assets/js/availability-picker.js') }}?v=2026-11-04"></script>
 <script>
 @if($isEdit)
 /* Cancelling from this screen.

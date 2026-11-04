@@ -1201,7 +1201,7 @@
 
 <!-- SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-<script src="{{ asset('assets/js/availability-picker.js') }}"></script>
+<script src="{{ asset('assets/js/availability-picker.js') }}?v=2026-11-04"></script>
 <script src="{{ asset('assets/js/form-validate.js') }}"></script>
 <script src="{{ asset('assets/js/plate-input.js') }}"></script>
 <script src="{{ asset('assets/js/password-toggle.js') }}"></script>

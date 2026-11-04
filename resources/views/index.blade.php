@@ -994,7 +994,7 @@
     <script src="/assets/lib/tempusdominus/js/moment.min.js"></script>    <script src="/assets/lib/tempusdominus/js/moment-timezone.min.js"></script>
     <script src="/assets/lib/tempusdominus/js/tempusdominus-bootstrap-4.min.js"></script>
     <script src="/assets/js/main.js"></script>
-    <script src="/assets/js/availability-picker.js"></script>
+    <script src="/assets/js/availability-picker.js?v=2026-11-04"></script>
     <script src="/assets/js/form-validate.js"></script>
     <script src="/assets/js/plate-input.js"></script>
     <script src="/assets/js/alert-modal.js"></script>
