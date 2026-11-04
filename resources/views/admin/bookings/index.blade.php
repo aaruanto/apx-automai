@@ -21,6 +21,11 @@
     <!-- SUMMARY MINI-CARDS -->
     <div class="stat-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
         @php
+            // Read once, up here, because the summary cards below highlight
+            // the active one and the filter bar further down preselects from
+            // the same value.
+            $preStatus = request('status');
+
             $mini = [
                 ['label'=>'Confirmed',   'key'=>'confirmed',   'icon'=>'fa-circle-check',  'color'=>'var(--success)'],
                 ['label'=>'Pending',     'key'=>'pending',     'icon'=>'fa-hourglass-half','color'=>'var(--warning)'],
@@ -28,8 +33,27 @@
                 ['label'=>'Cancelled',   'key'=>'cancelled',   'icon'=>'fa-ban',           'color'=>'var(--red)'],
             ];
         @endphp
+        {{-- Each card opens the list filtered to its own status. They looked
+             like the dashboard's cards, which have always been links, but
+             these four were plain divs — so the one place showing a count per
+             status was the one place you could not click to see them. The
+             filtering itself already existed; ?status= has been read and
+             preselected here for some time. This is what was missing.
+
+             Cancelled goes to its own page rather than to ?status=cancelled.
+             That page is not this table with a filter on it: it carries the
+             cancellation reason, who cancelled and when, and offers Rebook
+             and Delete permanently. Sending the card to the lesser view would
+             be hiding the better one. --}}
         @foreach($mini as $m)
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px;display:flex;align-items:center;gap:14px;">
+        @php
+            $isActive = $preStatus === $m['key'];
+            $target   = $m['key'] === 'cancelled'
+                ? route('admin.bookings.cancelled')
+                : route('admin.bookings.index', ['status' => $m['key']]);
+        @endphp
+        <a href="{{ $target }}" class="stat-mini{{ $isActive ? ' stat-mini-active' : '' }}"
+           title="Show only {{ $m['label'] }} bookings">
             <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;color:{{ $m['color'] }};font-size:.9rem;">
                 <i class="fas {{ $m['icon'] }}"></i>
             </div>
@@ -37,7 +61,7 @@
                 <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.5rem;font-weight:800;line-height:1;">{{ $counts[$m['key']] ?? 0 }}</div>
                 <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">{{ $m['label'] }}</div>
             </div>
-        </div>
+        </a>
         @endforeach
     </div>
  
@@ -76,9 +100,9 @@
                     <input class="filter-input" type="text" id="searchInput" placeholder="Customer or booking ID..." style="padding-left:32px;" />
                 </div>
             </div>
-            {{-- Preselected from ?status= so the dashboard cards can open
-                 this list already filtered, rather than showing everything. --}}
-            @php $preStatus = request('status'); @endphp
+            {{-- Preselected from ?status= (read at the top of this view) so
+                 the dashboard cards, and the summary cards above, can open
+                 this list already filtered rather than showing everything. --}}
             <div class="filter-field">
                 <label class="filter-label" for="filterStatus">Status</label>
                 <select class="filter-select" id="filterStatus">
