@@ -69,6 +69,30 @@
             max-height: calc(100vh - 120px);
             overflow-y: auto;
         }
+        /* Sits inside the card's own padding rather than hanging off its
+           corner, so it cannot be the next thing overlapping something. */
+        .apx-sc-close {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 50%;
+            background: transparent;
+            color: #9aa0a6;
+            font-size: 0.95rem;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s, color 0.15s;
+        }
+        .apx-sc-close:hover { background: #f1f3f4; color: #1a1a1a; }
+        .apx-sc-close:focus-visible { outline: 2px solid #e63946; outline-offset: 2px; }
+        /* The heading starts below the button rather than behind it. */
+        .apx-sticky-card h5 { padding-right: 26px; }
         .apx-sticky-card h5 {
             font-family: 'Barlow', sans-serif;
             font-weight: 700;
@@ -195,7 +219,19 @@
             .back-to-top { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
         }
     </style>
-    <div class="apx-sticky-card">
+    {{-- A 300x430 panel fixed over the right of every screen wider than
+         1200px, with no way to shut it. It sits on top of the page it is
+         advertising — including the photographs of the shop — and the only
+         thing a visitor who did not want it could do was scroll underneath
+         it forever. Dismissing it is remembered, because a close button that
+         forgets by the next page is not a close button. --}}
+    <div class="apx-sticky-card" id="apxStickyCard">
+        {{-- A literal multiplication sign, not an icon font. This page loads
+             Font Awesome 5, where fa-xmark does not exist — it is a 6 name,
+             and the admin side loads 6, which is how it reads as available.
+             The first version of this button used it and rendered a correctly
+             sized, perfectly invisible glyph. --}}
+        <button type="button" class="apx-sc-close" id="apxStickyClose" aria-label="Close this panel">&times;</button>
         <h5>Experience The Best<br>Auto Service In QC</h5>
         <p>Get instant quotes for your vehicle</p>
         <select class="form-select" id="apx-sc-vtype" onchange="apxStickyVtype(this.value)">
@@ -236,6 +272,20 @@
         </div>
     </div>
     <script>
+    /* Before first paint, deliberately — the same reason the theme script at
+       the top of the page runs where it does. Hiding this from the handler
+       below would let a visitor who already dismissed the panel watch it
+       appear and then vanish on every page they open. */
+    (function () {
+        try {
+            if (localStorage.getItem('apx-sticky-card-dismissed') === '1') {
+                var c = document.getElementById('apxStickyCard');
+                if (c) c.style.display = 'none';
+            }
+        } catch (e) {}
+    })();
+    </script>
+    <script>
     (function() {
         var SC_VEHICLES = @json(config('vehicles'));
         /* The vehicles the shop sees, from config/vehicles.php. This list
@@ -243,6 +293,22 @@
            customer dashboard and the admin forms could not reach either
            copy — so each invented its own idea of a make and a model. */
         var scVtype = 'car';
+
+        /* Close, and stay closed. Hidden before first paint further down
+           rather than here, so a returning visitor who dismissed it never
+           sees it flash up and disappear. Storage is wrapped because it
+           throws in a private window, and a panel that will not close is a
+           worse outcome than one that forgets. */
+        var SC_DISMISSED = 'apx-sticky-card-dismissed';
+        var scCard  = document.getElementById('apxStickyCard');
+        var scClose = document.getElementById('apxStickyClose');
+
+        if (scClose && scCard) {
+            scClose.addEventListener('click', function () {
+                scCard.style.display = 'none';
+                try { localStorage.setItem(SC_DISMISSED, '1'); } catch (e) {}
+            });
+        }
 
         function scPopMakes() {
             var sel = document.getElementById('apx-sc-make');
