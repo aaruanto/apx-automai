@@ -99,4 +99,54 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Demo accounts
+    |--------------------------------------------------------------------------
+    |
+    | TEMPORARY, for the capstone demo. When enabled, apx:demo-accounts
+    | provisions these two logins on every boot and the sign-in page prints
+    | them on screen, so a panel can try the system without being handed
+    | credentials first.
+    |
+    | This publishes a WORKING ADMIN PASSWORD to anyone who opens /login.
+    | While it is on, a stranger can edit prices, bookings and customer data.
+    | Turn it off with DEMO_ACCOUNTS=false the moment the demo is over, and
+    | then change the admin password — a password that has been printed on a
+    | public page is spent, whether or not anyone was watching.
+    |
+    | The values live in the environment, never in this file: .env is
+    | gitignored, so no credential reaches Git. Read through config(), not
+    | env(), because env() returns null once config:cache has run — which is
+    | exactly the case in production, and exactly when this has to work.
+    |
+    | An account with no email or no password configured is skipped on its
+    | own, so the admin can be shown without the customer or the other way
+    | round. DEMO_ACCOUNTS unset means off, which is what a fresh clone and
+    | the test suite get.
+    |
+    */
+    'demo' => [
+
+        'enabled' => (bool) env('DEMO_ACCOUNTS', false),
+
+        // Order here is the order they appear on the sign-in page.
+        'accounts' => [
+            [
+                'label'    => 'Administrator',
+                'role'     => 'admin',
+                'name'     => env('DEMO_ADMIN_NAME', 'APX Administrator'),
+                'email'    => env('DEMO_ADMIN_EMAIL'),
+                'password' => env('DEMO_ADMIN_PASSWORD'),
+            ],
+            [
+                'label'    => 'Customer',
+                'role'     => 'customer',
+                'name'     => env('DEMO_CUSTOMER_NAME', 'Demo Customer'),
+                'email'    => env('DEMO_CUSTOMER_EMAIL'),
+                'password' => env('DEMO_CUSTOMER_PASSWORD'),
+            ],
+        ],
+    ],
+
 ];

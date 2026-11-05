@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use App\Models\Setting;
+use App\Support\DemoAccounts;
 use App\Services\Sms\LogGateway;
 use App\Services\Sms\SemaphoreGateway;
 use App\Services\Sms\SmsGateway;
@@ -123,6 +124,18 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $view->with('defaultTheme', $theme === 'dark' ? 'dark' : 'light');
+        });
+
+        // TEMPORARY, for the capstone demo: the sign-in page prints the demo
+        // logins so a panel can try the system without being handed
+        // credentials first. Empty unless DEMO_ACCOUNTS is on, which is how a
+        // fresh clone and the test suite see it.
+        //
+        // Composed here rather than read from the Blade file, so the page and
+        // apx:demo-accounts are reading the same normalised list and cannot
+        // advertise an address that was never provisioned.
+        View::composer('auth.login', function ($view) {
+            $view->with('demoAccounts', DemoAccounts::all());
         });
     }
 }

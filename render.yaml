@@ -95,6 +95,41 @@ services:
         value: https://api.semaphore.co/api/v4
       - key: SEMAPHORE_KEY
         sync: false
+      # ── TEMPORARY: capstone demonstration ──
+      #
+      # DEMO_ACCOUNTS=true makes apx:demo-accounts provision two sample logins
+      # on every boot AND makes the sign-in page print them on screen, so a
+      # panel can try the live site without being handed credentials.
+      #
+      # It publishes a WORKING ADMIN PASSWORD to anyone who opens /login.
+      # While this is true, a stranger can change prices, bookings and
+      # customer data. Switch it on in the dashboard for the demo and off
+      # immediately afterwards.
+      #
+      # sync: false rather than a pinned `value: false`, so the dashboard is
+      # authoritative: pinning it here would mean a push to main during the
+      # demo week silently switched the panel back off part-way through.
+      # Unset still means off — the default lives in config/apx.php — so
+      # forgetting the variable fails closed either way.
+      #
+      # Winding it down: run apx:demo-accounts --prune while the variables are
+      # still set (it rotates the passwords so the printed ones stop working),
+      # then set DEMO_ACCOUNTS back to false and clear the two passwords.
+      # Render's free tier has no shell, so the prune has to happen before the
+      # variables go, or from a local copy pointed at the same database.
+      #
+      # The addresses and passwords are sync: false — prompted for in the
+      # dashboard, never written in this file.
+      - key: DEMO_ACCOUNTS
+        sync: false
+      - key: DEMO_ADMIN_EMAIL
+        sync: false
+      - key: DEMO_ADMIN_PASSWORD
+        sync: false
+      - key: DEMO_CUSTOMER_EMAIL
+        sync: false
+      - key: DEMO_CUSTOMER_PASSWORD
+        sync: false
 
 databases:
   - name: apx-automai-db

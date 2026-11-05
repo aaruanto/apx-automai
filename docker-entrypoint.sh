@@ -49,6 +49,12 @@ php artisan db:seed --class=MaintenanceRuleSeeder --force
 # environment, and no-ops when ADMIN_EMAIL/ADMIN_PASSWORD are unset.
 php artisan apx:ensure-admin
 
+# TEMPORARY, for the capstone demo: the two sample logins printed on the
+# sign-in page. No-ops when DEMO_ACCOUNTS is unset or false, which is how
+# this should be left once the demo is over — the command does not fail a
+# boot over missing variables.
+php artisan apx:demo-accounts
+
 # Rebuild caches against the real runtime environment variables.
 php artisan config:cache
 php artisan route:cache

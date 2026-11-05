@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
     <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-02" rel="stylesheet" />
-    <link href="{{ asset('assets/css/auth.css') }}?v=2026-11-02" rel="stylesheet" />
+    <link href="{{ asset('assets/css/auth.css') }}?v=2026-11-05" rel="stylesheet" />
     {{-- Before first paint, deliberately. Setting the class from a script
          at the end of the body would render the page dark and then repaint
          it light, which is a white flash for a returning dark user and a
@@ -44,6 +44,11 @@
     </header>
 
     <div class="auth-wrapper">
+        {{-- The card and the demo panel stack as one column. The stack carries
+             the 420px the card used to carry itself, so the panel cannot end
+             up a different width from the thing it sits under. Present whether
+             or not the panel is, so the layout is the same page either way. --}}
+        <div class="auth-stack">
         <div class="auth-card">
 
             <div class="auth-header">
@@ -124,6 +129,49 @@
                 Don't have an account? <a href="{{ route('register') }}">Create one</a>
             </div>
         </div>
+
+        {{-- TEMPORARY, for the capstone demo. Empty unless DEMO_ACCOUNTS is
+             on, so a fresh clone and the live site after the demo show
+             nothing here at all.
+
+             These are real, working credentials on a public page — the panel
+             says so rather than pretending otherwise, because the next person
+             to read this screen should know it is not a permanent feature.
+             apx:demo-accounts --prune retires them. --}}
+        @if (! empty($demoAccounts))
+        <div class="demo-card">
+            <div class="demo-head">
+                <i class="fas fa-flask"></i>
+                <span>Sample Accounts</span>
+                <span class="demo-tag">Demo only</span>
+            </div>
+
+            <ul class="demo-list">
+                @foreach ($demoAccounts as $account)
+                <li class="demo-item">
+                    <div class="demo-role">{{ $account['label'] }}</div>
+                    <div class="demo-creds">
+                        <code>{{ $account['email'] }}</code>
+                        <span class="demo-sep">&middot;</span>
+                        <code>{{ $account['password'] }}</code>
+                    </div>
+                    {{-- Fills the form rather than making the panel a second
+                         way to sign in. The customer still presses Sign In,
+                         so one code path authenticates and the demo shows the
+                         real thing. --}}
+                    <button type="button" class="demo-use"
+                            data-demo-email="{{ $account['email'] }}"
+                            data-demo-password="{{ $account['password'] }}">Use</button>
+                </li>
+                @endforeach
+            </ul>
+
+            <div class="demo-note">
+                These logins are published for the demonstration and will be removed afterwards.
+            </div>
+        </div>
+        @endif
+        </div>
     </div>
 
     <footer>
@@ -142,5 +190,24 @@
         FormValidate.register(document.getElementById('inputPassword'), { rules: [FormValidate.rules.required('Password is required.')] });
         FormValidate.bindSubmit(document.getElementById('loginForm'), document.getElementById('loginSubmitBtn'));
     </script>
+
+    {{-- Demo panel: fill the form from a sample account. Fires 'input' so
+         FormValidate clears the "required" errors it would otherwise still be
+         showing over two fields that are now filled in. --}}
+    @if (! empty($demoAccounts))
+    <script>
+        document.querySelectorAll('.demo-use').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var email = document.getElementById('inputEmail');
+                var password = document.getElementById('inputPassword');
+                email.value = btn.dataset.demoEmail;
+                password.value = btn.dataset.demoPassword;
+                email.dispatchEvent(new Event('input', { bubbles: true }));
+                password.dispatchEvent(new Event('input', { bubbles: true }));
+                email.focus();
+            });
+        });
+    </script>
+    @endif
 </body>
 </html>

@@ -31,6 +31,14 @@
              The two Semaphore-specific test files override it with config() at
              runtime, which is unaffected. -->
         <env name="SMS_DRIVER" value="log"/>
+        <!-- Same reasoning as SMS_DRIVER above. The demo panel is off by
+             default in config, but a developer running the demo has
+             DEMO_ACCOUNTS=true in their own .env and would otherwise inherit
+             it here — so the test that asserts a fresh clone publishes no
+             credentials would pass or fail depending on whose machine it ran
+             on. DemoAccountsTest sets its own values with config() at
+             runtime, which this does not affect. -->
+        <env name="DEMO_ACCOUNTS" value="false"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

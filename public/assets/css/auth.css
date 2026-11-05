@@ -410,3 +410,111 @@
 .terms-check a:hover { text-decoration: underline; }
 
 .form-control.no-icon { padding-left: 14px; }
+        /* ── AUTH STACK ──
+           The sign-in card and the demo panel are one column. The stack holds
+           the width the card used to hold alone, so the two cannot drift apart
+           — and because .auth-card keeps width:100%/max-width:420px, the pages
+           that have no stack (register, password reset) are unchanged. */
+        .auth-stack {
+            width: 100%;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* ── DEMO ACCOUNTS PANEL ──
+           TEMPORARY, for the capstone demo; rendered only when DEMO_ACCOUNTS
+           is on. Deliberately not styled like the sign-in card: it is amber
+           and tagged rather than branded, because it is a notice about real
+           credentials being printed in public, not a feature of the product. */
+        .demo-card {
+            background: var(--surface);
+            border: 1px solid rgba(245,158,11,0.35);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .demo-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: rgba(245,158,11,0.12);
+            border-bottom: 1px solid rgba(245,158,11,0.25);
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            font-size: 0.86rem;
+            color: #F59E0B;
+        }
+        .demo-tag {
+            margin-left: auto;
+            font-family: 'Barlow', sans-serif;
+            font-size: 0.64rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(245,158,11,0.4);
+            color: #F59E0B;
+        }
+
+        .demo-list { list-style: none; }
+        .demo-item {
+            display: grid;
+            /* The credentials column is the one that gives: an email and a
+               password on one line overflow a 420px card otherwise, and a
+               demo panel that hangs off the screen on a phone is worse than
+               no panel. minmax(0,1fr) is what lets the wrap below work. */
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 4px 12px;
+            padding: 11px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .demo-item:last-child { border-bottom: 0; }
+        .demo-role {
+            grid-column: 1 / -1;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+        .demo-creds {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 4px 6px;
+            min-width: 0;
+        }
+        .demo-creds code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.78rem;
+            color: var(--text);
+            /* Long addresses break rather than widen the grid track. */
+            overflow-wrap: anywhere;
+        }
+        .demo-sep { color: var(--text-muted); }
+
+        .demo-use {
+            background: var(--surface-3);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 7px;
+            padding: 5px 12px;
+            font-family: 'Barlow', sans-serif;
+            font-size: 0.74rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s;
+        }
+        .demo-use:hover { border-color: var(--red); color: var(--red); }
+
+        .demo-note {
+            padding: 10px 20px 14px;
+            font-size: 0.72rem;
+            line-height: 1.45;
+            color: var(--text-muted);
+        }

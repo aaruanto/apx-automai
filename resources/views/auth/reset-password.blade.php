@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
     <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-02" rel="stylesheet" />
-    <link href="{{ asset('assets/css/auth.css') }}?v=2026-11-02" rel="stylesheet" />
+    <link href="{{ asset('assets/css/auth.css') }}?v=2026-11-05" rel="stylesheet" />
     <script>
         (function () {
             // The shop-wide default, from Settings. A stored choice wins.

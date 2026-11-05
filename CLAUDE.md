@@ -138,6 +138,16 @@ changing its name serves the old one to anyone who has visited before.
 - **Roles are `admin` and `customer`, and that is all.** Mechanics are records
   with a name and a number, not accounts. There is no staff portal.
 
+## Temporary, and meant to be removed
+
+**The demo accounts panel.** `DEMO_ACCOUNTS` makes `/login` print two working
+logins on the page and `apx:demo-accounts` provision them on every boot. It
+exists for the capstone demonstration and nothing else; it publishes a working
+admin password to anyone who opens the sign-in page. Off unless set, and that
+is the state to leave it in. Winding it down is `apx:demo-accounts --prune`
+*while the variables are still set*, then `DEMO_ACCOUNTS=false` — README has
+the order and the reason. Do not build anything on it.
+
 ## Things that exist but must not be used
 
 `payments` and `notification_logs` are migration leftovers that nothing reads

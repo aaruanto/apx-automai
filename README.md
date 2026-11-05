@@ -516,3 +516,53 @@ starting Apache.
 
 `APP_DEBUG` is `false` in `render.yaml`, so production never shows stack traces
 or file paths. Keep it that way.
+
+---
+
+## Demo accounts (temporary)
+
+For the capstone demonstration, the sign-in page can print two sample logins so
+a panel can try the system without being handed credentials first. The same
+switch provisions them, so the page cannot advertise an account that does not
+exist.
+
+**This publishes a working admin password to anyone who opens `/login`.** While
+it is on, a stranger can change prices, bookings and customer data. It is off
+unless explicitly turned on, and that is how it should be left.
+
+Turning it on — locally in `.env`, on Render in the dashboard:
+
+```env
+DEMO_ACCOUNTS=true
+DEMO_ADMIN_EMAIL=
+DEMO_ADMIN_PASSWORD=
+DEMO_CUSTOMER_EMAIL=
+DEMO_CUSTOMER_PASSWORD=
+```
+
+```bash
+php artisan config:clear      # php artisan serve reads .env at launch; restart it too
+php artisan apx:demo-accounts
+```
+
+`docker-entrypoint.sh` runs the command on every container start, so a Render
+deploy needs nothing but the variables. The role is forced each time: the
+account the page calls a customer is a customer even if that address was an
+admin before. An account with a blank email or password is skipped on its own.
+
+Winding it down, in this order — the command needs the variables to know which
+addresses were advertised:
+
+```bash
+php artisan apx:demo-accounts --prune   # rotates the passwords; nothing is deleted
+```
+
+then set `DEMO_ACCOUNTS=false` and clear the two passwords. `--prune` rotates
+rather than deactivates because `is_active` is a flag this app writes but does
+not check at sign-in; deactivating would have read like the door was shut while
+the credential on the page still opened it. The accounts survive, bookings and
+all, and their owners get back in through *Forgot password?*.
+
+Render's free tier has no shell, so run the prune from a local checkout pointed
+at the production database before the variables go — or accept that the two
+passwords stay valid until someone resets them.
