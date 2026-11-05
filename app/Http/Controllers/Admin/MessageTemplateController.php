@@ -118,7 +118,7 @@ class MessageTemplateController extends Controller
                 Mail::html($body, function ($msg) use ($request, $subject, $template) {
                     $msg->to($request->test_email)
                         ->subject('[TEST] '.$subject)
-                        ->from(config('mail.from.address'), $template['sender_name'] ?? 'APX AutoMai');
+                        ->from(config('mail.from.address'), $template['sender_name'] ?? 'APX AUTOMAI');
 
                     if (! empty($template['reply_to'])) {
                         $msg->replyTo($template['reply_to']);

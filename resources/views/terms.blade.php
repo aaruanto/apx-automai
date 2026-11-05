@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Terms &amp; Conditions — APX AutoMai</title>
+    <title>Terms &amp; Conditions — APX AUTOMAI</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
     <!-- Favicon -->
@@ -83,7 +83,7 @@
 
                     <p class="mb-4" style="color:#6b7280;">Last updated: {{ now()->format('F j, Y') }}</p>
 
-                    <p class="mb-5">These Terms &amp; Conditions govern your use of the APX AutoMai online booking
+                    <p class="mb-5">These Terms &amp; Conditions govern your use of the APX AUTOMAI online booking
                         system and the vehicle services provided by APX Motors and Services at its Quezon City
                         branch. In this page, &ldquo;we&rdquo;, &ldquo;us&rdquo; and &ldquo;APX&rdquo; refer to APX
                         Motors and Services, and &ldquo;you&rdquo; refers to the customer using the booking system.</p>
@@ -230,7 +230,7 @@
         <div class="container py-5">
             <div class="row g-5">
                 <div class="col-lg-3 col-md-6">
-                    <h4 class="text-light mb-4">APX AutoMai</h4>
+                    <h4 class="text-light mb-4">APX AUTOMAI</h4>
                     <p class="mb-2"><i class="fa fa-map-marker-alt me-3"></i>5 Glenn St., Quezon City</p>
                     <p class="mb-2"><i class="fa fa-phone-alt me-3"></i>+63 9544 8888 50</p>
                     <p class="mb-2"><i class="fa fa-envelope me-3"></i>apxautomai@gmail.com</p>
@@ -248,7 +248,7 @@
             <div class="copyright">
                 <div class="row">
                     <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                        &copy; {{ date('Y') }} <a class="border-bottom" href="/">APX AutoMai</a>. All Rights Reserved.
+                        &copy; {{ date('Y') }} <a class="border-bottom" href="/">APX AUTOMAI</a>. All Rights Reserved.
                     </div>
                     <div class="col-md-6 text-center text-md-end">
                         <div class="footer-menu">

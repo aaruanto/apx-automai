@@ -1,6 +1,6 @@
 # Paper amendments — where the manuscript and the system differ
 
-Written for: the APX AutoMai capstone team (Galero, Guevarra, Pineda, Ruanto),
+Written for: the APX AUTOMAI capstone team (Galero, Guevarra, Pineda, Ruanto),
 for the chapter revisions and for answering panel questions.
 
 Every line below is a place where the manuscript describes something other than

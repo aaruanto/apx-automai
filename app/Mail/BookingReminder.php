@@ -18,7 +18,7 @@ class BookingReminder extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Reminder: Your APX AutoMai Appointment is Tomorrow!',
+            subject: 'Reminder: Your APX AUTOMAI Appointment is Tomorrow!',
         );
     }
 

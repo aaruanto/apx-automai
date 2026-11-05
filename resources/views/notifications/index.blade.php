@@ -19,7 +19,7 @@
     <link rel="icon" href="/assets/img/favicon-32.png" type="image/png">
     <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
     <meta name="csrf-token" content="{{ csrf_token() }}" />
-    <title>Notifications — APX AutoMai</title>
+    <title>Notifications — APX AUTOMAI</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">

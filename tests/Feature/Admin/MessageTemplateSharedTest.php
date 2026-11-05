@@ -25,7 +25,7 @@ it('reads back exactly what the admin editor saved', function () {
         'sms_body'      => 'A distinctly edited SMS body for {name}.',
         'channels'      => ['send_email' => true, 'send_sms' => true],
         'triggers'      => ['remind_1d' => true],
-        'sender_name'   => 'APX AutoMai',
+        'sender_name'   => 'APX AUTOMAI',
     ])->assertOk();
 
     // What the scheduler would load on its next run.

@@ -79,7 +79,7 @@ it('skips email when the channel is switched off in the template', function () {
         'email_subject' => 'S', 'email_preheader' => '', 'email_body' => 'B',
         'sms_body' => 'X',
         'triggers' => [], 'channels' => ['send_email' => false, 'send_sms' => true],
-        'sender_name' => 'APX AutoMai', 'reply_to' => '',
+        'sender_name' => 'APX AUTOMAI', 'reply_to' => '',
     ]));
 
     $r = postTest(['test_email' => 'someone@example.com'])->assertOk();

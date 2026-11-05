@@ -10,7 +10,7 @@
     <link rel="icon" href="/assets/img/favicon.ico" sizes="any">
     <link rel="icon" href="/assets/img/favicon-32.png" type="image/png">
     <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
-    <title>Back Soon — APX AutoMai</title>
+    <title>Back Soon — APX AUTOMAI</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet" />
     <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-02" rel="stylesheet" />
     <style>
@@ -39,7 +39,7 @@
 </head>
 <body>
     <div class="card">
-        <div class="brand"><span>APX</span> AutoMai</div>
+        <div class="brand"><span>APX</span> AUTOMAI</div>
         <h1>We'll be back shortly</h1>
         <p>{{ $message ?? 'The booking portal is temporarily unavailable while we carry out maintenance.' }}</p>
         <a href="tel:+639544888850">Call us: +63 9544 8888 50</a>

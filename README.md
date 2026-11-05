@@ -1,4 +1,4 @@
-# APX AutoMai
+# APX AUTOMAI
 
 Vehicle service booking system for APX Motors and Services, Quezon City.
 Laravel 12 + Blade + Bootstrap. SQLite locally, PostgreSQL on Render.
@@ -297,7 +297,7 @@ MAIL_SCHEME=null
 MAIL_USERNAME=your-brevo-login@example.com
 MAIL_PASSWORD=your-brevo-smtp-key
 MAIL_FROM_ADDRESS=your-verified-sender@example.com
-MAIL_FROM_NAME="APX AutoMai"
+MAIL_FROM_NAME="APX AUTOMAI"
 ```
 
 `MAIL_USERNAME` is the Brevo **login email**. `MAIL_PASSWORD` is an **SMTP

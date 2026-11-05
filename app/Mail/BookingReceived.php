@@ -18,7 +18,7 @@ class BookingReceived extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Booking Received — APX AutoMai ' . $this->booking->reference_number,
+            subject: 'Booking Received — APX AUTOMAI ' . $this->booking->reference_number,
         );
     }
 

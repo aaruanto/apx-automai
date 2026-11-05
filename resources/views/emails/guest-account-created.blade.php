@@ -1,5 +1,5 @@
 @component('mail::message')
-# Welcome to APX AutoMai! 
+# Welcome to APX AUTOMAI! 
 
 Hi **{{ $user->name }}**,
 
@@ -16,6 +16,6 @@ This link will expire in **60 minutes**. If you didn't book with us, you can ign
 Once your password is set, you can login at:
 **{{ config('app.url') }}/login**
 
-**APX AutoMai Team**
+**APX AUTOMAI Team**
 Tandang Sora Branch, Quezon City
 @endcomponent

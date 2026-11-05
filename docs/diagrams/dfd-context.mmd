@@ -1,4 +1,4 @@
-%% APX AutoMai - Level 0 Data Flow Diagram (Context)
+%% APX AUTOMAI - Level 0 Data Flow Diagram (Context)
 %% -
 %% Supersedes the earlier version of this file, which named Semaphore as the
 %% only SMS provider and did not say which port mail leaves on. Both matter:
@@ -24,7 +24,7 @@ flowchart LR
     MAIL["Brevo SMTP Relay on port 2525"]
     SMSGW["SMS Gateway Semaphore or UniSMS"]
 
-    SYS(["0 APX AutoMai Service Booking System"])
+    SYS(["0 APX AUTOMAI Service Booking System"])
 
     GUEST -->|"vehicle details plus contact details plus chosen service or bundle plus date and time"| SYS
     SYS -->|"reference number plus booking received email plus password set link"| GUEST

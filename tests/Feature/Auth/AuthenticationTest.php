@@ -16,7 +16,7 @@ test('the sign-in page does not call itself the admin portal', function () {
     $this->get('/login')
         ->assertStatus(200)
         ->assertDontSee('Admin Portal')
-        ->assertSee('AutoMai &mdash; Portal', false);
+        ->assertSee('AUTOMAI &mdash; Portal', false);
 });
 
 test('users can authenticate using the login screen', function () {

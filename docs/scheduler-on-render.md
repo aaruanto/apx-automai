@@ -1,10 +1,10 @@
 # Running the scheduler on Render
 
-Written for: whoever deploys APX AutoMai.
+Written for: whoever deploys APX AUTOMAI.
 
 ## The problem
 
-Every automated message in APX AutoMai is a scheduled task: appointment
+Every automated message in APX AUTOMAI is a scheduled task: appointment
 reminders, service-due reminders, no-show sweeps, loyalty expiry, account
 purges. All of them are declared in `routes/console.php` and all of them depend
 on Laravel's scheduler ticking once a minute.

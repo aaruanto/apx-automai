@@ -123,7 +123,7 @@ class MessageTemplate
             // configured name carries an em-dash, which is outside GSM-7 and
             // would push the whole message to 70 characters a segment.
             //
-            // "APX Motors", not "APX AutoMai": the Semaphore sender name is
+            // "APX Motors", not "APX AUTOMAI": the Semaphore sender name is
             // APXMOTORS, and a text whose sender and body disagree about who
             // sent it reads like a scam. Email keeps the portal name — it has
             // no sender-ID approval to satisfy and shows a full from-address.
@@ -160,7 +160,7 @@ class MessageTemplate
             'maintenance_subject' => 'Your {vehicle} is due for servicing',
             'maintenance_body'    => self::maintenanceBody(),
             // Also avoids {contact}, for the same reason as the email footer:
-            // unset, it left "Call APX AutoMai on  to book." going out by text.
+            // unset, it left "Call APX AUTOMAI on  to book." going out by text.
             'maintenance_sms'     => 'Hi {first_name}! Your {plate} is due for servicing on {due_date}. We suggest {recommendation}. Reply or drop by APX Motors to book.',
 
             'triggers' => [
@@ -176,7 +176,7 @@ class MessageTemplate
                 'send_email' => true,
                 'send_sms'   => true,
             ],
-            'sender_name' => 'APX AutoMai',
+            'sender_name' => 'APX AUTOMAI',
             'reply_to'    => '',
         ];
     }
@@ -209,7 +209,7 @@ class MessageTemplate
             // Header band. A background colour with light text on it, so the
             // shop is recognisable before a word is read.
             .'<tr><td style="background:#1a1a1a;padding:20px 28px;">'
-            .'<div style="color:#ffffff;font-size:18px;font-weight:bold;letter-spacing:.5px;">APX AutoMai</div>'
+            .'<div style="color:#ffffff;font-size:18px;font-weight:bold;letter-spacing:.5px;">APX AUTOMAI</div>'
             .'<div style="color:#c8c8c8;font-size:12px;margin-top:3px;">{branch}</div>'
             .'</td></tr>'
 

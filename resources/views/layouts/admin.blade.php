@@ -13,7 +13,7 @@
     <link rel="icon" href="/assets/img/favicon-32.png" type="image/png">
     <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
     <meta name="csrf-token" content="{{ csrf_token() }}" />
-    <title>@yield('title', 'Dashboard') — APX AutoMai</title>
+    <title>@yield('title', 'Dashboard') — APX AUTOMAI</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
     <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-02" rel="stylesheet" />
@@ -1279,7 +1279,7 @@
         <button id="sidebarToggle"><i class="fas fa-bars"></i></button>
         <a class="brand" href="{{ route('admin.dashboard') }}">
             <span class="brand-apx">APX</span>
-            <span class="brand-auto">AutoMai</span>
+            <span class="brand-auto">AUTOMAI</span>
             <span class="brand-badge">ADMIN</span>
         </a>
         <div class="topnav-actions">
@@ -1408,7 +1408,7 @@
             </main>
 
             <footer>
-                <div class="footer-brand"><span>APX</span> AutoMai &mdash; Admin Portal &copy; {{ date('Y') }}</div>
+                <div class="footer-brand"><span>APX</span> AUTOMAI &mdash; Admin Portal &copy; {{ date('Y') }}</div>
                 <div>
                     <a href="{{ route('privacy') }}" target="_blank">Privacy Policy</a> &nbsp;&middot;&nbsp;
                     <a href="{{ route('terms') }}" target="_blank">Terms &amp; Conditions</a>

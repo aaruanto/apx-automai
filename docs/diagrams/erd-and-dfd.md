@@ -1,4 +1,4 @@
-# APX AutoMai — ERD and Data Flow Diagrams
+# APX AUTOMAI — ERD and Data Flow Diagrams
 
 System diagrams for the APX Motors Service Center booking system, for the
 capstone paper and the defense.
@@ -112,7 +112,7 @@ dropped are both accounted for.
   `bundles` and `bookings`.
 
 ```mermaid
-%% APX AutoMai - Entity Relationship Diagram
+%% APX AUTOMAI - Entity Relationship Diagram
 %% -
 %% Derived from the live schema, not from the migration files alone: read back
 %% with PRAGMA table_info, index_list and foreign_key_list against
@@ -444,7 +444,7 @@ By convention a Level 0 diagram carries no datastore — the system is a single
 box, so its internal storage is not yet visible.
 
 ```mermaid
-%% APX AutoMai - Level 0 Context Diagram (defense version)
+%% APX AUTOMAI - Level 0 Context Diagram (defense version)
 %% -
 %% The same diagram as dfd-context.mmd with labels cut to data names. Use this
 %% one on a slide; use the detailed one when someone asks for the route.
@@ -475,7 +475,7 @@ flowchart LR
     MAIL["Email Service Brevo"]
     SMSGW["SMS Gateway"]
 
-    SYS(["0 APX AutoMai"])
+    SYS(["0 APX AUTOMAI"])
 
     GUEST -->|"booking request"| SYS
     SYS -->|"reference number"| GUEST
@@ -524,7 +524,7 @@ Nothing was dropped to get to six. Accounts, booking operations and loyalty all
 survive intact.
 
 ```mermaid
-%% APX AutoMai - Level 1 Data Flow Diagram (defense version)
+%% APX AUTOMAI - Level 1 Data Flow Diagram (defense version)
 %% -
 %% dfd-level1.mmd has 9 processes, 12 datastores and 85 arrows carrying full
 %% sentences. It is right, and it is unexplainable in ten minutes. This is the
@@ -691,7 +691,7 @@ rewrite what a past booking cost.
 | **2.5** | Tells the customer the reference number |
 
 ```mermaid
-%% APX AutoMai - Level 2 of 2.0 Booking and Scheduling (defense version)
+%% APX AUTOMAI - Level 2 of 2.0 Booking and Scheduling (defense version)
 %% -
 %% Condensed from dfd-level2-booking-intake.mmd and
 %% dfd-level2-pricing-redemption.mmd, which are the full versions.
@@ -806,7 +806,7 @@ connection does not cancel the reminder for good.
 | **5.5** | Writes down what happened either way, because the question afterwards is always "did the customer actually get it?" |
 
 ```mermaid
-%% APX AutoMai - Level 2 of 5.0 Reminders and Notifications (defense version)
+%% APX AUTOMAI - Level 2 of 5.0 Reminders and Notifications (defense version)
 %% -
 %% Condensed from dfd-level2-scheduled-notifications.mmd, which is the full
 %% version and also carries the schedule frequencies.

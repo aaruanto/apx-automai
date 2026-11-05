@@ -18,7 +18,7 @@ class GuestAccountCreated extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Set Up Your APX AutoMai Account',
+            subject: 'Set Up Your APX AUTOMAI Account',
         );
     }
 

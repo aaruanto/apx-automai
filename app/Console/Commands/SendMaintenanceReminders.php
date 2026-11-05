@@ -150,7 +150,7 @@ class SendMaintenanceReminders extends Command
                         Mail::html($body, function ($msg) use ($user, $line, $template) {
                             $msg->to($user->email, $user->name)
                                 ->subject($line)
-                                ->from(config('mail.from.address'), $template['sender_name'] ?? 'APX AutoMai');
+                                ->from(config('mail.from.address'), $template['sender_name'] ?? 'APX AUTOMAI');
 
                             if (! empty($template['reply_to'])) {
                                 $msg->replyTo($template['reply_to']);

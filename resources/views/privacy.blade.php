@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Privacy Policy — APX AutoMai</title>
+    <title>Privacy Policy — APX AUTOMAI</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
     <!-- Favicon -->
@@ -103,7 +103,7 @@
                     </div>
 
                     <p class="mb-5">This policy explains what personal information APX Motors and Services
-                        collects through the APX AutoMai booking system, why we collect it, and what you
+                        collects through the APX AUTOMAI booking system, why we collect it, and what you
                         can ask us to do with it. It is written to align with the Data Privacy Act of 2012
                         (Republic Act No. 10173).</p>
 
@@ -244,7 +244,7 @@
         <div class="container py-5">
             <div class="row g-5">
                 <div class="col-lg-3 col-md-6">
-                    <h4 class="text-light mb-4">APX AutoMai</h4>
+                    <h4 class="text-light mb-4">APX AUTOMAI</h4>
                     <p class="mb-2"><i class="fa fa-map-marker-alt me-3"></i>5 Glenn St., Quezon City</p>
                     <p class="mb-2"><i class="fa fa-phone-alt me-3"></i>+63 9544 8888 50</p>
                     <p class="mb-2"><i class="fa fa-envelope me-3"></i>apxautomai@gmail.com</p>
@@ -262,7 +262,7 @@
             <div class="copyright">
                 <div class="row">
                     <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                        &copy; {{ date('Y') }} <a class="border-bottom" href="/">APX AutoMai</a>. All Rights Reserved.
+                        &copy; {{ date('Y') }} <a class="border-bottom" href="/">APX AUTOMAI</a>. All Rights Reserved.
                     </div>
                     <div class="col-md-6 text-center text-md-end">
                         <div class="footer-menu">

@@ -1,4 +1,4 @@
-# Render blueprint for APX AutoMai.
+# Render blueprint for APX AUTOMAI.
 # Render has no native PHP runtime, so the app ships as a Docker image
 # (see Dockerfile). The managed Postgres connection details are injected below.
 services:
@@ -16,7 +16,7 @@ services:
       # every link again, so docker-entrypoint.sh takes it from Render's
       # RENDER_EXTERNAL_URL instead. Setting it in the dashboard still wins.
       - key: APP_NAME
-        value: APX AutoMai
+        value: APX AUTOMAI
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
@@ -64,7 +64,7 @@ services:
       - key: MAIL_PORT
         value: 2525
       - key: MAIL_FROM_NAME
-        value: APX AutoMai
+        value: APX AUTOMAI
       - key: MAIL_USERNAME
         sync: false
       - key: MAIL_PASSWORD

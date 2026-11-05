@@ -38,6 +38,6 @@ View My Bookings
 
 Thank you for choosing **APX Motors Service Center**.
 
-**APX AutoMai Team**
+**APX AUTOMAI Team**
 Tandang Sora Branch, Quezon City
 @endcomponent

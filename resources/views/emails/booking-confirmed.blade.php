@@ -3,7 +3,7 @@
 
 Hi **{{ $booking->user->name }}**,
 
-Your booking has been **confirmed** by APX AutoMai. Here are your appointment details:
+Your booking has been **confirmed** by APX AUTOMAI. Here are your appointment details:
 
 @component('mail::panel')
 **Reference No:** {{ $booking->reference_number }}
@@ -23,6 +23,6 @@ View My Booking
 
 Thank you for choosing **APX Motors Service Center**!
 
-**APX AutoMai Team**
+**APX AUTOMAI Team**
 Tandang Sora Branch, Quezon City
 @endcomponent

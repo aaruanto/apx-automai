@@ -154,7 +154,7 @@ class SendBookingReminders extends Command
                         Mail::html($body, function ($msg) use ($user, $subject, $template) {
                             $msg->to($user->email, $user->name)
                                 ->subject($subject)
-                                ->from(config('mail.from.address'), $template['sender_name'] ?? 'APX AutoMai');
+                                ->from(config('mail.from.address'), $template['sender_name'] ?? 'APX AUTOMAI');
 
                             if (! empty($template['reply_to'])) {
                                 $msg->replyTo($template['reply_to']);

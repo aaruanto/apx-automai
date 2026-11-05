@@ -182,7 +182,7 @@
                             <label class="form-label">Email Subject Line</label>
                             <input class="form-control" type="text" id="emailSubject"
                                    value="{{ $settings['email_subject'] ?? 'Reminder: Your {service} appointment is on {date}' }}"
-                                   placeholder="e.g. Your appointment at APX AutoMai is coming up!" />
+                                   placeholder="e.g. Your appointment at APX AUTOMAI is coming up!" />
                             <div class="form-hint">Use placeholders like {name}, {date}, {service} to personalize.</div>
                         </div>
                         <div class="form-group">
@@ -231,14 +231,14 @@
                             <label class="form-label">SMS Message Body</label>
                             <textarea class="form-control" id="smsBody" rows="5"
                                       oninput="updateSmsCounter(this)"
-                                      style="resize:none;font-family:'Barlow',sans-serif;line-height:1.6;">{{ $settings['sms_body'] ?? 'Hi {name}! This is a reminder from APX AutoMai. Your {service} appointment is scheduled on {date} at {time}. Please arrive 10 minutes early. Reply STOP to unsubscribe.' }}</textarea>
+                                      style="resize:none;font-family:'Barlow',sans-serif;line-height:1.6;">{{ $settings['sms_body'] ?? 'Hi {name}! This is a reminder from APX AUTOMAI. Your {service} appointment is scheduled on {date} at {time}. Please arrive 10 minutes early. Reply STOP to unsubscribe.' }}</textarea>
                             <div class="sms-counter" id="smsCounter">0 / 160 characters (1 SMS)</div>
                         </div>
 
                         <div style="margin-top:12px;background:var(--surface-2);border-radius:8px;padding:12px;">
                             <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">SMS Preview</div>
                             <div style="background:#e5e5ea;border-radius:14px 14px 2px 14px;padding:10px 14px;font-size:.84rem;line-height:1.5;max-width:280px;color:#000;" id="smsPreview">
-                                Hi {name}! This is a reminder from APX AutoMai...
+                                Hi {name}! This is a reminder from APX AUTOMAI...
                             </div>
                         </div>
                         <div class="form-group" style="margin-bottom:0;margin-top:18px;padding-top:18px;border-top:1px solid var(--border);">
@@ -340,7 +340,7 @@
                             <div class="browser-dot" style="background:#27c93f;"></div>
                             <div id="previewSubjectLine"
                                  style="flex:1;background:#f0f0f0;border-radius:4px;padding:4px 10px;font-size:.72rem;color:#999;">
-                                APX AutoMai — Booking Reminder
+                                APX AUTOMAI — Booking Reminder
                             </div>
                         </div>
                         <div id="emailPreviewWrap" style="width:600px;max-width:100%;transition:width .3s;">
@@ -455,7 +455,7 @@
                     <div class="form-group" style="margin-bottom:0;">
                         <label class="form-label" style="font-size:.78rem;">Sender Name</label>
                         <input class="form-control" type="text" name="sender_name"
-                               value="{{ $settings['sender_name'] ?? 'APX AutoMai' }}" />
+                               value="{{ $settings['sender_name'] ?? 'APX AUTOMAI' }}" />
                     </div>
                     <div class="form-group" style="margin-bottom:0;">
                         <label class="form-label" style="font-size:.78rem;">Reply-To Email</label>
@@ -632,7 +632,7 @@ function defaultEmailTemplate() {
     </div>
     <div style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 32px;text-align:center;">
       <div style="font-size:.75rem;color:#9ca3af;line-height:1.6;">
-        <strong style="color:#6b7280;">APX AutoMai</strong> &mdash; {branch}<br />
+        <strong style="color:#6b7280;">APX AUTOMAI</strong> &mdash; {branch}<br />
         You received this because you have an upcoming booking.
       </div>
     </div>
@@ -751,8 +751,8 @@ function switchChannel(tab, btn) {
         const label = document.getElementById('previewSubjectLine');
         if (label) {
             label.textContent = tab === 'maintenance'
-                ? 'APX AutoMai — Service Due'
-                : 'APX AutoMai — Booking Reminder';
+                ? 'APX AUTOMAI — Service Due'
+                : 'APX AUTOMAI — Booking Reminder';
         }
         updateEmailPreview();
     }

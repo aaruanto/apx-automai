@@ -20,6 +20,6 @@ View My Booking
 
 See you tomorrow!
 
-**APX AutoMai Team**
+**APX AUTOMAI Team**
 Tandang Sora Branch, Quezon City
 @endcomponent

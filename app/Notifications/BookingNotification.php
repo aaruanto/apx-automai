@@ -124,7 +124,7 @@ class BookingNotification extends Notification
         };
 
         return (new MailMessage)
-            ->subject($heading.' — APX AutoMai #'.$this->booking->reference_number)
+            ->subject($heading.' — APX AUTOMAI #'.$this->booking->reference_number)
             ->markdown('emails.booking-notification', [
                 'booking' => $this->booking,
                 'heading' => $heading,
