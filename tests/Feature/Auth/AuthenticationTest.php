@@ -8,6 +8,17 @@ test('login screen can be rendered', function () {
     $response->assertStatus(200);
 });
 
+test('the sign-in page does not call itself the admin portal', function () {
+    // The footer read "Admin Portal" on a page that is the way in for
+    // customers too — and the only page where nobody has a role yet. The
+    // admin layout still says it, correctly, which is why this asserts on
+    // the string rather than on the absence of the word "Admin".
+    $this->get('/login')
+        ->assertStatus(200)
+        ->assertDontSee('Admin Portal')
+        ->assertSee('AutoMai &mdash; Portal', false);
+});
+
 test('users can authenticate using the login screen', function () {
     $user = User::factory()->create();
 
