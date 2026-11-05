@@ -62,10 +62,19 @@ class LoyaltyLedger extends Model
         return $query->orderByDesc('created_at')->orderByDesc('id');
     }
 
-    /** Plain-language line for the customer's history panel. */
+    /**
+     * Plain-language line for the customer's history panel.
+     *
+     * Read by the customer dashboard and nowhere else, so it uses
+     * disclosableReference(): points are redeemed at the moment a booking is
+     * created, which meant "Redeemed against BK-0012" appeared in the
+     * customer's own history while the booking was still pending review —
+     * the reference number again, by a side door. Pending bookings fall back
+     * to the generic wording that was already here for a missing booking.
+     */
     public function describe(): string
     {
-        $ref = $this->booking?->reference_number;
+        $ref = $this->booking?->disclosableReference();
 
         return match ($this->reason) {
             self::EARNED   => 'Earned from '.($ref ?? 'a completed booking'),

@@ -49,7 +49,13 @@ class DashboardController extends Controller
 
         $bookingsJs = $bookings->map(function($b) {
             return [
-                'id'        => '#' . $b->reference_number,
+                // The reference, or "Pending review" while the shop has not
+                // confirmed it. This printed '#'.reference_number for every
+                // booking regardless of status, which handed the customer a
+                // ticket for an appointment nobody had agreed to. dbId below
+                // is what the list is actually keyed on, so withholding this
+                // breaks no lookup.
+                'id'        => ($ref = $b->disclosableReference()) ? '#' . $ref : 'Pending review',
                 'dbId'      => $b->id,
                 'service'   => $b->service->name ?? 'N/A',
                 'serviceId' => $b->service_id,
@@ -146,7 +152,10 @@ class DashboardController extends Controller
             'minRedeem'  => $loyaltyService->minimumRedemption(),
             'maxPercent' => $loyaltyService->maxRedeemPercent(),
             'history'    => $loyaltyService->enabled()
-                ? LoyaltyLedger::with('booking:id,reference_number')
+                // status comes along because describe() asks the booking
+                // whether its reference may be shown yet, and that decision
+                // is made from the status.
+                ? LoyaltyLedger::with('booking:id,reference_number,status')
                     ->where('user_id', Auth::id())
                     ->recentFirst()->limit(25)->get()
                     ->map(fn ($row) => [
@@ -191,7 +200,13 @@ class DashboardController extends Controller
                 'spent'     => $bookings->where('status', 'completed')->sum(fn ($b) => $b->total_price),
             ],
             'bookings' => $bookings->take(20)->map(fn (Booking $b) => [
-                'reference' => $b->reference_number,
+                // The merge key, and it is the id rather than the reference
+                // on purpose: 'reference' is withheld while a booking is
+                // pending, so keying the client-side merge on it would stop
+                // the poll ever matching the pending rows — the ones whose
+                // status is most likely to have just changed.
+                'id'        => $b->id,
+                'reference' => $b->disclosableReference(),
                 'services'  => $b->service_list,
                 'date'      => $b->booking_date,
                 'time'      => $b->booking_time,
@@ -367,9 +382,13 @@ class DashboardController extends Controller
 
         $this->notifyAdminsOfBooking($booking);
 
+        // No 'reference'. The booking is created 'pending', and the reference
+        // is withheld until an admin confirms it — the success modal used to
+        // print it the instant the booking was saved. booking_id is still
+        // returned because the list is keyed on it and it means nothing at
+        // the counter.
         return response()->json([
             'success'    => true,
-            'reference'  => $booking->reference_number,
             'booking_id' => $booking->id,
         ]);
     }

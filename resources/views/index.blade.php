@@ -1512,10 +1512,25 @@
                         <div class="apx-success-icon">
                             <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M5 13l5 5L21 7" stroke="#28a745" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         </div>
-                        <h5 style="font-family:'Barlow',sans-serif; font-weight:700; margin:0 0 6px;">Booking received!</h5>
-                        <p style="font-size:0.85rem; color:#777; margin:0 0 12px;">A confirmation email is on its way. Your reference number:</p>
-                        <div class="apx-ref-badge" id="apx-ref-number">APX-XXXXXX</div>
-                        <p style="font-size:0.78rem; color:#aaa; margin:10px 0 0;">Bring this number when you arrive.</p>
+                        <h5 style="font-family:'Barlow',sans-serif; font-weight:700; margin:0 0 6px;">Booking request received!</h5>
+                        {{--
+                            No reference number on this screen, and nothing telling the
+                            customer to bring one. It used to print the reference in a
+                            badge under "Bring this number when you arrive" — while the
+                            booking was still 'pending' and the shop had not agreed to
+                            the slot. Customers turned up on the strength of it.
+
+                            The reference is disclosed once, in the confirmation email
+                            an admin's approval sends (App\Mail\BookingConfirmed). The
+                            server no longer returns it here at all, so there is
+                            nothing on the page to fill in even by accident.
+                        --}}
+                        <div class="apx-ref-badge" id="apx-ref-number">Pending review</div>
+                        <p style="font-size:0.85rem; color:#777; margin:12px 0 0;">
+                            We have emailed you a copy of your request. Our staff will review it, and
+                            <strong>once it is confirmed you will get a second email with your reference
+                            number</strong> — that is the one to bring with you.
+                        </p>
 
                         {{--
                             Shown only when a setup link was actually emailed, which
@@ -2217,7 +2232,10 @@
                 btn.disabled = false;
                 btn.textContent = 'Confirm booking ✓';
                 if (data.success) {
-                    document.getElementById('apx-ref-number').textContent = data.reference;
+                    // The badge is a fixed "Pending review" in the markup —
+                    // nothing is written into it here. data.reference no
+                    // longer exists in the response; the reference is
+                    // withheld until an admin confirms the booking.
 
                     // Honour what the server actually did. account_setup_email is
                     // true only when a "set up your account" mail really went out,

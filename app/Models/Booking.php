@@ -129,6 +129,30 @@ class Booking extends Model
     }
 
     /**
+     * The reference number, but only once it is the customer's to have.
+     *
+     * A reference is a ticket: it is what the customer quotes at the counter
+     * to claim an appointment. While a booking is 'pending' the shop has not
+     * agreed to the slot, so handing the number over then told customers they
+     * had an appointment that did not exist yet — and some of them turned up
+     * on it. It is disclosed by the confirmation email and not before.
+     *
+     * Null, not an empty string: a caller has to decide what to show in its
+     * place ("Pending review" on screen), and `?? ''` would quietly print a
+     * blank where a number belongs.
+     *
+     * This is the customer-facing rule only. Every admin surface — the
+     * bookings list, the eight audit labels, the slot-clash message, the
+     * rebook lookup — reads $booking->reference_number directly and must keep
+     * doing so, because a pending booking is exactly the one the shop needs to
+     * be able to name.
+     */
+    public function disclosableReference(): ?string
+    {
+        return $this->status === 'pending' ? null : $this->reference_number;
+    }
+
+    /**
      * Cancel, recording why and by whom.
      *
      * The three audit columns have existed since the bookings table was
