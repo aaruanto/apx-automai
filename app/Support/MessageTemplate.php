@@ -169,7 +169,22 @@ class MessageTemplate
                 'remind_7d'        => true,
                 'remind_3d'        => true,
                 'remind_1d'        => true,
-                'remind_2h'        => false,
+                // On since the schedule ticks every five minutes. It was
+                // off because it could not work: the 2h window is a
+                // 15-minute band at now()+2h, and against an hourly tick the
+                // only bands ever examined were [H+2:00, H+2:15] — so with a
+                // 30-minute slot grid, every booking on a :30 start was never
+                // reminded at all. See routes/console.php and
+                // tests/Feature/TwoHourReminderTest.php.
+                //
+                // The default matters more here than for the other windows.
+                // Render's filesystem is ephemeral and this template is saved
+                // to storage/app/private, which is not in the image — so a
+                // deploy or a restart discards whatever an admin toggled and
+                // leaves exactly this array deciding what goes out. A saved
+                // value still wins while the file survives: load() merges the
+                // file over these defaults.
+                'remind_2h'        => true,
                 'maintenance_due'  => true,
             ],
             'channels' => [

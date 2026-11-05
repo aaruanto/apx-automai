@@ -38,6 +38,16 @@ class CronController extends Controller
      */
     private const COMMANDS = [
         'schedule' => 'schedule:run',
+
+        // The reminder sweep on its own, for when a particular send has to
+        // happen at a particular minute and waiting for the next tick is not
+        // an option — a demonstration, or a cron service that has quietly
+        // stopped calling. It is a second door onto work the schedule already
+        // does, not a different behaviour: the command reads the same windows
+        // and claims through the same ReminderLedger, so a reminder the
+        // scheduler has already sent is skipped here too. Hitting this cannot
+        // make a customer receive anything twice.
+        'reminders' => 'reminders:send',
     ];
 
     public function __invoke(Request $request, string $task = 'schedule'): Response

@@ -201,7 +201,7 @@ Everything automatic in this app is a scheduled job (see `routes/console.php`):
 
 | Job | Frequency | What it does |
 |---|---|---|
-| `reminders:send` | hourly | appointment reminders at 7d / 3d / 1d (2h is off by default) |
+| `reminders:send` | every 5 min | appointment reminders at 7d / 3d / 1d / 2h |
 | `reminders:maintenance` | daily, 08:00 | tells customers their vehicle is due for servicing |
 | `bookings:cancel-no-shows` | every 5 min | cancels bookings past their grace period |
 | `accounts:purge-expired` | daily, 03:00 | anonymises accounts past the 30-day deletion window |
@@ -211,6 +211,21 @@ Everything automatic in this app is a scheduled job (see `routes/console.php`):
 Nothing here is finer-grained than five minutes, because the production trigger
 fires on five-minute boundaries. `schedule:run` only runs jobs due in the
 *current minute*, so a job scheduled off those boundaries would never fire.
+
+`reminders:send` runs every five minutes rather than hourly because of the 2h
+window. The 7d / 3d / 1d windows match on a date, so any tick that day will
+do; the 2h window asks for a start time inside a 15-minute band beginning at
+`now()+2h`, so one tick only ever examines a quarter of an hour. Hourly, the
+only bands examined were `[H+2:00, H+2:15]` — and since the slot grid is 30
+minutes, every booking on a `:30` start was never reminded at all.
+
+Five rather than fifteen because of the sentence above about due-ness.
+`schedule:run` runs only what is due in the minute it is called, so a declared
+frequency fires only when the external cron's call lands on one of its
+minutes. `*/15` is due at minutes 0, 15, 30 and 45; `*/5` at every multiple of
+five — the same set the heartbeat uses, so a fresh `scheduler_last_run` is
+proof the calls land on them. See `tests/Feature/TwoHourReminderTest.php`,
+which pins both halves of the arithmetic down.
 
 **Nothing works unless something runs the scheduler.** Laravel does not run it
 for you.
@@ -256,6 +271,15 @@ out of access logs.
 
 Check it worked under **Admin → Message Templates**: the Scheduler card reads a
 real heartbeat timestamp, so "Running" means something actually ran.
+
+The same endpoint has a second allow-listed task, `GET /cron/reminders?token=…`,
+which runs `reminders:send` on its own instead of asking Laravel what is due.
+It is there for when a particular reminder has to go out at a particular minute
+and the next tick is too late — a demonstration, or a cron service that has
+quietly stopped calling. It is a second door onto work the schedule already
+does, not different behaviour: the same windows, and the same `ReminderLedger`
+claim, so a reminder that has already gone out is skipped. Hitting it cannot
+make a customer receive anything twice.
 
 Full detail, including why duplicate sends are not a worry, is in
 [`docs/scheduler-on-render.md`](docs/scheduler-on-render.md).

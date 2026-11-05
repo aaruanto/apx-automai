@@ -94,9 +94,24 @@ five-minute tick catches all of it. `schedule:run` only runs tasks due in the
 *current minute*, so a cron interval that drifts off those boundaries would
 silently skip the daily jobs — which is the trap to avoid here.
 
+The 2h appointment reminder is the one task where this matters twice over.
+That window is a 15-minute band beginning at `now()+2h`, so the tick interval
+decides which bookings are ever examined rather than merely how promptly: an
+hourly tick examined `[H+2:00, H+2:15]` and nothing else, and with a
+30-minute slot grid, half of all bookings got no 2h reminder at all.
+
+`reminders:send` is therefore scheduled `everyFiveMinutes()` rather than
+something coarser. The reason is due-ness, not promptness: a frequency fires
+only when the cron's call lands on one of its minutes, and `*/15` is due at
+minutes 0, 15, 30 and 45 while `*/5` is due at every multiple of five. A cron
+on a ten-minute interval, or one that drops a call, can satisfy the second and
+not the first. The heartbeat is already on `*/5`, so a fresh
+`scheduler_last_run` on the Message Templates screen is direct evidence that
+the calls land on those minutes.
+
 | Task | Frequency |
 | --- | --- |
-| `reminders:send` | hourly |
+| `reminders:send` | every 5 minutes |
 | `reminders:maintenance` | daily, 08:00 |
 | `bookings:cancel-no-shows` | every 5 minutes |
 | `accounts:purge-expired` | daily, 03:00 |
@@ -114,9 +129,11 @@ instance hours a month against roughly 730 hours in a month, so always-on fits
 - **404, not 403**, on a bad or missing token, and the token is never logged.
 - **Rate limited** to 10 requests a minute per IP.
 - **Allow-list, not a parameter.** The URL segment is a key into a fixed map
-  (`schedule` → `schedule:run`). If it were a command name taken from the
-  request, a leaked token would be the ability to run any artisan command on
-  production, `migrate:fresh` included.
+  (`schedule` → `schedule:run`, `reminders` → `reminders:send`). If it were a
+  command name taken from the request, a leaked token would be the ability to
+  run any artisan command on production, `migrate:fresh` included. Adding a
+  task means adding a line to that map; `/cron/reminders:send` is not a URL
+  this endpoint answers.
 - **Outside the maintenance middleware** by design, so reminders for bookings
   the shop has already taken keep going out while the public site is switched
   off.
