@@ -57,6 +57,7 @@ class BookingNotification extends Notification
         private string $title,
         private string $body,
         private bool $forAdmin = false,
+        private bool $disclosesReference = true,
     ) {
     }
 
@@ -136,18 +137,28 @@ class BookingNotification extends Notification
 
     public function toArray(object $notifiable): array
     {
-        return [
-            'event'     => $this->event,
-            'title'     => $this->title,
-            'body'      => $this->body,
-            'icon'      => self::ICONS[$this->event] ?? 'fa-bell',
-            'reference' => $this->booking->reference_number,
+        $data = [
+            'event' => $this->event,
+            'title' => $this->title,
+            'body'  => $this->body,
+            'icon'  => self::ICONS[$this->event] ?? 'fa-bell',
             // Admins land on the booking list, customers on their own
             // dashboard: a customer has no access to the admin routes.
-            'link'      => $this->forAdmin
+            'link'  => $this->forAdmin
                 ? route('admin.bookings.index')
                 : route('customer.dashboard'),
         ];
+
+        // Omitted for the one notification that fires before an admin has
+        // confirmed anything — see received(). linkFor() builds its ?ref=
+        // deep link out of this key, so leaving it out also keeps the
+        // reference out of the URL the customer is handed. Only the admin
+        // bookings index reads ?ref= anyway, so a customer loses nothing.
+        if ($this->disclosesReference) {
+            $data['reference'] = $this->booking->reference_number;
+        }
+
+        return $data;
     }
 
     /**
@@ -203,6 +214,12 @@ class BookingNotification extends Notification
      * mail every admin on every request — the noise the class comment above
      * rules out. The email is the existing BookingReceived mailable, sent at
      * the admin create site.
+     *
+     * The only customer-facing notification that fires while the booking is
+     * still 'pending', so it is also the only one that must not name the
+     * reference number — hence disclosesReference: false, which keeps it out
+     * of the body, the payload and linkFor()'s URL alike. The customer is
+     * given the number by BookingConfirmed and not before.
      */
     public static function received(Booking $booking): self
     {
@@ -210,9 +227,10 @@ class BookingNotification extends Notification
             self::BOOKING_REQUESTED,
             $booking,
             'Booking received',
-            'We have your booking '.$booking->reference_number.' for '.$booking->service_list
+            'We have your request for '.$booking->service_list
                 .' on '.$booking->booking_date.' at '.$booking->booking_time
-                .'. We will confirm it shortly.',
+                .'. It is pending review — we will confirm it shortly.',
+            disclosesReference: false,
         );
     }
 

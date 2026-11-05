@@ -1,22 +1,31 @@
+{{--
+    The pre-approval acknowledgment.
+
+    No reference number anywhere in here, and nothing telling the customer to
+    bring or quote one — this goes out while the booking is still 'pending',
+    and the shop has not agreed to the slot yet. The ticket is
+    emails/booking-confirmed.blade.php. See App\Mail\BookingReceived.
+
+    What is left is what a receipt owes the customer: what they asked for,
+    when they asked for it, that it is not settled yet, and what happens next.
+--}}
 @component('mail::message')
-# Booking Received! 
+# We have your request
 
 Hi **{{ $booking->user->name }}**,
 
-We have received your booking request at APX Motors Service Center. It is currently **pending review** and will be confirmed shortly.
+Thanks for booking with APX Motors Service Center. Your request is in and is **waiting for our review** — it is not confirmed yet.
 
 @component('mail::panel')
-**Reference No:** {{ $booking->reference_number }}
 **Service:** {{ $booking->service_list }}
-**Date:** {{ \Carbon\Carbon::parse($booking->booking_date)->format('F d, Y') }}
-**Time:** {{ \Carbon\Carbon::parse($booking->booking_time)->format('g:i A') }}
-**Status:** Pending ⏳
+**Requested date:** {{ \Carbon\Carbon::parse($booking->booking_date)->format('F d, Y') }}
+**Requested time:** {{ \Carbon\Carbon::parse($booking->booking_time)->format('g:i A') }}
+**Status:** Pending review ⏳
 @endcomponent
 
-You will receive another email once your booking has been **confirmed** by our staff.
+Our staff will check the slot and get back to you. **Once it is confirmed we will email you again**, and that email will carry your reference number — the one to bring with you on the day.
 
-Please bring this reference number when you arrive:
-**{{ $booking->reference_number }}**
+Nothing to do for now. If you need to change or cancel this request, just reply to this email and we will sort it out.
 
 Thank you for choosing **APX Motors Service Center**!
 

@@ -290,6 +290,65 @@ system does correctly.
 
 ---
 
+## 11. The reference number is disclosed on confirmation, not on booking — CHECK THE PAPER
+
+A booking is created with `status = 'pending'`, which means the shop has not
+agreed to the slot yet. Every customer-facing surface on the create path used
+to print `bookings.reference_number` anyway: the acknowledgment email carried
+it in the subject and twice in the body, the second time under *"Please bring
+this reference number when you arrive"*; the guest success screen printed it in
+a badge with *"Bring this number when you arrive"*; the customer dashboard's
+success modal printed it under the heading *"Booking Confirmed!"*; and the
+dashboard's booking list labelled pending rows `#BK-0001`.
+
+A reference number is a **ticket** — it is what the customer quotes at the
+counter to claim an appointment. Handing it over at booking told customers they
+had an appointment that nobody had approved, and some of them turned up on it.
+
+**The system now treats it as a ticket.** Pre-approval, the customer gets an
+acknowledgment — service, requested date and time, "pending review", and that a
+second email will follow — with no reference number anywhere in it. The number
+is disclosed once, in the confirmation email an admin's approval sends, which
+now leads with it and says plainly that it is the number to bring.
+
+The number is still **generated at creation**, inside
+`BookingAvailability::reserve()`'s transaction, and is still `UNIQUE` and
+`NOT NULL`. Only its disclosure moved. That was a deliberate choice over
+generating it at confirmation:
+
+- `nextReference()` is `max(id) + 1`, so deferring it breaks uniqueness the
+  moment bookings are confirmed out of creation order.
+- A pending booking is exactly the one the shop needs to be able to name, so
+  the admin list, the eight audit labels, the slot-clash message and the
+  rebook lookup all keep reading the column directly.
+
+Because nothing structural changed, the rule is enforced per output site rather
+than by the schema. `Booking::disclosableReference()` is the single place that
+decides, and `tests/Feature/BookingReferenceDisclosureTest.php` holds the
+surfaces to it.
+
+**What the team must check in the manuscript.** Any passage, screenshot or
+sequence diagram showing the customer receiving a reference number *at the
+moment of booking* is now wrong, as is any wording that describes the
+post-booking email as a confirmation. The system's sequence is:
+
+1. Customer submits a request → acknowledgment (no reference).
+2. Admin reviews and confirms → confirmation email **and** SMS, both carrying
+   the reference.
+
+Two details the paper should get right if it covers them: the SMS branding
+stays *"APX Motors"* while the email branding stays *"APX AUTOMAI"* (the
+Semaphore sender name is `APXMOTORS`), and **no SMS is sent on the create
+path at all** — the first text a customer receives is the confirmation.
+
+**Known remaining case, deliberately left alone.** A booking cancelled while
+still pending is told its reference in the cancellation email and SMS. It is
+not presented as something to bring, and a cancellation cannot make a customer
+believe they have an appointment, so it was out of scope for this change. Worth
+a sentence if the paper enumerates every message that names a reference.
+
+---
+
 ## Figures to regenerate
 
 All four diagrams in [`docs/diagrams/`](diagrams/) have been updated to match

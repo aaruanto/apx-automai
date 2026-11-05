@@ -73,8 +73,11 @@ it('emails the customer when an admin books for them', function () {
     $booking = Booking::sole();
 
     expect(anSent())->toHaveCount(1);
-    expect(anSubjects()[0])->toContain('Booking Received');
-    expect(anSubjects()[0])->toContain($booking->reference_number);
+    expect(anSubjects()[0])->toContain('We have your booking request');
+
+    // And it does NOT carry the reference. The booking is still pending, so
+    // the number is not the customer's yet — see BookingReferenceDisclosureTest.
+    expect(anSubjects()[0])->not->toContain($booking->reference_number);
 });
 
 it('gives the customer a bell entry as well as the email', function () {
@@ -96,7 +99,7 @@ it('words the customers entry for the customer, not the admins', function () {
     $customerEntry = $booking->user->notifications()->first()->data;
     $adminEntry    = User::where('role', 'admin')->sole()->notifications()->first()->data;
 
-    expect($customerEntry['body'])->toContain('We have your booking');
+    expect($customerEntry['body'])->toContain('We have your request');
     expect($adminEntry['body'])->toContain('requested');
     expect($customerEntry['body'])->not->toBe($adminEntry['body']);
 });
@@ -165,12 +168,18 @@ it('sends exactly two distinct emails across booking then confirming', function 
 
     $subjects = anSubjects();
 
-    // "We have your booking", then "it is confirmed" — one of each, never two
+    // "We have your request", then "it is confirmed" — one of each, never two
     // of either. A double-email on confirm was fixed in c9b3c36c and must
     // stay fixed.
     expect($subjects)->toHaveCount(2);
-    expect(collect($subjects)->filter(fn ($s) => str_contains($s, 'Booking Received')))->toHaveCount(1);
+    expect(collect($subjects)->filter(fn ($s) => str_contains($s, 'We have your booking request')))->toHaveCount(1);
     expect(collect($subjects)->filter(fn ($s) => str_contains($s, 'Confirmed')))->toHaveCount(1);
+
+    // Only the second one names the reference: the acknowledgment is a
+    // receipt, the confirmation is the ticket.
+    $withRef = collect($subjects)->filter(fn ($s) => str_contains($s, $booking->reference_number));
+    expect($withRef)->toHaveCount(1);
+    expect($withRef->first())->toContain('Confirmed');
 });
 
 // ── mail must never cost the booking ─────────────────────────────────────

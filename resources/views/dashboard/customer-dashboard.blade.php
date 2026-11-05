@@ -1154,9 +1154,18 @@
                     </div>
                     <div class="modal-success" id="modalSuccessView">
                         <div class="success-circle"><i class="fas fa-check"></i></div>
-                        <h3>Booking Confirmed!</h3>
-                        <p>Your appointment has been submitted. We'll send a confirmation once it's approved.</p>
-                        <div class="ref" id="modalRefNo">—</div>
+                        {{--
+                            "Request received", not "Booking Confirmed!" — which is what
+                            this said while the paragraph under it admitted the booking
+                            still needed approving. The reference badge below it is now a
+                            fixed "Pending review": printing the real number here gave the
+                            customer a ticket for an appointment the shop had not agreed
+                            to. The server no longer returns it, and the confirmation
+                            email is where it is disclosed.
+                        --}}
+                        <h3>Request Received!</h3>
+                        <p>Your request is in and is pending review. Once our staff confirm it, we will email you your reference number &mdash; that is the one to bring with you.</p>
+                        <div class="ref" id="modalRefNo">Pending review</div>
                         <p style="font-size:0.78rem;">
                             <i class="fas fa-calendar" style="color:var(--red);margin-right:4px;"></i>
                             <span id="modalSuccessDate">—</span>
@@ -1936,7 +1945,10 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
     // Add new booking to array instantly
     const d = new Date(date);
     BOOKINGS.unshift({
-        id:        '#' + data.reference,
+        // A booking is created 'pending', so it has no reference to show
+        // yet — the same label the server sends for pending rows in
+        // bookingsJs, so the optimistic row and a reload agree.
+        id:        'Pending review',
         dbId:      data.booking_id,
         service:   selectedService.name,
         serviceId: selectedService.dbId,
@@ -1963,7 +1975,8 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
     // Show success screen
     document.getElementById('modalFormView').style.display = 'none';
     document.getElementById('modalSuccessView').classList.add('show');
-    document.getElementById('modalRefNo').textContent          = data.reference;
+    // modalRefNo is a fixed "Pending review" in the markup — nothing is
+    // written into it. data.reference no longer exists in the response.
     document.getElementById('modalSuccessDate').textContent    = date + ' at ' + time;
     document.getElementById('modalSuccessService').textContent = selectedService.name;
 } else {
@@ -2738,16 +2751,28 @@ document.addEventListener('click', function(e) {
                 // Keep the booking list in step with the server, so a booking
                 // the shop confirms or cancels shows up here on its own.
                 if (Array.isArray(data.bookings)) {
-                    const byRef = new Map(data.bookings.map(b => ['#' + b.reference, b]));
+                    // Keyed on the database id, not the reference. The
+                    // reference is withheld while a booking is pending, so
+                    // '#' + b.reference was 'Pending review' on both sides
+                    // and every pending row collided on one key — and those
+                    // are the rows whose status is most likely to have just
+                    // changed. The id is stable from creation.
+                    const byId  = new Map(data.bookings.map(b => [String(b.id), b]));
                     let changed = false;
 
                     BOOKINGS.forEach(b => {
-                        const fresh = byRef.get(b.id);
+                        const fresh = byId.get(String(b.dbId));
                         if (!fresh) return;
                         const status = ['confirmed', 'pending'].includes(fresh.status) ? 'upcoming' : fresh.status;
-                        if (b.status !== status || b.staff !== fresh.staff) {
+                        // The reference appears here the moment the shop
+                        // confirms, so a customer watching the page gets
+                        // their number without reloading. It stays
+                        // "Pending review" until the server discloses one.
+                        const label  = fresh.reference ? '#' + fresh.reference : 'Pending review';
+                        if (b.status !== status || b.staff !== fresh.staff || b.id !== label) {
                             b.status = status;
                             b.staff  = fresh.staff;
+                            b.id     = label;
                             changed  = true;
                         }
                     });

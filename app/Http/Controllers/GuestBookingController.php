@@ -285,8 +285,6 @@ class GuestBookingController extends Controller
                 && $request->boolean('create_account')
                 && ! Password::getRepository()->recentlyCreatedToken($user));
 
-        $ref = $booking->reference_number;
-
         $this->notifyAdminsOfBooking($booking);
 
         // ── Send emails, after the customer has their answer ───────────────
@@ -325,9 +323,15 @@ class GuestBookingController extends Controller
             }
         })->afterResponse();
 
+        // No 'reference' here, deliberately. The booking is 'pending' and the
+        // reference is withheld until an admin confirms it — the success
+        // screen used to print it under "Bring this number when you arrive",
+        // which told the customer they had an appointment nobody had agreed
+        // to yet. BookingConfirmed is the only place it is disclosed.
+        // booking_id is still returned: it is the dashboard's merge key and
+        // means nothing at the counter.
         return response()->json([
             'success'        => true,
-            'reference'      => $ref,
             'booking_id'     => $booking->id,
             'create_account' => $request->boolean('create_account'),
             'register_url'   => route('register'),
