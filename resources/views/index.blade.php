@@ -1485,7 +1485,24 @@
                                 <div class="apx-member-perk"><div class="apx-perk-dot"></div>Exclusive discounts</div>
                                 <div class="apx-member-perk"><div class="apx-perk-dot"></div>Track &amp; manage bookings</div>
                             </div>
-                            <button class="apx-btn-member" onclick="window.location='{{ route('register') }}'">Create a free account</button>
+                            {{--
+                                No inline onclick here.
+
+                                It used to carry onclick="window.location='…/register'"
+                                as well as the submit listener bound further down, so one
+                                press did both: the booking POST went out AND the browser
+                                left for /register before the response came back. Measured
+                                in a real browser — the POST reaches the server, then the
+                                page navigates — so the customer's booking was saved while
+                                they never saw the reference number, and landed on a form
+                                that refuses their own address, because by then they have a
+                                guest account. That is the whole reported fault.
+
+                                The listener is the only submit path now. The account is
+                                created by the booking itself and the link emailed to them
+                                is what claims it, which the success screen now says.
+                            --}}
+                            <button type="button" class="apx-btn-member">Create a free account</button>
                             <button class="apx-btn-skip" id="apx-btn-skip">No thanks, just book as guest</button>
                         </div>
                     </div>
@@ -1499,6 +1516,24 @@
                         <p style="font-size:0.85rem; color:#777; margin:0 0 12px;">A confirmation email is on its way. Your reference number:</p>
                         <div class="apx-ref-badge" id="apx-ref-number">APX-XXXXXX</div>
                         <p style="font-size:0.78rem; color:#aaa; margin:10px 0 0;">Bring this number when you arrive.</p>
+
+                        {{--
+                            Shown only when a setup link was actually emailed, which
+                            the server reports as account_setup_email. This screen used
+                            to be one fixed line for everybody: a customer who pressed
+                            "Create an account" saw the same "Booking received!" as
+                            someone who skipped it, was never sent anywhere, and was
+                            never told a link was waiting in their inbox. It is not
+                            keyed off the checkbox — a returning guest can tick it
+                            and be throttled, and promising mail that was not sent is
+                            the fault this paragraph exists to fix.
+                        --}}
+                        <p id="apx-success-account" style="display:none; font-size:0.8rem; color:#777; margin:14px 0 0; padding:10px 12px; background:rgba(40,167,69,0.08); border:1px solid rgba(40,167,69,0.25); border-radius:7px; text-align:left;">
+                            <i class="fas fa-envelope" style="color:#28a745; margin-right:6px;"></i>
+                            We have started an account for you. Check
+                            <strong id="apx-success-email">your email</strong>
+                            for a link to set your password — it expires in {{ config('auth.passwords.users.expire') }} minutes.
+                        </p>
                     </div>
 
                 </div>
@@ -2183,6 +2218,19 @@
                 btn.textContent = 'Confirm booking ✓';
                 if (data.success) {
                     document.getElementById('apx-ref-number').textContent = data.reference;
+
+                    // Honour what the server actually did. account_setup_email is
+                    // true only when a "set up your account" mail really went out,
+                    // so this line can never promise an inbox something that is
+                    // not in it. Both buttons land here — one handler, one answer.
+                    var acct = document.getElementById('apx-success-account');
+                    if (data.account_setup_email) {
+                        document.getElementById('apx-success-email').textContent =
+                            (document.getElementById('apx-f-email').value || '').trim() || 'your email';
+                        acct.style.display = '';
+                    } else {
+                        acct.style.display = 'none';
+                    }
                     ['apx-view-1','apx-view-2','apx-view-3'].forEach(function(id){ document.getElementById(id).style.display='none'; });
                     document.getElementById('apx-view-success').style.display = '';
                     document.getElementById('apx-modal-footer').style.display = 'none';
@@ -2263,7 +2311,17 @@
             apxSubmitBooking(false);
         });
 
-        /* create account button — submit then redirect to register */
+        /*
+         * create account button — submits the booking, nothing more.
+         *
+         * The comment here used to say "submit then redirect to register",
+         * which is not what happens and sent someone hunting for a redirect
+         * that never existed. Sending them to /register would be wrong anyway:
+         * that form refuses an address which already has a guest account, by
+         * design. The account is made by the booking itself; the link emailed
+         * to them is what turns it into theirs, and the success screen now
+         * says so.
+         */
         document.querySelector('.apx-btn-member').addEventListener('click', function() {
             apxSubmitBooking(true);
         });

@@ -40,6 +40,26 @@ class RegisteredUserController extends Controller
             'email' => strtolower(trim((string) $request->input('email'))),
         ]);
 
+        // Everything except uniqueness, first.
+        //
+        // These three steps used to be one: offerTheRightLinkTo ran before any
+        // validation at all, so a guest address typed alongside a blank first
+        // name sent that person a setup email and then showed them only "The
+        // first name field is required." The mail was real, the explanation was
+        // never rendered, and the view shows one error at a time.
+        //
+        // Validating the rest of the form first means no mail goes out for a
+        // submission that was never going to be accepted, and by the time the
+        // uniqueness message is reached it is the only error there is — so it
+        // cannot be masked by another field.
+        $request->validate([
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name'  => ['required', 'string', 'max:255'],
+            'email'      => ['required', 'string', 'lowercase', EmailRule::strict(), 'max:255'],
+            'phone'      => ['nullable', 'string', 'max:20'],
+            'password'   => ['required', 'confirmed', Rules\Password::defaults()],
+        ]);
+
         // Someone already holds this address. Send them the link that actually
         // helps, then let the unique rule below refuse to create anything.
         //
@@ -50,23 +70,26 @@ class RegisteredUserController extends Controller
         // must not distinguish the two.
         $this->offerTheRightLinkTo($request->input('email'));
 
+        // unique was missing here, and only here: every other path that creates
+        // a user already had it. Without it, the block below was the only thing
+        // standing between a stranger and an existing account.
         $request->validate([
-            'first_name' => ['required', 'string', 'max:255'],
-            'last_name'  => ['required', 'string', 'max:255'],
-            // unique was missing here, and only here: every other path that
-            // creates a user already had it. Without it, the block below was the
-            // only thing standing between a stranger and an existing account.
-            'email'      => ['required', 'string', 'lowercase', EmailRule::strict(), 'max:255', 'unique:users,email'],
-            'phone'      => ['nullable', 'string', 'max:20'],
-            'password'   => ['required', 'confirmed', Rules\Password::defaults()],
+            'email' => ['unique:users,email'],
         ], [
             // Deliberately says nothing about which kind of account it is, and
             // no longer points at "Forgot password?" — that let a guest sign in
             // but left is_guest true, so they kept being refused the account
             // discount with no explanation. The link sent above does the job
             // properly: NewPasswordController clears is_guest when it is used.
-            'email.unique' => 'If an account can be set up for that address, we have just emailed a link to it. '
-                              .'Please check your inbox to finish signing up, or sign in if you already have a password.',
+            //
+            // It leads with what did NOT happen. The previous wording — "we
+            // have just emailed a link to it. Please check your inbox to finish
+            // signing up" — reads as acceptance on a form that created nothing,
+            // and was misread exactly that way. It was also untrue whenever
+            // recentlyCreatedToken throttled the send: nothing had just been
+            // emailed. "Check your inbox for the link" holds either way.
+            'email.unique' => 'We did not create a new account — that address already has one. '
+                              .'Check your inbox for the link that gets you in, or sign in if you already have a password.',
         ]);
 
         // Registration only ever creates. It previously overwrote an existing

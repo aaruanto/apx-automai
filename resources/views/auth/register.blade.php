@@ -54,11 +54,24 @@
 
             <div class="auth-body">
 
-                {{-- Show validation errors --}}
+                {{--
+                    Every error, not just the first.
+
+                    This printed $errors->first(), which renders one message in
+                    validator field order — so a blank first_name hid the
+                    explanation of why the address was refused, and the customer
+                    was left with no idea their account already existed. Each
+                    error now gets its own line; a single error still renders as
+                    one line, so the common case looks unchanged.
+                --}}
                 @if ($errors->any())
-                <div style="display:flex;background:rgba(232,25,44,0.1);border:1px solid rgba(232,25,44,0.3);border-radius:7px;padding:10px 14px;margin-bottom:16px;font-size:0.83rem;color:#E8192C;align-items:center;gap:8px;">
-                    <i class="fas fa-circle-exclamation"></i>
-                    <span>{{ $errors->first() }}</span>
+                <div style="display:flex;background:rgba(232,25,44,0.1);border:1px solid rgba(232,25,44,0.3);border-radius:7px;padding:10px 14px;margin-bottom:16px;font-size:0.83rem;color:#E8192C;align-items:flex-start;gap:8px;">
+                    <i class="fas fa-circle-exclamation" style="margin-top:3px;flex-shrink:0;"></i>
+                    <span>
+                        @foreach ($errors->all() as $error)
+                        <span style="display:block;">{{ $error }}</span>
+                        @endforeach
+                    </span>
                 </div>
                 @endif
 
@@ -80,7 +93,7 @@
                             <label class="form-label" for="inputLastName">Last Name</label>
                             <div class="input-wrap">
                                 <i class="fas fa-user input-icon"></i>
-                                <input class="form-control" id="inputLastName" name="last_name" type="text" 
+                                <input class="form-control" id="inputLastName" name="last_name" type="text"
                                     placeholder="dela Cruz" value="{{ old('last_name') }}" required />
                             </div>
                         </div>
@@ -90,7 +103,7 @@
                         <label class="form-label" for="inputEmail">Email Address</label>
                         <div class="input-wrap">
                             <i class="fas fa-envelope input-icon"></i>
-                            <input class="form-control" id="inputEmail" name="email" type="email" 
+                            <input class="form-control" id="inputEmail" name="email" type="email"
                                 placeholder="you@example.com" value="{{ old('email') }}" required autocomplete="username" />
                         </div>
                     </div>
@@ -99,7 +112,7 @@
                         <label class="form-label" for="inputPhone">Phone Number</label>
                         <div class="input-wrap">
                             <i class="fas fa-phone input-icon"></i>
-                            <input class="form-control" id="inputPhone" name="phone" type="tel" 
+                            <input class="form-control" id="inputPhone" name="phone" type="tel"
                                 placeholder="+63 9XX XXX XXXX" value="{{ old('phone') }}" />
                         </div>
                     </div>
@@ -112,7 +125,7 @@
                             <label class="form-label" for="inputPassword">Password</label>
                             <div class="input-wrap">
                                 <i class="fas fa-lock input-icon"></i>
-                                <input class="form-control" id="inputPassword" name="password" type="password" data-pw-group="new" 
+                                <input class="form-control" id="inputPassword" name="password" type="password" data-pw-group="new"
                                     placeholder="••••••••" required autocomplete="new-password" oninput="checkStrength(this.value)" />
                                 <button type="button" class="pw-toggle">
                                     <i class="fas fa-eye"></i>
@@ -124,7 +137,7 @@
                             <label class="form-label" for="inputPasswordConfirm">Confirm Password</label>
                             <div class="input-wrap">
                                 <i class="fas fa-lock input-icon"></i>
-                                <input class="form-control" id="inputPasswordConfirm" name="password_confirmation" data-pw-group="new" 
+                                <input class="form-control" id="inputPasswordConfirm" name="password_confirmation" data-pw-group="new"
                                     type="password" placeholder="••••••••" required autocomplete="new-password" />
                                 <button type="button" class="pw-toggle">
                                     <i class="fas fa-eye"></i>

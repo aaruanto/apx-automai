@@ -91,6 +91,26 @@ class GuestBookingController extends Controller
             ]);
         }
 
+        // ── Will a "set up your account" link go out with this booking? ───
+        //
+        // A new guest always gets one: their account exists and they have never
+        // seen its password. A returning guest who has still not claimed theirs
+        // gets another only if they asked for an account this time — the first
+        // link lasts 60 minutes, so by a second visit it is almost certainly
+        // dead, and sending nothing left them with a half-made account, no way
+        // into it, and a success screen that mentioned neither.
+        //
+        // recentlyCreatedToken is the password broker's own throttle, so
+        // resubmitting cannot be used to mail someone repeatedly.
+        //
+        // Computed here, once, because the success screen has to say whether a
+        // link was sent and must not guess: create_account is a checkbox, not a
+        // record of anything having happened.
+        $sendAccountLink = $isNewGuest
+            || ($user->is_guest
+                && $request->boolean('create_account')
+                && ! Password::getRepository()->recentlyCreatedToken($user));
+
         // ── Find or create the vehicle ────────────────────────────────────
         // Scoped to this user on purpose. Looking up by plate alone used to bind
         // the booking to whichever account already owned that plate, which both
@@ -251,12 +271,14 @@ class GuestBookingController extends Controller
         $booking->load(['user', 'service', 'vehicle']);
         $guestEmail = $request->guest_email;
 
-        dispatch(function () use ($booking, $guestEmail, $isNewGuest, $user) {
+        dispatch(function () use ($booking, $guestEmail, $sendAccountLink, $user) {
             try {
                 Mail::to($guestEmail)->send(new BookingReceived($booking));
 
-                // If brand new guest account, send password setup email
-                if ($isNewGuest) {
+                // Send the setup link, if one is owed. Decided before the
+                // response went out, so what the customer was told on screen
+                // and what lands in their inbox cannot disagree.
+                if ($sendAccountLink) {
                     $token    = Password::createToken($user);
                     $resetUrl = url(route('password.reset', [
                         'token' => $token,
@@ -276,6 +298,11 @@ class GuestBookingController extends Controller
             'booking_id'     => $booking->id,
             'create_account' => $request->boolean('create_account'),
             'register_url'   => route('register'),
+            // What the success screen needs: not what was asked for, but what
+            // was done. The modal used to ignore the response beyond the
+            // reference number and show one fixed line, so a customer who
+            // asked for an account was never told a link had been emailed.
+            'account_setup_email' => $sendAccountLink,
         ]);
     }
 
