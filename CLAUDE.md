@@ -111,6 +111,14 @@ changing its name serves the old one to anyone who has visited before.
   for anything that is not a Mailable, so `assertSentCount` reads zero however
   much mail was sent. Use the array transport and read
   `Mail::getSymfonyTransport()->messages()`.
+- **`afterResponse` work re-runs on the next request in the same test.**
+  `dispatch(...)->afterResponse()` registers an application *terminating*
+  callback, and `Application::terminate()` never clears that list. A test that
+  makes two requests therefore runs the **first** request's closure again on
+  the second, so the mailbox shows the first booking's mail twice. A real
+  request gets its own process, so this is an artifact of reusing one
+  application — but it makes any mail count spanning two requests meaningless.
+  Set up the prior state by creating the rows, not by making the first request.
 
 ## How the important parts fit together
 

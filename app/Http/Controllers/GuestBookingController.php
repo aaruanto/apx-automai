@@ -16,6 +16,7 @@ use App\Services\BookingAvailability;
 use App\Services\BookingPricing;
 use App\Exceptions\SlotUnavailableException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
@@ -66,98 +67,26 @@ class GuestBookingController extends Controller
             ], 422);
         }
 
-        // ── Find or create the guest's account ────────────────────────────
-        // Matching on email alone is safe here: the guard above has already
-        // turned away any address belonging to a registered account, so
-        // anything found is a guest record this flow created.
-        $user = User::firstOrCreate(
-            ['email' => $request->guest_email],
-            [
-                'name'      => $request->guest_name,
-                'phone'     => $request->guest_phone ?? null,
-                'role'      => 'customer',
-                'password'  => bcrypt(Str::random(16)),
-                'is_active' => true,
-                'is_guest'  => true,
-            ]
-        );
-
-        $isNewGuest = $user->wasRecentlyCreated;
-
-        if (!$isNewGuest) {
-            $user->update([
-                'name'  => $request->guest_name,
-                'phone' => $request->guest_phone ?? $user->phone,
-            ]);
-        }
-
-        // ── Will a "set up your account" link go out with this booking? ───
+        // ── Everything that can refuse this booking, before anything is
+        //    written ──────────────────────────────────────────────────────
         //
-        // A new guest always gets one: their account exists and they have never
-        // seen its password. A returning guest who has still not claimed theirs
-        // gets another only if they asked for an account this time — the first
-        // link lasts 60 minutes, so by a second visit it is almost certainly
-        // dead, and sending nothing left them with a half-made account, no way
-        // into it, and a success screen that mentioned neither.
+        // The account used to be created here, at the top, with the checks
+        // below running afterwards. Every one of them returns 422 — a plate
+        // held by someone else, a withdrawn bundle, a service that does not
+        // suit the vehicle, complimentary work on its own, a slot that has
+        // just gone — and the users row stayed behind with no booking on it.
+        // The customer was told their booking failed while quietly holding an
+        // account they had never heard of, which /register then refuses
+        // because the address is taken, and which no setup link was ever sent
+        // for, because that only happens once a booking exists. Two such rows
+        // are in the live data.
         //
-        // recentlyCreatedToken is the password broker's own throttle, so
-        // resubmitting cannot be used to mail someone repeatedly.
-        //
-        // Computed here, once, because the success screen has to say whether a
-        // link was sent and must not guess: create_account is a checkbox, not a
-        // record of anything having happened.
-        $sendAccountLink = $isNewGuest
-            || ($user->is_guest
-                && $request->boolean('create_account')
-                && ! Password::getRepository()->recentlyCreatedToken($user));
+        // So nothing is written until the answer is yes. $existingUser stands
+        // in for the account through these checks: it is null for a first-time
+        // guest, which is exactly the case that used to leave the stray row.
 
-        // ── Find or create the vehicle ────────────────────────────────────
-        // Scoped to this user on purpose. Looking up by plate alone used to bind
-        // the booking to whichever account already owned that plate, which both
-        // leaked that customer's vehicle details and let anyone who could read a
-        // plate off a car attach themselves to it.
-        $plateKey = PlateNumber::normalise($request->vehicle_plate);
-
-        // Through the shared lookup, which sees soft-deleted rows. Both queries
-        // here were plain Vehicle::where(...), which the soft-delete scope
-        // hides trashed rows from, so a plate on a deleted vehicle looked free
-        // to both of them: the guard passed and the insert below hit the unique
-        // index, returning a 500 to a guest mid-booking.
-        $held = Vehicle::holdingPlate($plateKey);
-
-        // plate_number is globally unique, so a plate held by someone else can't
-        // be reused — say so rather than failing on the constraint.
-        if ($held && $held->user_id !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'That plate number is already registered to another account. Please log in to book with it, or contact us if this is your vehicle.',
-            ], 422);
-        }
-
-        $vehicle = $held;
-
-        if ($vehicle && $vehicle->trashed()) {
-            // Their own vehicle from an earlier visit, since deleted. Restored
-            // rather than duplicated, which the unique index forbids anyway.
-            $vehicle->restore();
-        }
-
-        if (!$vehicle) {
-            $vehicle = Vehicle::create([
-                'user_id'      => $user->id,
-                'plate_number' => $plateKey,
-                'make'         => $request->vehicle_make,
-                'model'        => $request->vehicle_model,
-                'vehicle_type' => in_array($request->vehicle_type, ['car', 'motorcycle']) ? $request->vehicle_type : 'car',
-                'year'         => $request->vehicle_year,
-                'color'        => null,
-            ]);
-        }
-
-        // ── What is being booked ───────────────────────────────────────────
-        // A bundle decides its own contents; services posted alongside one
-        // are ignored, or a bundle could be loaded with extra work at the
-        // bundle's price.
+        // A bundle decides its own contents; services posted alongside one are
+        // ignored, or a bundle could be loaded with extra work at its price.
         $bundle = $request->filled('bundle_id')
             ? Bundle::with('services')->bookable()->find($request->bundle_id)
             : null;
@@ -215,42 +144,146 @@ class GuestBookingController extends Controller
             ], 422);
         }
 
+        $plateKey = PlateNumber::normalise($request->vehicle_plate);
+
+        // Through the shared lookup, which sees soft-deleted rows. This was a
+        // plain Vehicle::where(...), which the soft-delete scope hides trashed
+        // rows from, so a plate on a deleted vehicle looked free: the guard
+        // passed and the insert below hit the unique index, returning a 500 to
+        // a guest mid-booking.
+        $held = Vehicle::holdingPlate($plateKey);
+
+        // plate_number is globally unique, so a plate held by someone else
+        // cannot be reused — say so rather than failing on the constraint.
+        // Scoped to this address on purpose: looking up by plate alone used to
+        // bind the booking to whichever account already owned that plate,
+        // which both leaked that customer's vehicle details and let anyone who
+        // could read a plate off a car attach themselves to it. With no
+        // account yet, any held plate belongs to somebody else.
+        if ($held && (! $existingUser || $held->user_id !== $existingUser->id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'That plate number is already registered to another account. Please log in to book with it, or contact us if this is your vehicle.',
+            ], 422);
+        }
+
         $firstService = $services->first();
 
-        // ── Create booking — one summed-duration block across all selected
-        //    services, gated by the same capacity/hours rules as every
-        //    other booking flow ────────────────────────────────────────────
+        // ── The answer is yes. Write it, all or nothing ────────────────────
+        //
+        // One transaction over the account, the vehicle and the booking.
+        // reserve() is the last thing that can still refuse — the slot may
+        // have gone between drawing the picker and pressing confirm — and it
+        // throws rather than returning, so without the transaction its failure
+        // would leave behind exactly the stray account and vehicle this
+        // ordering exists to prevent.
         $availability = app(BookingAvailability::class);
+        $pricing      = app(BookingPricing::class);
 
         try {
-            $booking = $availability->reserve([
-                'user_id'      => $user->id,
-                'vehicle_id'   => $vehicle->id,
-                'service_id'   => $firstService->id,
-                'service_ids'  => $serviceIds,
-                'mechanic_id'  => null,
-                'booking_date' => $request->booking_date,
-                'booking_time' => $request->booking_time,
-                'status'       => 'pending',
-                // Extra services used to be appended to the note as
-                // "[Additional services: ...]" because only one could be
-                // stored. They are real pivot rows now, so the note is the
-                // customer's own text again.
-                'notes'        => $request->notes ?: null,
-            ]);
+            [$user, $booking, $isNewGuest] = DB::transaction(function () use (
+                $request, $held, $plateKey, $services, $serviceIds, $bundle,
+                $firstService, $availability, $pricing
+            ) {
+                // Matching on email alone is safe: the guard above has already
+                // turned away any address belonging to a registered account,
+                // so anything found is a guest record this flow created.
+                $user = User::firstOrCreate(
+                    ['email' => $request->guest_email],
+                    [
+                        'name'      => $request->guest_name,
+                        'phone'     => $request->guest_phone ?? null,
+                        'role'      => 'customer',
+                        'password'  => bcrypt(Str::random(16)),
+                        'is_active' => true,
+                        'is_guest'  => true,
+                    ]
+                );
 
-            // Price it server side. A guest gets no account discount — that
-            // is the whole point of the offer — but the same code decides it,
-            // so there is one answer to what a booking costs.
-            $pricing = app(BookingPricing::class);
-            $pricing->apply(
-                $booking,
-                $pricing->quote($services, $bundle, $user),
-                $services
-            );
+                $isNewGuest = $user->wasRecentlyCreated;
+
+                if (! $isNewGuest) {
+                    $user->update([
+                        'name'  => $request->guest_name,
+                        'phone' => $request->guest_phone ?? $user->phone,
+                    ]);
+                }
+
+                $vehicle = $held;
+
+                if ($vehicle && $vehicle->trashed()) {
+                    // Their own vehicle from an earlier visit, since deleted.
+                    // Restored rather than duplicated, which the unique index
+                    // forbids anyway.
+                    $vehicle->restore();
+                }
+
+                if (! $vehicle) {
+                    $vehicle = Vehicle::create([
+                        'user_id'      => $user->id,
+                        'plate_number' => $plateKey,
+                        'make'         => $request->vehicle_make,
+                        'model'        => $request->vehicle_model,
+                        'vehicle_type' => in_array($request->vehicle_type, ['car', 'motorcycle']) ? $request->vehicle_type : 'car',
+                        'year'         => $request->vehicle_year,
+                        'color'        => null,
+                    ]);
+                }
+
+                // One summed-duration block across all selected services,
+                // gated by the same capacity/hours rules as every other
+                // booking flow.
+                $booking = $availability->reserve([
+                    'user_id'      => $user->id,
+                    'vehicle_id'   => $vehicle->id,
+                    'service_id'   => $firstService->id,
+                    'service_ids'  => $serviceIds,
+                    'mechanic_id'  => null,
+                    'booking_date' => $request->booking_date,
+                    'booking_time' => $request->booking_time,
+                    'status'       => 'pending',
+                    // Extra services used to be appended to the note as
+                    // "[Additional services: ...]" because only one could be
+                    // stored. They are real pivot rows now, so the note is the
+                    // customer's own text again.
+                    'notes'        => $request->notes ?: null,
+                ]);
+
+                // Price it server side. A guest gets no account discount —
+                // that is the whole point of the offer — but the same code
+                // decides it, so there is one answer to what a booking costs.
+                $pricing->apply(
+                    $booking,
+                    $pricing->quote($services, $bundle, $user),
+                    $services
+                );
+
+                return [$user, $booking, $isNewGuest];
+            });
         } catch (SlotUnavailableException $e) {
+            // Rolled back: no account, no vehicle, no booking.
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
+
+        // ── Will a "set up your account" link go out with this booking? ───
+        //
+        // A new guest always gets one: their account exists and they have never
+        // seen its password. A returning guest who has still not claimed theirs
+        // gets another only if they asked for an account this time — the first
+        // link lasts 60 minutes, so by a second visit it is almost certainly
+        // dead, and sending nothing left them with a half-made account, no way
+        // into it, and a success screen that mentioned neither.
+        //
+        // recentlyCreatedToken is the password broker's own throttle, so
+        // resubmitting cannot be used to mail someone repeatedly.
+        //
+        // Computed here, once, because the success screen has to say whether a
+        // link was sent and must not guess: create_account is a checkbox, not a
+        // record of anything having happened.
+        $sendAccountLink = $isNewGuest
+            || ($user->is_guest
+                && $request->boolean('create_account')
+                && ! Password::getRepository()->recentlyCreatedToken($user));
 
         $ref = $booking->reference_number;
 
