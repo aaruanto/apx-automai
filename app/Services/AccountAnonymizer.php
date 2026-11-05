@@ -130,6 +130,8 @@ class AccountAnonymizer
             }
 
             if ($user->customer) {
+                // dob is no longer collected, but rows saved while it was on
+                // the profile still hold one, so it is still cleared here.
                 $user->customer->update(['phone' => null, 'dob' => null, 'address' => null]);
             }
 

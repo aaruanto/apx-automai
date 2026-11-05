@@ -10,6 +10,10 @@ class Customer extends Model
     protected $fillable = [
         'user_id',
         'phone',
+        // dob is no longer shown or written on the customer profile — the shop
+        // has no use for a birthday. The column and anything already stored in
+        // it stay put, and AccountAnonymizer still nulls it on account
+        // deletion, which needs it mass-assignable.
         'dob',
         'address',
     ];

@@ -74,7 +74,6 @@ it('still saves the other fields alongside it', function () {
     $this->actingAs($user)->patchJson('/customer/profile', [
         'name'    => 'New Name',
         'phone'   => '09998887777',
-        'dob'     => '1998-04-12',
         'address' => '5 Glenn St., Quezon City',
     ])->assertOk();
 
@@ -84,16 +83,39 @@ it('still saves the other fields alongside it', function () {
 
     $customer = Customer::where('user_id', $user->id)->first();
     expect($customer->address)->toBe('5 Glenn St., Quezon City');
-    expect((string) $customer->dob)->toContain('1998-04-12');
+});
+
+it('ignores a date of birth in the body and leaves a stored one alone', function () {
+    // The card no longer offers a birthday and nothing in the shop reads one,
+    // so the write path is gone. The column stays, which means a crafted
+    // request must not be able to reach it either.
+    $user = profileCustomer();
+    $customer = Customer::create([
+        'user_id' => $user->id, 'phone' => '09170000000', 'dob' => '1990-01-01',
+    ]);
+
+    $this->actingAs($user)->patchJson('/customer/profile', [
+        'name' => 'New Name', 'dob' => '1998-04-12',
+    ])->assertOk();
+
+    expect((string) $customer->fresh()->dob)->toContain('1990-01-01');
+});
+
+it('no longer offers a date of birth on the profile card', function () {
+    $user = profileCustomer();
+
+    $this->actingAs($user)->get('/customer/dashboard')->assertOk()
+        ->assertDontSee('Date of Birth')
+        ->assertDontSee('pef-dob');
 });
 
 it('treats blank optional fields as not set rather than invalid', function () {
-    // Untouched date and text inputs post empty strings, which used to fail
-    // the date rule instead of reading as "left alone".
+    // Untouched text inputs post empty strings, which used to fail their
+    // rules instead of reading as "left alone".
     $user = profileCustomer();
 
     $this->actingAs($user)->patchJson('/customer/profile', [
-        'name' => 'Only Name', 'phone' => '', 'dob' => '', 'address' => '',
+        'name' => 'Only Name', 'phone' => '', 'address' => '',
     ])->assertOk();
 
     expect($user->fresh()->name)->toBe('Only Name');

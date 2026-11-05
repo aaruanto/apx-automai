@@ -622,9 +622,9 @@ class DashboardController extends Controller
             $request->merge($json);
         }
 
-        // Empty strings from untouched date/text inputs would otherwise fail
-        // the date rule rather than reading as "not set".
-        foreach (['dob', 'address', 'phone'] as $optional) {
+        // Empty strings from untouched text inputs would otherwise fail their
+        // rules rather than reading as "not set".
+        foreach (['address', 'phone'] as $optional) {
             if ($request->input($optional) === '') {
                 $request->merge([$optional => null]);
             }
@@ -634,7 +634,6 @@ class DashboardController extends Controller
         $data = $request->validate([
             'name'    => ['required', 'string', 'max:255'],
             'phone'   => ['nullable', 'string', 'max:20'],
-            'dob'     => ['nullable', 'date'],
             'address' => ['nullable', 'string', 'max:500'],
         ], [
             'name.required' => 'Your full name is required.',
@@ -661,7 +660,6 @@ class DashboardController extends Controller
 
         $customer->update([
             'phone'   => $data['phone']   ?? $customer->phone,
-            'dob'     => $data['dob']     ?? $customer->dob,
             'address' => $data['address'] ?? $customer->address,
         ]);
 

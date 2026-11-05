@@ -115,8 +115,8 @@
                             whether it is a car or motorcycle.</li>
                         <li><strong>Your bookings</strong> — the services chosen, the date and time, the
                             mechanic assigned, any notes you add, and the status of the work.</li>
-                        <li><strong>Optional profile details</strong> — date of birth and address, only if
-                            you choose to fill them in.</li>
+                        <li><strong>Optional profile details</strong> — your address, only if
+                            you choose to fill it in.</li>
                         <li><strong>Your password</strong>, stored only as a one-way hash (see section 4).</li>
                     </ul>
                     <p class="mb-4">We do <strong>not</strong> collect or store payment card details.

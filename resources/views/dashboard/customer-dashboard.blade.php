@@ -861,16 +861,6 @@
                                             @endif
                                         </div>
                                     </div>
-                                    <div class="profile-field">
-                                        <label>Date of Birth</label>
-                                        <div class="profile-read-val" id="prv-dob"><i class="fas fa-cake-candles"></i>
-                                            @if($customer->dob ?? null)
-                                                {{ $customer->dob }}
-                                            @else
-                                                <span style="color:var(--text-muted);font-style:italic;">Not set</span>
-                                            @endif
-                                        </div>
-                                    </div>
                                     <div class="profile-field profile-field-full">
                                         <label>Address</label>
                                         <div class="profile-read-val" id="prv-address"><i class="fas fa-location-dot"></i>
@@ -897,10 +887,6 @@
                                     <div class="profile-field">
                                         <label>Contact Number</label>
                                         <input type="tel" id="pef-phone" placeholder="+63 9XX XXX XXXX" value="{{ $customer->phone ?? Auth::user()->phone ?? '' }}" />
-                                    </div>
-                                    <div class="profile-field">
-                                        <label>Date of Birth</label>
-                                        <input type="date" id="pef-dob" value="{{ $customer->dob ?? '' }}" />
                                     </div>
                                     <div class="profile-field profile-field-full">
                                         <label>Address</label>
@@ -2464,7 +2450,6 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         // reached the server and "Save Changes" silently discarded it.
         const name    = document.getElementById('pef-name').value.trim();
         const phone   = document.getElementById('pef-phone').value.trim();
-        const dob     = document.getElementById('pef-dob').value;
         const address = document.getElementById('pef-address').value.trim();
 
         if (!FormValidate.validateForm([
@@ -2478,7 +2463,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         fetch('/customer/profile', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify({ name, phone, dob, address })
+            body: JSON.stringify({ name, phone, address })
         })
         .then(r => r.json().catch(() => ({})).then(d => { d._ok = r.ok; return d; }))
         .then(data => {
@@ -2503,7 +2488,6 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                 if (avatar && data.initials) avatar.textContent = data.initials;
 
                 if (phone)   document.getElementById('prv-phone').innerHTML   = '<i class="fas fa-phone"></i> ' + phone;
-                if (dob)     document.getElementById('prv-dob').innerHTML     = '<i class="fas fa-cake-candles"></i> ' + dob;
                 if (address) document.getElementById('prv-address').innerHTML = '<i class="fas fa-location-dot"></i> ' + address;
                 cancelProfileEdit();
                 apxDialog({ type: 'success', title: 'Profile Updated', msg: 'Your personal information has been saved successfully.', confirmLabel: 'OK' });
