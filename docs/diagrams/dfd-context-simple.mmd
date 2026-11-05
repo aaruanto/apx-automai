@@ -1,0 +1,50 @@
+%% APX AutoMai - Level 0 Context Diagram (defense version)
+%% -
+%% The same diagram as dfd-context.mmd with labels cut to data names. Use this
+%% one on a slide; use the detailed one when someone asks for the route.
+%% -
+%% Legend: stadium = process, rectangle = external entity.
+%% Level 0 carries no datastore: the whole system is one process.
+%% -
+%% Sixty second narration:
+%%   Four kinds of actor touch the system and two outside services carry
+%%   messages for it. A guest can book without an account. A customer manages
+%%   vehicles and bookings. An admin runs the shop. And because the free
+%%   hosting tier has no cron, an outside clock has to knock on the door every
+%%   five minutes for anything scheduled to happen at all.
+%% -
+%% Where each edge lives in the code:
+%%   Guest      POST /booking/guest -> GuestBookingController
+%%   Customer   POST /customer/bookings -> Customer\DashboardController::store
+%%   Admin      routes/web.php prefix admin, middleware auth and role:admin
+%%   Cron       GET /cron/{task?} -> CronController
+%%   Mail       config/mail.php smtp, port 2525
+%%   SMS        AppServiceProvider binds SmsGateway by SMS_DRIVER
+
+flowchart LR
+    GUEST["Guest"]
+    CUST["Customer"]
+    ADMIN["Administrator"]
+    CRON["External Cron Service"]
+    MAIL["Email Service Brevo"]
+    SMSGW["SMS Gateway"]
+
+    SYS(["0 APX AutoMai"])
+
+    GUEST -->|"booking request"| SYS
+    SYS -->|"reference number"| GUEST
+
+    CUST -->|"credentials and vehicles and bookings and points to use"| SYS
+    SYS -->|"dashboard and history and points balance and service due list"| CUST
+
+    ADMIN -->|"status changes and catalog and settings and report filters"| SYS
+    SYS -->|"schedule and customer records and reports"| ADMIN
+
+    CRON -->|"five minute tick with token"| SYS
+    SYS -->|"what ran and for how long"| CRON
+
+    SYS -->|"confirmation and reminder email"| MAIL
+    MAIL -->|"accepted or failed"| SYS
+
+    SYS -->|"reminder text message"| SMSGW
+    SMSGW -->|"message id and status"| SYS

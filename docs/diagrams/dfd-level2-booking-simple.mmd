@@ -1,0 +1,88 @@
+%% APX AutoMai - Level 2 of 2.0 Booking and Scheduling (defense version)
+%% -
+%% Condensed from dfd-level2-booking-intake.mmd and
+%% dfd-level2-pricing-redemption.mmd, which are the full versions.
+%% -
+%% Legend: stadium = process, rectangle = external entity, cylinder = datastore.
+%% -
+%% This diagram answers the question a panel always asks: what stops someone
+%% editing the price in the browser and booking a major service for one peso.
+%% Follow the two arrows out of the browser. They carry CHOICES - which
+%% services, which vehicle, which date, how many points to try to use. No
+%% arrow out of the browser carries a price, a discount or a total. 2.3 reads
+%% every figure from D3 and D7 instead, and 2.4 writes the result into the
+%% booking as a snapshot so a later price change cannot rewrite history.
+%% -
+%% Sixty second narration:
+%%   2.1 answers "is that slot free" before the customer commits to anything.
+%%   2.2 is where the two paths meet: a guest gets an account made for them, a
+%%       signed in customer picks a vehicle we check they actually own.
+%%   2.3 prices the work on the server, from the database.
+%%   2.4 saves it inside one transaction, so two people cannot take the same
+%%       slot by submitting at the same moment.
+%%   2.5 tells the customer the reference number.
+%% -
+%% Process to code map:
+%%   2.1  AvailabilityController, BookingAvailability::dayAvailability and hoursFor
+%%   2.2  GuestBookingController, Customer\DashboardController::store,
+%%        Support\BookingPolicy
+%%   2.3  BookingPricing::quote, LoyaltyService::redeemableAgainst
+%%   2.4  BookingAvailability::reserve, BookingPricing::apply,
+%%        LoyaltyService::redeemFor
+%%   2.5  Mail BookingReceived
+
+flowchart TD
+    GUEST["Guest"]
+    CUST["Customer"]
+    MAIL["Email Service"]
+
+    P21(["2.1 Check Slot Availability"])
+    P22(["2.2 Identify Customer and Vehicle"])
+    P23(["2.3 Price the Booking on the Server"])
+    P24(["2.4 Reserve the Slot and Save"])
+    P25(["2.5 Confirm to the Customer"])
+
+    P4(["4.0 Loyalty Points"])
+
+    D1[("D1 Users")]
+    D2[("D2 Vehicles")]
+    D3[("D3 Catalog")]
+    D4[("D4 Bookings")]
+    D7[("D7 Settings and Rules")]
+
+    %% 2.1 is the slot free
+    GUEST -->|"date and chosen services"| P21
+    CUST -->|"date and chosen services"| P21
+    D7 -->|"opening hours and daily cap"| P21
+    D4 -->|"bookings already on that date"| P21
+    P21 -->|"free slot counts"| GUEST
+    P21 -->|"free slot counts"| CUST
+
+    %% 2.2 the two paths meet
+    GUEST -->|"name and contact and plate and choices"| P22
+    CUST -->|"chosen vehicle and choices and points to try"| P22
+    P22 -->|"guest account, only if the email is new"| D1
+    D2 -->|"vehicles belonging to this customer only"| P22
+    P22 -->|"vehicle from the plate given"| D2
+    P22 -->|"refused, that vehicle is not yours"| CUST
+    P22 -->|"customer and vehicle and choices"| P23
+
+    %% 2.3 money, decided here and nowhere else
+    D3 -->|"service and bundle prices"| P23
+    D7 -->|"discount percent and loyalty rules"| P23
+    P23 -->|"points requested, as a ceiling"| P4
+    P4 -->|"points allowed and their peso value"| P23
+    P23 -->|"total computed from database rows"| P24
+
+    %% 2.4 save it once
+    D7 -->|"hours and cap, rechecked inside the transaction"| P24
+    D4 -->|"locked bookings for the overlap check"| P24
+    P24 -->|"refused, the slot is taken or the shop is closed"| CUST
+    P24 -->|"booking and per service price snapshot"| D4
+    P24 -->|"points spent"| P4
+    P24 -->|"saved booking"| P25
+
+    %% 2.5 confirm
+    P25 -->|"reference number"| CUST
+    P25 -->|"reference number and password set link"| GUEST
+    P25 -->|"booking received email"| MAIL

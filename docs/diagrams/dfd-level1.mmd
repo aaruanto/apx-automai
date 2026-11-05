@@ -1,94 +1,165 @@
-%% APX AutoMai — Level 1 Data Flow Diagram
-flowchart TB
-    GUEST[Guest]
-    CUST[Customer]
-    ADMIN[Administrator]
-    CRON[External Cron Service]
-    MAIL[Email Service]
-    SMSG[SMS Gateway]
+%% APX AutoMai - Level 1 Data Flow Diagram
+%% -
+%% Supersedes the earlier version of this file. What changed and why:
+%%   - the datastore numbering is different; D6 was audit_logs and is now
+%%     reminders, so do not read D-numbers across the two versions
+%%   - booking_reschedule_requests and account_deletions were absent entirely
+%%   - pricing was folded into booking intake; BookingPricing is its own
+%%     process here because it is the single source of truth for cost
+%%   - maintenance detection and reminder sending were two processes that both
+%%     drew arrows to mail and SMS; dispatch is now one process, which is what
+%%     the code actually does
+%% -
+%% Legend: stadium = process, rectangle = external entity, cylinder = datastore.
+%% -
+%% Process-to-code map. Every bubble is auditable against these:
+%%   1.0  routes/auth.php, RegisteredUserController, AuthenticatedSessionController,
+%%        ProfileController, RoleMiddleware, AccountAnonymizer
+%%   2.0  GuestBookingController, Customer\DashboardController::store,
+%%        AvailabilityController, BookingAvailability, Support\BookingPolicy
+%%   3.0  BookingPricing
+%%   4.0  Admin\BookingController, BookingCancellation, ServiceHistory
+%%   5.0  LoyaltyService, Admin\CustomerController::adjustPoints
+%%   6.0  MaintenanceDue
+%%   7.0  SendBookingReminders, SendMaintenanceReminders, ReminderLedger, SmsService
+%%   8.0  Admin\SettingsController, BundleController, MaintenanceRuleController,
+%%        MechanicController, MessageTemplateController
+%%   9.0  Admin\ReportController, Admin\DashboardController, Admin\MessageLogController
+%% -
+%% Two tables are touched but are not numbered here, because the agreed
+%% datastore list runs D1 to D12: mechanics, written by 8.0 and read by 4.0,
+%% and the Laravel notifications table, written by 4.0 and read by the bell.
 
-    P1["1.0<br/>Authentication and<br/>Role-Based Access"]
-    P2["2.0<br/>Vehicle<br/>Management"]
-    P3["3.0<br/>Booking and<br/>Scheduling"]
-    P4["4.0<br/>Booking<br/>Management"]
-    P5["5.0<br/>Appointment<br/>Reminders"]
-    P8["8.0<br/>Maintenance Due<br/>Detection"]
-    P6["6.0<br/>Loyalty<br/>Points"]
-    P7["7.0<br/>Reporting and<br/>Dashboard"]
+flowchart TD
+    GUEST["Guest"]
+    CUST["Customer"]
+    ADMIN["Administrator"]
+    CRON["External Cron Service"]
+    MAIL["Brevo SMTP on port 2525"]
+    SMSGW["SMS Gateway chosen by SMS_DRIVER"]
 
-    D1[(D1 users / customers)]
-    D2[(D2 vehicles)]
-    D3[(D3 services / bundles)]
-    D4[(D4 bookings + booking_service)]
-    D5[(D5 loyalty_ledger)]
-    D6[(D6 audit_logs)]
-    D7[(D7 sms_logs)]
-    D8[(D8 settings + message templates)]
-    D9[(D9 maintenance_rules)]
-    D10[(D10 reminders)]
+    P1(["1.0 Authentication and Account Lifecycle"])
+    P2(["2.0 Booking Intake and Availability"])
+    P3(["3.0 Pricing and Discounts"])
+    P4(["4.0 Booking Lifecycle"])
+    P5(["5.0 Loyalty Points"])
+    P6(["6.0 Maintenance Due Detection"])
+    P7(["7.0 Notification Dispatch"])
+    P8(["8.0 Catalog and Settings Administration"])
+    P9(["9.0 Reporting and Dashboards"])
 
-    CUST -->|credentials| P1
-    ADMIN -->|credentials| P1
-    P1 <-->|account record, role| D1
-    P1 -->|session for role| CUST
-    P1 -->|session for role| ADMIN
+    D1[("D1 users and customers")]
+    D2[("D2 vehicles")]
+    D3[("D3 services and bundles and bundle_service")]
+    D4[("D4 bookings and booking_service")]
+    D5[("D5 loyalty_ledger")]
+    D6[("D6 reminders")]
+    D7[("D7 maintenance_rules")]
+    D8[("D8 sms_logs")]
+    D9[("D9 settings")]
+    D10[("D10 audit_logs")]
+    D11[("D11 account_deletions")]
+    D12[("D12 booking_reschedule_requests")]
 
-    CUST -->|vehicle details, optional mileage| P2
-    P2 <-->|vehicle record| D2
+    %% 1.0 Authentication and account lifecycle
+    CUST -->|"name and email and phone and password to register, or email and password to sign in"| P1
+    ADMIN -->|"email and password"| P1
+    P1 -->|"hashed password and role customer and is_guest false"| D1
+    D1 -->|"stored hash and role and is_active and deleted_at"| P1
+    P1 -->|"session cookie scoped to the role"| CUST
+    P1 -->|"session cookie scoped to the role"| ADMIN
+    P1 -->|"password reset link and email verification link"| MAIL
+    CUST -->|"account deletion request"| P1
+    P1 -->|"grace row with purge_at thirty days out and counts of bookings cancelled and retained"| D11
+    D11 -->|"purge_at and anonymized_at and restored_at"| P1
+    P1 -->|"upcoming bookings cancelled when the account is deactivated"| D4
+    P1 -->|"plate and colour scrubbed once the grace period expires"| D2
+    CRON -->|"tick that makes accounts:purge-expired due"| P1
 
-    GUEST -->|guest booking| P3
-    CUST -->|service or bundle, date, time, points to use| P3
-    P3 -->|read catalogue and prices| D3
-    P3 -->|read capacity and hours| D8
-    P3 -->|check existing slots| D4
-    P3 -->|save booking and price snapshots| D4
-    P3 -->|read owned vehicle| D2
-    P3 -->|deduct points| P6
-    P3 -->|reference number| CUST
-    P3 -->|reference number| GUEST
-    P3 -->|booking received email| MAIL
+    %% 2.0 Booking intake and availability
+    GUEST -->|"name and email and phone and plate and chosen service ids and date and time"| P2
+    CUST -->|"vehicle_id and service ids or bundle_id and date and time and points requested"| P2
+    D3 -->|"active service prices and durations and vehicle_type suitability"| P2
+    D9 -->|"open_time and close_time and weekend hours and slot_duration and max_bookings"| P2
+    D4 -->|"active bookings on that date for the overlap and capacity check"| P2
+    D2 -->|"the vehicle, confirmed to belong to this customer"| P2
+    P2 -->|"booking row with reference number and status pending and duration"| D4
+    P2 -->|"guest user row with is_guest true, created only when the email is new"| D1
+    P2 -->|"vehicle created from the plate a guest typed"| D2
+    P2 -->|"chosen services and the signed-in user, for pricing"| P3
+    P2 -->|"free slot counts per start time, counts only and no customer data"| CUST
+    P2 -->|"reference number and booking received email"| GUEST
+    P2 -->|"reference number and confirmation"| CUST
+    P2 -->|"booking received email and guest account created email"| MAIL
 
-    ADMIN -->|confirm, complete, cancel, assign mechanic| P4
-    P4 <-->|booking record| D4
-    P4 -->|who, what, why| D6
-    P4 -->|award or reverse points| P6
-    P4 -->|status change notice| MAIL
-    P4 -->|stamp last service date| D2
+    %% 3.0 Pricing and discounts
+    D3 -->|"service list prices and bundle price"| P3
+    D9 -->|"account_discount_enabled and account_discount_percent, clamped to 0 to 100"| P3
+    P3 -->|"per service price snapshots with the discount already allocated, plus duration"| D4
+    P3 -->|"list_price and discount_percent and discount_amount and bundle_price"| D4
+    P3 -->|"points the customer asked to spend, capped by what is allowed"| P5
+    P5 -->|"redeemable ceiling and peso value per point"| P3
+    P3 -->|"server computed total, never a figure taken from the browser"| P2
 
-    %% 5.0 — you have an appointment coming up.
-    CRON -->|scheduled tick| P5
-    P5 -->|find confirmed bookings in window| D4
-    P5 -->|read template and triggers| D8
-    P5 -->|read contact details| D1
-    P5 -->|claim before sending, exactly once| D10
-    P5 -->|send email| MAIL
-    P5 -->|send SMS| SMSG
-    P5 -->|record every attempt| D7
+    %% 4.0 Booking lifecycle
+    ADMIN -->|"status change and mechanic assignment and arrival stamp and cancellation reason and proposed new date"| P4
+    CUST -->|"cancellation of their own booking"| P4
+    D4 -->|"current status and reference number and attached services and times"| P4
+    P4 -->|"new status and arrived_at and mechanic_id and cancel_reason and cancelled_by and cancelled_at"| D4
+    P4 -->|"last_service_date moved forward on completion, never backward"| D2
+    P4 -->|"proposal row with original and proposed date and time and status pending"| D12
+    D12 -->|"pending proposal to apply or withdraw"| P4
+    P4 -->|"actor and action and old values and new values and reason"| D10
+    P4 -->|"award on completion, reverse and refund on cancellation"| P5
+    P4 -->|"status change and reschedule proposal emails"| MAIL
+    P4 -->|"booking status notice"| CUST
+    CRON -->|"tick that makes bookings:cancel-no-shows due"| P4
 
-    %% 8.0 — your vehicle is due for servicing. Nothing the customer did
-    %% triggers this; only the passage of time, which is why it is scheduled.
-    CRON -->|scheduled tick| P8
-    P8 -->|read service intervals| D9
-    P8 -->|read last service date| D2
-    P8 -->|skip if work already booked| D4
-    P8 -->|read template and triggers| D8
-    P8 -->|claim once per interval| D10
-    P8 -->|service due email| MAIL
-    P8 -->|service due SMS| SMSG
-    P8 -->|record every attempt| D7
-    ADMIN -->|edit intervals and templates| D8
+    %% 5.0 Loyalty points
+    D9 -->|"loyalty_enabled and pesos per point and minimum redemption and max redeem percent and expiry months"| P5
+    P5 -->|"signed points row with remaining and balance_after and reason"| D5
+    D5 -->|"unspent lots oldest first, and the balance derived from them"| P5
+    ADMIN -->|"manual adjustment with a reason"| P5
+    P5 -->|"balance and ledger history"| CUST
+    P5 -->|"adjustment recorded against the actor"| D10
+    CRON -->|"tick that makes loyalty:expire due"| P5
 
-    %% The dashboard runs the same due calculation, so the screen and the
-    %% inbox cannot disagree about whether a car is due.
-    P8 -->|due status per vehicle| CUST
+    %% 6.0 Maintenance due detection
+    D7 -->|"active rules with interval_months and lead_days and vehicle_type"| P6
+    D2 -->|"last_service_date, or created_at when the vehicle has never been in"| P6
+    D4 -->|"whether this vehicle already has work booked"| P6
+    P6 -->|"rule and due date and overdue flag per vehicle"| P7
+    P6 -->|"the same due list the reminder uses, shown on the dashboard"| CUST
 
-    P6 <-->|earn, redeem, expire, adjust| D5
-    P6 -->|balance and history| CUST
-    ADMIN -->|manual adjustment with reason| P6
-    P6 -->|adjustment record| D6
+    %% 7.0 Notification dispatch
+    CRON -->|"tick that makes reminders:send and reminders:maintenance due"| P7
+    D4 -->|"pending or confirmed bookings whose date falls in a seven or three or one day window"| P7
+    D1 -->|"recipient name and email and phone"| P7
+    D9 -->|"message template bodies and which channels are switched on"| P7
+    P7 -->|"claim inserted against the unique dedupe_key, before anything is sent"| D6
+    D6 -->|"claim granted, or rejected because this reminder has already gone out"| P7
+    P7 -->|"status sent with a timestamp, or the claim deleted so a later run may retry"| D6
+    P7 -->|"HTML reminder body to the customer address"| MAIL
+    P7 -->|"normalised recipient and GSM7 folded body"| SMSGW
+    P7 -->|"recipient and content and segments and status and provider reference or failure reason"| D8
+    P7 -->|"appointment and service due messages"| CUST
 
-    ADMIN -->|date range filter| P7
-    P7 -->|completed work and snapshots| D4
-    P7 -->|outstanding points liability| D5
-    P7 -->|scheduler heartbeat| D8
-    P7 -->|figures and charts| ADMIN
+    %% 8.0 Catalog and settings administration
+    ADMIN -->|"service and bundle definitions and active toggles"| P8
+    ADMIN -->|"opening hours and slot duration and daily cap and discount and loyalty rules and maintenance mode"| P8
+    ADMIN -->|"service interval rules and message templates"| P8
+    P8 -->|"service and bundle rows, switched off rather than deleted"| D3
+    P8 -->|"key and value pairs, message templates among them"| D9
+    P8 -->|"interval rules with interval_months and lead_days"| D7
+    P8 -->|"what was changed and what it was before"| D10
+    P8 -->|"test message on demand"| P7
+
+    %% 9.0 Reporting and dashboards
+    ADMIN -->|"date range and status filters"| P9
+    D4 -->|"completed work and per service price snapshots and cancellations"| P9
+    D5 -->|"outstanding points liability"| P9
+    D8 -->|"what was actually sent and what failed"| P9
+    D10 -->|"who changed what and when"| P9
+    D9 -->|"scheduler_last_run heartbeat"| P9
+    D1 -->|"customer counts and contact details"| P9
+    P9 -->|"figures and charts and CSV exports"| ADMIN

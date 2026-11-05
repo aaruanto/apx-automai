@@ -1,169 +1,310 @@
-%% APX AutoMai — Entity Relationship Diagram
-%% Reflects the schema as built. Key attributes only.
-%% Excalidraw note: erDiagram imports as an image, not editable shapes.
-%% Use erd-flowchart.mmd for an editable version.
+%% APX AutoMai - Entity Relationship Diagram
+%% -
+%% Derived from the live schema, not from the migration files alone: read back
+%% with PRAGMA table_info, index_list and foreign_key_list against
+%% database/database.sqlite, so columns added by later migrations and columns
+%% dropped by them are both accounted for.
+%% -
+%% Supersedes the earlier version of this file. What it had wrong:
+%%   - bookings.service_id was missing entirely. It still exists, is NOT NULL,
+%%     and carries a foreign key to services. BookingAvailability::reserve sets
+%%     it to the first chosen service, so it is a live legacy anchor rather
+%%     than a dead column, and leaving it out hid a real relationship.
+%%   - mechanics.name was marked UK. There is no unique index on it.
+%%   - maintenance_rules.interval_months was described as required. It is
+%%     nullable, and MaintenanceDue skips a rule that has none.
+%%   - booking_reschedule_requests was absent.
+%%   - vehicles.year and color and mileage_updated_at, services and bundles
+%%     soft deletes, reminders.status and error, sms_logs.content and
+%%     reference_id and fail_reason and vehicle_id, audit_logs.auditable_type
+%%     and auditable_id and subject, and the account_deletions counters were
+%%     all absent.
+%%   - account_deletions.user_id was shown as a foreign key. It is indexed
+%%     only, with no constraint.
+%% -
+%% Excluded on purpose, per CLAUDE.md: payments, notification_logs, rewards and
+%% the old employees table. Also excluded: Laravel framework tables - sessions,
+%% password_reset_tokens, cache, cache_locks, jobs, job_batches, failed_jobs,
+%% notifications, migrations.
+%% -
+%% Excalidraw note: erDiagram imports as a single image rather than editable
+%% shapes. erd-flowchart.mmd carries the same relationships in flowchart
+%% syntax for when you need to move boxes around.
+
 erDiagram
-    USERS ||--o| CUSTOMERS : "has profile"
-    USERS ||--o{ VEHICLES : owns
-    USERS ||--o{ BOOKINGS : places
-    USERS ||--o{ LOYALTY_LEDGER : earns
-    USERS ||--o{ AUDIT_LOGS : "acts in"
-    USERS ||--o| ACCOUNT_DELETIONS : requests
+    USERS ||--o{ CUSTOMERS : "has a profile row, one by convention and not enforced"
+    USERS ||--o{ VEHICLES : "owns"
+    USERS ||--o{ BOOKINGS : "places"
+    USERS ||--o{ BOOKINGS : "cancelled"
+    USERS ||--o{ LOYALTY_LEDGER : "earns and spends"
+    USERS ||--o{ AUDIT_LOGS : "acted in"
+    USERS ||--o{ REMINDERS : "receives"
+    USERS ||--o{ ACCOUNT_DELETIONS : "requested, indexed with no constraint"
+    USERS ||--o{ BOOKING_RESCHEDULE_REQUESTS : "proposed"
+    USERS ||--o{ BOOKING_RESCHEDULE_REQUESTS : "resolved"
 
-    VEHICLES ||--o{ BOOKINGS : "serviced in"
-    MECHANICS ||--o{ BOOKINGS : "assigned to"
-    BUNDLES ||--o{ BOOKINGS : "sold as"
-
-    BOOKINGS ||--|{ BOOKING_SERVICE : contains
-    SERVICES ||--o{ BOOKING_SERVICE : "listed in"
-    BUNDLES ||--|{ BUNDLE_SERVICE : includes
-    SERVICES ||--o{ BUNDLE_SERVICE : "part of"
-
-    BOOKINGS ||--o{ LOYALTY_LEDGER : "moves points"
-    BOOKINGS ||--o{ SMS_LOGS : "triggers"
-
-    USERS ||--o{ REMINDERS : receives
+    VEHICLES ||--o{ BOOKINGS : "is serviced in"
     VEHICLES ||--o{ REMINDERS : "is due for"
+    VEHICLES ||--o{ SMS_LOGS : "is the subject of"
+
+    SERVICES ||--o{ BOOKINGS : "is the legacy primary service of"
+    SERVICES ||--o{ BOOKING_SERVICE : "is priced in"
+    SERVICES ||--o{ BUNDLE_SERVICE : "is part of"
+    SERVICES ||--o{ MAINTENANCE_RULES : "is recommended by"
+
+    BUNDLES ||--o{ BOOKINGS : "was sold under"
+    BUNDLES ||--o{ BUNDLE_SERVICE : "includes"
+    BUNDLES ||--o{ MAINTENANCE_RULES : "is recommended by"
+
+    MECHANICS ||--o{ BOOKINGS : "is assigned to"
+
+    BOOKINGS ||--o{ BOOKING_SERVICE : "is itemised by"
+    BOOKINGS ||--o{ LOYALTY_LEDGER : "moves points through"
+    BOOKINGS ||--o{ SMS_LOGS : "triggered"
     BOOKINGS ||--o{ REMINDERS : "is reminded of"
-    MAINTENANCE_RULES ||--o{ REMINDERS : raises
-    BUNDLES ||--o{ MAINTENANCE_RULES : "recommended by"
-    SERVICES ||--o{ MAINTENANCE_RULES : "recommended by"
+    BOOKINGS ||--o{ BOOKING_RESCHEDULE_REQUESTS : "is proposed to move by"
+
+    MAINTENANCE_RULES ||--o{ REMINDERS : "raises"
 
     USERS {
         int id PK
         string name
         string email UK
-        string phone
-        string role "admin or customer"
-        bool is_guest
-        bool is_active
+        string phone "nullable, the number SMS goes to"
+        string role "admin or customer only"
+        datetime email_verified_at "nullable"
+        string password "hashed"
+        boolean is_active "disable without deleting"
+        boolean is_guest "a record the shop made for a walk-in"
+        string remember_token "nullable"
+        datetime deleted_at "soft delete"
+        datetime created_at
+        datetime updated_at
     }
+
     CUSTOMERS {
         int id PK
-        int user_id FK
-        string phone
-        string address
-        date dob
+        int user_id FK "cascade on delete, no unique index"
+        string phone "nullable"
+        date dob "nullable"
+        string address "nullable"
+        datetime created_at
+        datetime updated_at
     }
+
     VEHICLES {
         int id PK
-        int user_id FK
-        string plate_number UK
+        int user_id FK "cascade on delete"
         string make
         string model
+        int year "nullable"
+        string plate_number UK
+        string color "nullable"
+        boolean is_primary
         string vehicle_type "car or motorcycle"
-        bool is_primary
-        date last_service_date "set when a booking completes"
-        int mileage "optional, customer supplied, not used for reminders"
+        date last_service_date "nullable, maintained by ServiceHistory on completion"
+        int mileage "nullable, the shop reads it and nothing decides from it"
+        date mileage_updated_at "nullable"
+        datetime deleted_at "soft delete"
+        datetime created_at
+        datetime updated_at
     }
+
     SERVICES {
         int id PK
         string name
-        string category
-        decimal price
-        int duration
-        bool is_active
+        text description "nullable"
+        decimal price "10 comma 2"
+        int duration "minutes"
+        string category "nullable"
+        boolean is_active
+        string vehicle_type "nullable means it suits any"
+        datetime deleted_at "soft delete"
+        datetime created_at
+        datetime updated_at
     }
+
     BUNDLES {
         int id PK
         string name UK
-        decimal price
-        bool is_active
-        date starts_at
-        date ends_at
-        string vehicle_type
+        text description "nullable"
+        decimal price "10 comma 2"
+        boolean is_active
+        date starts_at "nullable"
+        date ends_at "nullable"
+        string vehicle_type "nullable means it suits any"
+        datetime deleted_at "soft delete"
+        datetime created_at
+        datetime updated_at
     }
+
     BUNDLE_SERVICE {
-        int bundle_id FK
-        int service_id FK
+        int id PK
+        int bundle_id FK "cascade on delete"
+        int service_id FK "cascade on delete"
+        datetime created_at
+        datetime updated_at
     }
+
     MECHANICS {
         int id PK
-        string name UK
-        string contact_number
-        string specialty
-        string status
+        string name "no unique index"
+        string specialty "nullable"
+        string status "active or inactive"
+        string contact_number "nullable"
+        datetime created_at
+        datetime updated_at
     }
+
     BOOKINGS {
         int id PK
-        int user_id FK
-        int vehicle_id FK
-        int mechanic_id FK
-        int bundle_id FK
+        int user_id FK "cascade on delete"
+        int vehicle_id FK "cascade on delete"
+        int service_id FK "NOT NULL legacy primary service, set to the first chosen one"
+        int mechanic_id FK "nullable, set null on delete"
+        int bundle_id FK "nullable, set null on delete"
         string reference_number UK
         date booking_date
         time booking_time
-        string status
-        decimal list_price "snapshot"
+        int duration "nullable, minutes, summed from the chosen services"
+        string status "pending confirmed in_progress completed cancelled"
+        text notes "nullable"
+        datetime arrived_at "nullable"
+        string cancel_reason "nullable"
+        int cancelled_by FK "nullable, null also means the system cancelled it"
+        datetime cancelled_at "nullable"
+        decimal bundle_price "nullable snapshot"
+        decimal list_price "nullable snapshot before any discount"
+        int discount_percent "snapshot"
         decimal discount_amount "snapshot"
+        int points_earned "snapshot"
+        int points_spent "snapshot"
         decimal points_discount "snapshot"
-        int points_earned
-        int points_spent
+        datetime deleted_at "soft delete"
+        datetime created_at
+        datetime updated_at
     }
+
     BOOKING_SERVICE {
-        int booking_id FK
-        int service_id FK
-        decimal price "price snapshot"
-        int duration
+        int id PK
+        int booking_id FK "cascade on delete, unique with service_id"
+        int service_id FK "cascade on delete, unique with booking_id"
+        decimal price "snapshot with the discount already allocated into it"
+        int duration "snapshot in minutes"
+        datetime created_at
+        datetime updated_at
     }
+
     LOYALTY_LEDGER {
         int id PK
-        int user_id FK
-        int booking_id FK
-        int points "signed"
-        int remaining "unspent lot"
-        int balance_after
-        string reason
-        date expires_at
+        int user_id FK "cascade on delete"
+        int booking_id FK "nullable, unique with reason, null on adjustments and expiries"
+        int points "signed, positive earns and negative spends"
+        int remaining "nullable, the unspent part of an earn lot"
+        int balance_after "so drift against the sum is detectable"
+        string reason "earned redeemed reversed refunded expired adjusted"
+        string note "nullable"
+        date expires_at "nullable, set on earn rows only"
+        datetime created_at
+        datetime updated_at
     }
-    AUDIT_LOGS {
-        int id PK
-        int user_id FK
-        string actor_name
-        string action
-        json old_values
-        json new_values
-        string reason
-    }
-    SMS_LOGS {
-        int id PK
-        int booking_id FK
-        string recipient
-        string status
-        int segments
-        string trigger
-    }
-    ACCOUNT_DELETIONS {
-        int id PK
-        int user_id FK
-        datetime purge_at
-        datetime anonymized_at
-    }
-    SETTINGS {
-        int id PK
-        string key UK
-        string value
-    }
+
     MAINTENANCE_RULES {
         int id PK
         string name
-        int bundle_id FK "what to recommend booking"
-        int service_id FK
-        int interval_months "required, the only interval"
-        int lead_days "how far ahead to warn"
-        string vehicle_type "null applies to all"
-        bool is_active
+        string description "nullable"
+        int bundle_id FK "nullable, what to recommend booking"
+        int service_id FK "nullable, what to recommend booking"
+        int interval_months "nullable, and a rule with none is skipped"
+        int lead_days "how far ahead of the due date to warn"
+        string vehicle_type "nullable applies to all"
+        boolean is_active
+        int sort_order
+        datetime created_at
+        datetime updated_at
     }
+
     REMINDERS {
         int id PK
         string type "appointment or maintenance"
-        int user_id FK
-        int vehicle_id FK
-        int booking_id FK
-        int maintenance_rule_id FK
-        string trigger_key "remind_7d, maintenance_due"
+        int user_id FK "cascade on delete"
+        int vehicle_id FK "nullable, set null on delete"
+        int booking_id FK "nullable, cascade on delete"
+        int maintenance_rule_id FK "nullable, set null on delete"
+        string trigger_key "remind_7d remind_3d remind_1d remind_2h maintenance_due"
         string channel "email or sms"
-        date due_date
-        datetime sent_at
-        string dedupe_key UK "makes a send exactly-once"
+        date due_date "nullable"
+        string status "claimed then sent"
+        text error "nullable"
+        datetime sent_at "nullable"
+        string dedupe_key UK "the claim that makes a send exactly once"
+        datetime created_at
+        datetime updated_at
+    }
+
+    SMS_LOGS {
+        int id PK
+        int booking_id FK "nullable, set null on delete"
+        int vehicle_id FK "nullable, set null on delete"
+        string recipient "nullable, normalised to E164"
+        text content "what was actually sent, after GSM7 folding"
+        int segments "counted after folding"
+        string status "sent or failed or skipped"
+        string reference_id "nullable, the provider message id"
+        text fail_reason "nullable"
+        string trigger "nullable"
+        datetime created_at
+        datetime updated_at
+    }
+
+    AUDIT_LOGS {
+        int id PK
+        int user_id FK "nullable, set null on delete"
+        string actor_name "nullable, kept so the trail survives the account"
+        string action
+        string auditable_type "nullable, polymorphic subject class"
+        int auditable_id "nullable, polymorphic subject id"
+        string subject "nullable, a human label such as a reference number"
+        text old_values "nullable, JSON encoded"
+        text new_values "nullable, JSON encoded"
+        text reason "nullable"
+        datetime created_at
+        datetime updated_at
+    }
+
+    ACCOUNT_DELETIONS {
+        int id PK
+        int user_id "indexed only, no foreign key constraint"
+        int bookings_cancelled
+        int bookings_retained
+        int vehicles_anonymized
+        datetime purge_at "nullable, thirty days after the request"
+        datetime anonymized_at "nullable"
+        datetime restored_at "nullable"
+        datetime created_at
+        datetime updated_at
+    }
+
+    BOOKING_RESCHEDULE_REQUESTS {
+        int id PK
+        int booking_id FK "cascade on delete"
+        date proposed_date
+        time proposed_time
+        date original_date
+        time original_time
+        text reason
+        string status "pending applied withdrawn"
+        int proposed_by FK "nullable, set null on delete"
+        int resolved_by FK "nullable, set null on delete"
+        datetime resolved_at "nullable"
+        datetime created_at
+        datetime updated_at
+    }
+
+    SETTINGS {
+        int id PK
+        string key UK
+        text value "nullable, message template bodies live here too"
+        datetime created_at
+        datetime updated_at
     }

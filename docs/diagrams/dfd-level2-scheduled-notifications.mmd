@@ -1,0 +1,126 @@
+%% APX AutoMai - Level 2 Data Flow Diagram
+%% Decomposition of process 7.0 Notification Dispatch, including the due-check
+%% that process 6.0 Maintenance Due Detection performs on its behalf
+%% -
+%% Legend: stadium = process, rectangle = external entity, cylinder = datastore.
+%% -
+%% Read 7.4 before anything else. The claim against the unique dedupe_key
+%% happens BEFORE a message is handed to a channel, never after. The day
+%% windows match on a date, which stays true all day, so a command with no
+%% memory would mail one booking on every tick - roughly 1,440 times a day
+%% against a 300 a day limit. The claim is an INSERT, so the database picks the
+%% winner rather than a read-then-write that two overlapping ticks both pass.
+%% -
+%% Code map for each sub-process:
+%%   7.1  CronController, constant time hash_equals on APX_CRON_TOKEN,
+%%        allow-list of one command, 404 when the token is unset or wrong
+%%   7.2  routes/console.php Schedule declarations, run by schedule:run
+%%   7.3  SendBookingReminders::bookingsOn and dueToday
+%%   6.1  MaintenanceDue::baselineFor and forVehicle
+%%   6.2  MaintenanceDue::hasUpcomingBooking
+%%   7.4  ReminderLedger::claim and markSent and release, Reminder::keyFor
+%%   7.5  Support\MessageTemplate, bodies held in settings
+%%   7.6  Mail::html with the configured from name and address
+%%   7.7  SmsService::gsmSafe then normalise then segments then send
+%%   7.8  AppServiceProvider::register binding SmsGateway by SMS_DRIVER
+%%   7.9  SmsService::log, which writes an sms_logs row on every outcome
+%% -
+%% Frequencies, all on five minute boundaries because the external tick is:
+%%   reminders:send            hourly
+%%   reminders:maintenance     daily at 08:00
+%%   bookings:cancel-no-shows  every five minutes
+%%   accounts:purge-expired    daily at 03:00
+%%   loyalty:expire            daily at 03:30
+%%   scheduler-heartbeat       every five minutes
+
+flowchart TD
+    CRON["External Cron Service"]
+    MAIL["Brevo SMTP on port 2525"]
+    SEMA["Semaphore HTTP API"]
+    UNI["UniSMS HTTP API"]
+    LOGF["Application Log File"]
+    CUST["Customer Handset and Inbox"]
+
+    P71(["7.1 Authenticate the Cron Tick"])
+    P72(["7.2 Decide What Is Due"])
+    P73(["7.3 Match Appointment Date Windows"])
+    P61(["6.1 Evaluate Maintenance Rules per Vehicle"])
+    P62(["6.2 Suppress When Work Is Already Booked"])
+    P74(["7.4 Claim the Dedupe Key"])
+    P75(["7.5 Render the Message Template"])
+    P76(["7.6 Send Email"])
+    P77(["7.7 Fold and Normalise and Count Segments"])
+    P78(["7.8 Dispatch to the Selected Gateway"])
+    P79(["7.9 Record the Attempt"])
+
+    D1[("D1 users and customers")]
+    D2[("D2 vehicles")]
+    D4[("D4 bookings and booking_service")]
+    D6[("D6 reminders")]
+    D7[("D7 maintenance_rules")]
+    D8[("D8 sms_logs")]
+    D9[("D9 settings")]
+
+    %% 7.1 the door
+    CRON -->|"GET on slash cron slash schedule carrying a token in the query or the X-Cron-Token header"| P71
+    P71 -->|"404 when no token is configured or the token does not match, and the token itself is never logged"| CRON
+    P71 -->|"accepted tick, with the time limit lifted so a long batch is not cut off"| P72
+    P72 -->|"HTTP 200 plus task name and elapsed milliseconds and command output"| CRON
+    P72 -->|"scheduler_last_run timestamp, which is what the admin screen reads"| D9
+
+    %% 7.2 fan out to the two reminder kinds
+    P72 -->|"reminders:send is due"| P73
+    P72 -->|"reminders:maintenance is due"| P61
+
+    %% 7.3 appointment windows
+    D4 -->|"pending and confirmed bookings dated seven or three or one days out, and today for the two hour window"| P73
+    D1 -->|"recipient name and email and phone"| P73
+    D9 -->|"which trigger keys are switched on and which channels each uses"| P73
+    P73 -->|"booking and trigger key remind_7d or remind_3d or remind_1d or remind_2h"| P74
+
+    %% 6.1 and 6.2 maintenance due
+    D7 -->|"active rules ordered by sort_order, with interval_months and lead_days and vehicle_type"| P61
+    D2 -->|"last_service_date, falling back to created_at, as the baseline to count from"| P61
+    P61 -->|"due date computed as baseline plus interval_months, and the warning date as due minus lead_days"| P62
+    P61 -->|"nothing, for a rule with no interval_months or a vehicle with no baseline"| P62
+    D4 -->|"whether this vehicle has a pending or confirmed or in_progress booking dated today or later"| P62
+    P62 -->|"vehicle and rule and due date and overdue flag, only where no work is already booked"| P74
+
+    %% 7.4 the gate
+    P74 -->|"insert of a dedupe key built from type and subject and trigger key and channel"| D6
+    D6 -->|"unique constraint violation, meaning this exact reminder has already gone out"| P74
+    P74 -->|"nothing further happens for this reminder"| D6
+    D6 -->|"claim row with status claimed"| P74
+    P74 -->|"claim granted, so this send may proceed exactly once"| P75
+
+    %% 7.5 rendering
+    D9 -->|"subject and body template and branch name and the from name and address"| P75
+    P75 -->|"rendered email body with the customer and booking placeholders filled"| P76
+    P75 -->|"rendered SMS body"| P77
+
+    %% 7.6 email channel
+    P76 -->|"HTML message over SMTP, because 25 and 465 and 587 are dropped at the Render firewall"| MAIL
+    MAIL -->|"accepted, or an exception on timeout or rejection"| P76
+    P76 -->|"status sent with a timestamp"| D6
+    P76 -->|"claim deleted on failure, so a later run may retry rather than the reminder being cancelled for good"| D6
+    MAIL -->|"reminder email"| CUST
+
+    %% 7.7 SMS preparation, where cost is decided
+    P77 -->|"em-dash and peso sign and smart quotes mapped to GSM7 equivalents, before any counting"| P78
+    P77 -->|"recipient reduced to E164, or skipped when it is not a Philippine mobile"| P78
+    P77 -->|"segment count and encoding, measured after folding and refused over 1600 characters"| P78
+
+    %% 7.8 provider selection
+    D9 -->|"whether the SMS channel is switched on for this trigger"| P78
+    P78 -->|"driver log, the default, which runs every rule and contacts nobody"| LOGF
+    P78 -->|"driver semaphore, api key as a form field named apikey, and no body starting with TEST"| SEMA
+    P78 -->|"driver unisms, api key as HTTP basic auth"| UNI
+    SEMA -->|"array response carrying a message id and a status"| P79
+    UNI -->|"message id and status"| P79
+    LOGF -->|"synthetic success"| P79
+    SEMA -->|"text message, from the approved sender name APXMOTORS"| CUST
+    UNI -->|"text message"| CUST
+
+    %% 7.9 the record
+    P79 -->|"recipient and content and segments and status and reference_id or fail_reason and trigger and booking_id and vehicle_id"| D8
+    P79 -->|"status sent on success, or the claim released on failure"| D6

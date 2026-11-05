@@ -1,0 +1,118 @@
+%% APX AutoMai - Level 2 Data Flow Diagram
+%% Decomposition of process 4.0 Booking Lifecycle, including reschedule
+%% proposals and the audit trail
+%% -
+%% Legend: stadium = process, rectangle = external entity, cylinder = datastore.
+%% -
+%% The status ladder is pending, confirmed, in_progress, completed. It only
+%% moves forward: Booking::canMoveTo compares positions in STATUS_ORDER and
+%% refuses a target earlier than the current status. cancelled sits outside the
+%% ladder and is not reachable through a status change at all, which is why
+%% 4.6 is a separate sub-process rather than one more value in 4.2. A completed
+%% booking is locked, so 4.2 accepts only its own status back and saves the
+%% notes.
+%% -
+%% Code map for each sub-process:
+%%   4.1  Admin\BookingController::index and schedule and cancelled and edit
+%%   4.2  Admin\BookingController::update, with Rule::in built from the
+%%        booking current status
+%%   4.3  Admin\BookingController::arrive
+%%   4.4  Admin\BookingController::assignMechanic
+%%   4.5  Admin\BookingController::update on completion, LoyaltyService::earnFor
+%%        and ServiceHistory::recordCompletion
+%%   4.6  BookingCancellation::cancel and Booking::cancel, used by the admin
+%%        cancel route, the customer cancel route, CancelNoShowBookings and
+%%        AccountAnonymizer::deactivate
+%%   4.7  Admin\BookingController::proposeReschedule
+%%   4.8  Admin\BookingController::applyReschedule and withdrawReschedule,
+%%        which call BookingAvailability::reschedule
+%%   4.9  AuditLog::record, which swallows its own failures so a booking change
+%%        never fails over its audit row
+
+flowchart TD
+    ADMIN["Administrator"]
+    CUST["Customer"]
+    CRON["External Cron Service"]
+    MAIL["Brevo SMTP on port 2525"]
+
+    P41(["4.1 List and Open a Booking"])
+    P42(["4.2 Advance Status along the Ladder"])
+    P43(["4.3 Stamp Arrival"])
+    P44(["4.4 Assign a Mechanic"])
+    P45(["4.5 Settle a Completed Booking"])
+    P46(["4.6 Cancel a Booking"])
+    P47(["4.7 Propose a Schedule Change"])
+    P48(["4.8 Apply or Withdraw a Proposal"])
+    P49(["4.9 Write the Audit Entry"])
+
+    P5(["5.0 Loyalty Points"])
+
+    D2[("D2 vehicles")]
+    D4[("D4 bookings and booking_service")]
+    D10[("D10 audit_logs")]
+    D12[("D12 booking_reschedule_requests")]
+    DMECH[("mechanics, not numbered in the agreed D list")]
+
+    %% 4.1 reading
+    ADMIN -->|"date and status filters, or a booking id"| P41
+    D4 -->|"every booking with its services and vehicle and customer, filtered in the browser"| P41
+    D12 -->|"any pending proposal on this booking"| P41
+    D10 -->|"prior changes recorded against this booking"| P41
+    P41 -->|"schedule and list and cancelled list and the edit form and the change history"| ADMIN
+    P41 -->|"booking in hand"| P42
+
+    %% 4.2 status
+    ADMIN -->|"target status and mechanic_id and notes"| P42
+    P42 -->|"refusal, because the target is earlier on the ladder or the booking is completed or cancelled"| ADMIN
+    P42 -->|"new status, and notes saved either way"| D4
+    P42 -->|"target in_progress"| P43
+    P42 -->|"target completed"| P45
+    P42 -->|"old status and new status"| P49
+
+    %% 4.3 arrival
+    ADMIN -->|"customer has arrived"| P43
+    P43 -->|"arrived_at timestamp and status in_progress"| D4
+    P43 -->|"arrival recorded"| P49
+
+    %% 4.4 mechanic
+    ADMIN -->|"chosen mechanic id"| P44
+    DMECH -->|"active mechanics only"| P44
+    D4 -->|"whether that mechanic already has an overlapping booking"| P44
+    P44 -->|"refusal, because that mechanic is double booked in the window"| ADMIN
+    P44 -->|"mechanic_id"| D4
+    P44 -->|"who was assigned and who they replaced"| P49
+
+    %% 4.5 completion
+    D4 -->|"the booking total, read back from the per service price snapshots"| P45
+    P45 -->|"status completed"| D4
+    P45 -->|"award points for this booking, idempotent on booking_id and reason"| P5
+    P45 -->|"last_service_date moved forward to the booking date, never backward"| D2
+    P45 -->|"completion recorded"| P49
+
+    %% 4.6 cancellation, from four callers
+    ADMIN -->|"cancellation with a reason"| P46
+    CUST -->|"cancellation of their own pending or confirmed booking"| P46
+    CRON -->|"tick that makes bookings:cancel-no-shows due, grace period fifteen minutes past the start"| P46
+    P46 -->|"refusal, because the booking is already completed or cancelled"| ADMIN
+    P46 -->|"status cancelled and cancel_reason and cancelled_at, and cancelled_by left null when the system did it"| D4
+    P46 -->|"reverse points earned and refund points spent, both clamped so a balance cannot go negative"| P5
+    P46 -->|"cancellation notice, which may fail without undoing the cancellation"| MAIL
+    P46 -->|"cancellation recorded with the reason"| P49
+
+    %% 4.7 and 4.8 reschedule
+    ADMIN -->|"proposed new date and time and a reason"| P47
+    D4 -->|"current booking_date and booking_time as the original"| P47
+    P47 -->|"proposal row with status pending and proposed_by, and the booking itself untouched"| D12
+    P47 -->|"proposed change email naming both times"| MAIL
+    P47 -->|"proposal recorded"| P49
+
+    ADMIN -->|"apply or withdraw the pending proposal"| P48
+    CUST -->|"agreement or refusal, relayed to the shop outside the system"| P48
+    D12 -->|"the pending proposal with its proposed date and time"| P48
+    P48 -->|"booking_date and booking_time moved, only after the slot is re-checked for hours and capacity and vehicle conflict"| D4
+    P48 -->|"status applied with resolved_by and resolved_at, or status withdrawn"| D12
+    P48 -->|"refusal, because the proposed slot is no longer free"| ADMIN
+    P48 -->|"outcome recorded"| P49
+
+    %% 4.9 the trail
+    P49 -->|"actor id and actor name and action and auditable type and id and old values and new values and reason"| D10

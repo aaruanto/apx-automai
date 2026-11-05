@@ -1,0 +1,86 @@
+%% APX AutoMai - Level 2 Data Flow Diagram
+%% Decomposition of process 3.0 Pricing and Discounts, with the part of
+%% 5.0 Loyalty that redemption runs through
+%% -
+%% Legend: stadium = process, rectangle = external entity, cylinder = datastore.
+%% -
+%% The one thing this diagram exists to show: no edge carrying a price, a
+%% discount or a total ever leaves the browser. The only money-shaped value a
+%% customer can send is a COUNT OF POINTS, and 3.4 treats that as a ceiling to
+%% be capped rather than an instruction to be obeyed. Everything else is read
+%% from D3 and D9 and computed here.
+%% -
+%% Code map for each sub-process:
+%%   3.1  BookingPricing::quote, the list price branch on bundle or sum
+%%   3.2  BookingPricing::discountPercentFor
+%%   3.3  BookingPricing::quote, afterDiscount
+%%   3.4  LoyaltyService::redeemableAgainst and pesoValueOf
+%%   3.5  BookingPricing::quote, total
+%%   3.6  BookingPricing::allocate, proportional with the remainder on the last line
+%%   3.7  BookingPricing::apply, services sync plus the booking columns
+%%   3.8  LoyaltyService::redeemFor, FIFO over loyalty_ledger lots
+%%   3.9  LoyaltyService::earnFor, called from Admin\BookingController on completion
+
+flowchart TD
+    CUST["Customer or Guest Browser"]
+    ADMIN["Administrator"]
+
+    P31(["3.1 Establish List Price"])
+    P32(["3.2 Resolve Account Discount Percent"])
+    P33(["3.3 Subtract Account Discount"])
+    P34(["3.4 Cap Requested Points"])
+    P35(["3.5 Compute Final Total"])
+    P36(["3.6 Allocate Total Across Services"])
+    P37(["3.7 Snapshot Price onto booking_service"])
+    P38(["3.8 Consume Point Lots FIFO"])
+    P39(["3.9 Award Points on Completion"])
+
+    D3[("D3 services and bundles and bundle_service")]
+    D4[("D4 bookings and booking_service")]
+    D5[("D5 loyalty_ledger")]
+    D9[("D9 settings")]
+
+    %% What the browser is allowed to say
+    CUST -->|"service ids and bundle_id and a requested point count, and nothing else about money"| P31
+    CUST -->|"requested point count, treated as a ceiling not an instruction"| P34
+
+    %% 3.1 list price
+    D3 -->|"bundle price when a bundle was chosen, otherwise the sum of service list prices"| P31
+    P31 -->|"list price computed from database rows"| P32
+    P31 -->|"list price"| P33
+
+    %% 3.2 discount eligibility
+    D9 -->|"account_discount_enabled and account_discount_percent"| P32
+    P32 -->|"percent clamped to 0 to 100, and 0 for a guest or an is_guest account"| P33
+
+    %% 3.3 and 3.4 and 3.5
+    P33 -->|"amount after the account discount"| P34
+    D9 -->|"loyalty_enabled and pesos per point and minimum redemption and max redeem percent"| P34
+    D5 -->|"derived balance from the sum of signed point rows"| P34
+    P34 -->|"points allowed, being the lesser of the request and the balance and the share cap"| P35
+    P34 -->|"peso value of the allowed points"| P35
+    P33 -->|"amount after the account discount"| P35
+    P35 -->|"final total, rounded to two decimals"| P36
+
+    %% 3.6 and 3.7 snapshots
+    D3 -->|"list price per service, used only as an allocation weight"| P36
+    P36 -->|"per service share, with the rounding remainder on the last line so the parts sum to the total"| P37
+    D3 -->|"duration per service"| P37
+    P37 -->|"price and duration snapshot per line, so a later price change cannot rewrite history"| D4
+    P37 -->|"list_price and discount_percent and discount_amount and bundle_price and bundle_id"| D4
+
+    %% 3.8 redemption through the ledger
+    P35 -->|"points to actually spend"| P38
+    D5 -->|"earn lots with a remaining balance, oldest first, under a row lock"| P38
+    P38 -->|"negative points row with reason redeemed and the new balance_after"| D5
+    P38 -->|"remaining decremented on each consumed lot"| D5
+    P38 -->|"points_spent and points_discount"| D4
+    P38 -->|"refusal, because the unique booking_id and reason pair already exists"| D5
+
+    %% 3.9 earning, after the work is done
+    ADMIN -->|"booking marked completed"| P39
+    D4 -->|"the total the customer actually paid, read back from the price snapshots"| P39
+    D9 -->|"pesos per point and expiry months"| P39
+    P39 -->|"positive points row with remaining set and expires_at, reason earned"| D5
+    P39 -->|"second attempt rejected by the unique booking_id and reason pair, so a re-save cannot mint points"| D5
+    P39 -->|"points_earned"| D4

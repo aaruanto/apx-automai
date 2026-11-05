@@ -1,0 +1,140 @@
+%% APX AutoMai - Level 1 Data Flow Diagram (defense version)
+%% -
+%% dfd-level1.mmd has 9 processes, 12 datastores and 85 arrows carrying full
+%% sentences. It is right, and it is unexplainable in ten minutes. This is the
+%% same system at the altitude a panel can follow: 6 processes, 8 datastores,
+%% and every arrow a data name rather than a sentence.
+%% -
+%% What was merged, and why it is honest:
+%%   - pricing folded into 2.0, because a customer never prices a booking as a
+%%     separate act; it happens inside one submission
+%%   - maintenance due detection folded into 5.0, because it only ever runs to
+%%     feed a reminder or the dashboard panel that mirrors it
+%%   - reporting folded into 6.0 with catalog and settings, because both are
+%%     the admin reading and writing configuration and figures
+%% -
+%% Legend: stadium = process, rectangle = external entity, cylinder = datastore.
+%% A double headed arrow means the process both reads and writes that store.
+%% -
+%% Datastore grouping. The detailed diagram numbers these D1 to D12; see
+%% README.md for the crosswalk before you quote a D-number in the paper.
+%%   D1 users and customers
+%%   D2 vehicles
+%%   D3 services and bundles and mechanics
+%%   D4 bookings and booking_service and booking_reschedule_requests
+%%   D5 loyalty_ledger
+%%   D6 reminders and sms_logs
+%%   D7 settings and maintenance_rules
+%%   D8 audit_logs and account_deletions
+%% -
+%% Sixty second narration, one line per process:
+%%   1.0 proves who you are and closes accounts down when asked.
+%%   2.0 takes a booking, checks the slot is free and prices it on the server.
+%%   3.0 is the shop moving that booking through to done or cancelled.
+%%   4.0 is points, kept as a ledger so a balance can always be explained.
+%%   5.0 is the only part nobody clicks; a clock drives it.
+%%   6.0 is the shop setting its own prices, hours and rules, and reading back
+%%       what happened.
+%% -
+%% Process to code map:
+%%   1.0  routes/auth.php, RegisteredUserController, RoleMiddleware, AccountAnonymizer
+%%   2.0  GuestBookingController, Customer\DashboardController::store,
+%%        AvailabilityController, BookingAvailability, BookingPricing
+%%   3.0  Admin\BookingController, BookingCancellation, ServiceHistory
+%%   4.0  LoyaltyService
+%%   5.0  SendBookingReminders, SendMaintenanceReminders, MaintenanceDue,
+%%        ReminderLedger, SmsService
+%%   6.0  Admin\SettingsController, BundleController, MaintenanceRuleController,
+%%        MechanicController, MessageTemplateController, ReportController
+
+flowchart TD
+    GUEST["Guest"]
+    CUST["Customer"]
+    ADMIN["Administrator"]
+    CRON["External Cron Service"]
+    MAIL["Email Service"]
+    SMSGW["SMS Gateway"]
+
+    P1(["1.0 Accounts and Access"])
+    P2(["2.0 Booking and Scheduling"])
+    P3(["3.0 Booking Operations"])
+    P4(["4.0 Loyalty Points"])
+    P5(["5.0 Reminders and Notifications"])
+    P6(["6.0 Administration and Reports"])
+
+    D1[("D1 Users")]
+    D2[("D2 Vehicles")]
+    D3[("D3 Catalog")]
+    D4[("D4 Bookings")]
+    D5[("D5 Loyalty Ledger")]
+    D6[("D6 Reminder and Message Log")]
+    D7[("D7 Settings and Rules")]
+    D8[("D8 Audit and Deletions")]
+
+    %% 1.0 Accounts and access
+    CUST -->|"credentials"| P1
+    ADMIN -->|"credentials"| P1
+    P1 <-->|"account record and role"| D1
+    P1 -->|"session"| CUST
+    P1 -->|"session"| ADMIN
+    P1 -->|"reset and verify links"| MAIL
+    CUST -->|"deletion request"| P1
+    P1 <-->|"grace period record"| D8
+    P1 -->|"details scrubbed after the grace period"| D2
+    CRON -->|"account purge tick"| P1
+
+    %% 2.0 Booking and scheduling
+    GUEST -->|"contact details and plate and booking request"| P2
+    CUST -->|"booking request and points to use"| P2
+    D3 -->|"prices and durations"| P2
+    D7 -->|"opening hours and capacity and discount rules"| P2
+    D2 -->|"the customer own vehicle"| P2
+    P2 -->|"guest account"| D1
+    P2 -->|"vehicle from the plate given"| D2
+    P2 <-->|"booking and price snapshot"| D4
+    P2 -->|"points to redeem"| P4
+    P4 -->|"points allowed"| P2
+    P2 -->|"free slot counts and reference number"| GUEST
+    P2 -->|"free slot counts and reference number"| CUST
+    P2 -->|"booking received email"| MAIL
+
+    %% 3.0 Booking operations
+    ADMIN -->|"status change and mechanic and cancellation reason and proposed new date"| P3
+    CUST -->|"own cancellation"| P3
+    P3 <-->|"booking and reschedule proposal"| D4
+    D3 -->|"available mechanics"| P3
+    P3 -->|"last service date"| D2
+    P3 -->|"award or reverse points"| P4
+    P3 -->|"who changed what and why"| D8
+    P3 -->|"status change email"| MAIL
+    P3 -->|"updated booking"| CUST
+    CRON -->|"no show tick"| P3
+
+    %% 4.0 Loyalty points
+    D7 -->|"loyalty rules"| P4
+    P4 <-->|"points ledger"| D5
+    ADMIN -->|"manual adjustment with a reason"| P4
+    P4 -->|"balance and history"| CUST
+    P4 -->|"adjustment record"| D8
+    CRON -->|"point expiry tick"| P4
+
+    %% 5.0 Reminders and notifications
+    CRON -->|"reminder tick"| P5
+    D4 -->|"bookings due soon"| P5
+    D2 -->|"last service date"| P5
+    D7 -->|"service intervals and message templates"| P5
+    D1 -->|"email and phone"| P5
+    P5 <-->|"exactly once claim and delivery record"| D6
+    P5 -->|"reminder email"| MAIL
+    P5 -->|"reminder text message"| SMSGW
+    P5 -->|"service due list"| CUST
+
+    %% 6.0 Administration and reports
+    ADMIN -->|"catalog and hours and prices and rules and report filters"| P6
+    P6 -->|"services and bundles and mechanics"| D3
+    P6 -->|"settings and rules and templates"| D7
+    P6 -->|"what was changed"| D8
+    D4 -->|"completed work and revenue"| P6
+    D5 -->|"points liability"| P6
+    D6 -->|"what was actually sent"| P6
+    P6 -->|"figures and charts and exports"| ADMIN

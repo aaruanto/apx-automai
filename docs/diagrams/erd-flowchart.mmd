@@ -1,46 +1,62 @@
-%% APX AutoMai — ERD as a flowchart
-%% Same relationships as erd.mmd, but in flowchart syntax so that
-%% Excalidraw imports it as editable shapes rather than a flat image.
-flowchart TB
-    USERS["users<br/>id, name, email, phone<br/>role, is_guest, is_active"]
-    CUSTOMERS["customers<br/>id, user_id, phone<br/>address, dob"]
-    VEHICLES["vehicles<br/>id, user_id, plate_number<br/>make, model, vehicle_type<br/>last_service_date, mileage"]
-    SERVICES["services<br/>id, name, category<br/>price, duration, is_active"]
-    BUNDLES["bundles<br/>id, name, price<br/>is_active, vehicle_type"]
-    BUNDLESVC["bundle_service<br/>bundle_id, service_id"]
-    MECHANICS["mechanics<br/>id, name, contact_number<br/>specialty, status"]
-    BOOKINGS["bookings<br/>id, user_id, vehicle_id<br/>mechanic_id, bundle_id<br/>reference_number, date, time<br/>status, price snapshots"]
-    BOOKINGSVC["booking_service<br/>booking_id, service_id<br/>price snapshot, duration"]
-    RULES["maintenance_rules<br/>id, name, bundle_id, service_id<br/>interval_months<br/>lead_days, vehicle_type"]
-    REMINDERS["reminders<br/>id, type, user_id, vehicle_id<br/>booking_id, maintenance_rule_id<br/>trigger_key, channel<br/>due_date, sent_at, dedupe_key"]
-    LEDGER["loyalty_ledger<br/>id, user_id, booking_id<br/>points, remaining<br/>balance_after, expires_at"]
-    AUDIT["audit_logs<br/>id, user_id, actor_name<br/>action, old_values, new_values"]
-    SMSLOG["sms_logs<br/>id, booking_id, recipient<br/>status, segments, trigger"]
-    DELETIONS["account_deletions<br/>id, user_id<br/>purge_at, anonymized_at"]
-    SETTINGS["settings<br/>id, key, value"]
+%% APX AutoMai - ERD as a flowchart
+%% -
+%% The same entities and relationships as erd.mmd, in flowchart syntax so that
+%% Excalidraw imports them as editable shapes rather than one flat image.
+%% erd.mmd is the authoritative version and carries the full attribute types,
+%% nullability and constraint notes; this one carries key attributes only.
+%% -
+%% Supersedes the earlier version of this file. It was missing
+%% bookings.service_id, booking_reschedule_requests, the soft deletes, and the
+%% vehicle link on sms_logs, and it marked mechanics.name unique when it is not.
 
-    USERS -->|1 to 1| CUSTOMERS
-    USERS -->|1 to many| VEHICLES
-    USERS -->|1 to many| BOOKINGS
-    USERS -->|1 to many| LEDGER
-    USERS -->|1 to many| AUDIT
-    USERS -->|1 to many| REMINDERS
-    USERS -->|1 to 1| DELETIONS
+flowchart TD
+    USERS["users: id PK, name, email UK, phone, role admin or customer, is_guest, is_active, soft delete"]
+    CUSTOMERS["customers: id PK, user_id FK, phone, dob, address"]
+    VEHICLES["vehicles: id PK, user_id FK, plate_number UK, make, model, year, vehicle_type, is_primary, last_service_date, mileage, soft delete"]
+    SERVICES["services: id PK, name, category, price, duration, vehicle_type, is_active, soft delete"]
+    BUNDLES["bundles: id PK, name UK, price, starts_at, ends_at, vehicle_type, is_active, soft delete"]
+    BUNDLESVC["bundle_service: id PK, bundle_id FK, service_id FK, unique pair"]
+    MECHANICS["mechanics: id PK, name, contact_number, specialty, status"]
+    BOOKINGS["bookings: id PK, user_id FK, vehicle_id FK, service_id FK legacy primary, mechanic_id FK, bundle_id FK, reference_number UK, booking_date, booking_time, duration, status, arrived_at, cancel_reason, cancelled_by FK, cancelled_at, list_price, discount_percent, discount_amount, points_earned, points_spent, points_discount, soft delete"]
+    BOOKINGSVC["booking_service: id PK, booking_id FK, service_id FK, price snapshot, duration snapshot, unique pair"]
+    RULES["maintenance_rules: id PK, name, bundle_id FK, service_id FK, interval_months nullable, lead_days, vehicle_type, is_active, sort_order"]
+    REMINDERS["reminders: id PK, type, user_id FK, vehicle_id FK, booking_id FK, maintenance_rule_id FK, trigger_key, channel, due_date, status, error, sent_at, dedupe_key UK"]
+    LEDGER["loyalty_ledger: id PK, user_id FK, booking_id FK, points signed, remaining, balance_after, reason, expires_at, unique booking_id and reason"]
+    AUDIT["audit_logs: id PK, user_id FK, actor_name, action, auditable_type, auditable_id, subject, old_values, new_values, reason"]
+    SMSLOG["sms_logs: id PK, booking_id FK, vehicle_id FK, recipient, content, segments, status, reference_id, fail_reason, trigger"]
+    DELETIONS["account_deletions: id PK, user_id indexed with no constraint, bookings_cancelled, bookings_retained, vehicles_anonymized, purge_at, anonymized_at, restored_at"]
+    RESCHED["booking_reschedule_requests: id PK, booking_id FK, proposed_date, proposed_time, original_date, original_time, reason, status, proposed_by FK, resolved_by FK, resolved_at"]
+    SETTINGS["settings: id PK, key UK, value"]
 
-    VEHICLES -->|1 to many| BOOKINGS
-    VEHICLES -->|1 to many| REMINDERS
-    MECHANICS -->|1 to many| BOOKINGS
-    BUNDLES -->|1 to many| BOOKINGS
+    USERS -->|"one to many, one row by convention"| CUSTOMERS
+    USERS -->|"one to many"| VEHICLES
+    USERS -->|"one to many, as the customer who placed it"| BOOKINGS
+    USERS -->|"one to many, as cancelled_by"| BOOKINGS
+    USERS -->|"one to many"| LEDGER
+    USERS -->|"one to many, as the actor"| AUDIT
+    USERS -->|"one to many"| REMINDERS
+    USERS -->|"one to many, no foreign key constraint"| DELETIONS
+    USERS -->|"one to many, as proposed_by and resolved_by"| RESCHED
 
-    BOOKINGS -->|1 to many| BOOKINGSVC
-    SERVICES -->|1 to many| BOOKINGSVC
-    BUNDLES -->|1 to many| BUNDLESVC
-    SERVICES -->|1 to many| BUNDLESVC
+    VEHICLES -->|"one to many"| BOOKINGS
+    VEHICLES -->|"one to many"| REMINDERS
+    VEHICLES -->|"one to many"| SMSLOG
 
-    BOOKINGS -->|1 to many| LEDGER
-    BOOKINGS -->|1 to many| SMSLOG
-    BOOKINGS -->|1 to many| REMINDERS
+    SERVICES -->|"one to many, the legacy primary service"| BOOKINGS
+    SERVICES -->|"one to many"| BOOKINGSVC
+    SERVICES -->|"one to many"| BUNDLESVC
+    SERVICES -->|"one to many, as what to recommend"| RULES
 
-    RULES -->|1 to many| REMINDERS
-    BUNDLES -->|recommends| RULES
-    SERVICES -->|recommends| RULES
+    BUNDLES -->|"one to many"| BOOKINGS
+    BUNDLES -->|"one to many"| BUNDLESVC
+    BUNDLES -->|"one to many, as what to recommend"| RULES
+
+    MECHANICS -->|"one to many"| BOOKINGS
+
+    BOOKINGS -->|"one to many, the priced line items"| BOOKINGSVC
+    BOOKINGS -->|"one to many"| LEDGER
+    BOOKINGS -->|"one to many"| SMSLOG
+    BOOKINGS -->|"one to many"| REMINDERS
+    BOOKINGS -->|"one to many"| RESCHED
+
+    RULES -->|"one to many"| REMINDERS

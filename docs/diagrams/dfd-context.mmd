@@ -1,28 +1,45 @@
-%% APX AutoMai — Context Diagram (Level 0 DFD)
-flowchart TB
-    GUEST[Guest Visitor]
-    CUST[Registered Customer]
-    ADMIN[Administrator]
-    CRON[External Cron Service<br/>cron-job.org]
+%% APX AutoMai - Level 0 Data Flow Diagram (Context)
+%% -
+%% Supersedes the earlier version of this file, which named Semaphore as the
+%% only SMS provider and did not say which port mail leaves on. Both matter:
+%% SMS_DRIVER also accepts unisms and defaults to log, and Render drops
+%% outbound 25, 465 and 587, so 2525 is not a detail.
+%% -
+%% Legend: stadium = process, rectangle = external entity, cylinder = datastore.
+%% Level 0 carries no datastore by convention: the whole system is one process.
+%% -
+%% Audit trail for every edge on this diagram:
+%%   Guest intake      routes/web.php POST /booking/guest -> GuestBookingController
+%%   Customer intake   POST /customer/bookings -> Customer\DashboardController::store
+%%   Admin             routes/web.php prefix admin, middleware auth + role:admin
+%%   Cron              GET /cron/{task?} -> CronController, throttle:cron
+%%   Mail              config/mail.php smtp, MAIL_PORT default 2525
+%%   SMS               AppServiceProvider::register binds SmsGateway by SMS_DRIVER
 
-    SYS(("APX AutoMai<br/>Unified Portal"))
+flowchart LR
+    GUEST["Guest Visitor"]
+    CUST["Registered Customer"]
+    ADMIN["Administrator"]
+    CRON["External Cron Service"]
+    MAIL["Brevo SMTP Relay on port 2525"]
+    SMSGW["SMS Gateway Semaphore or UniSMS"]
 
-    MAIL[Email Service<br/>Brevo SMTP]
-    SMS[SMS Gateway<br/>Semaphore]
+    SYS(["0 APX AutoMai Service Booking System"])
 
-    GUEST -->|booking request, vehicle details| SYS
-    SYS -->|booking reference, confirmation email| GUEST
+    GUEST -->|"vehicle details plus contact details plus chosen service or bundle plus date and time"| SYS
+    SYS -->|"reference number plus booking received email plus password set link"| GUEST
 
-    CUST -->|registration, vehicle, booking, points redemption| SYS
-    SYS -->|booking history, points balance, reminders,<br/>service-due alerts| CUST
+    CUST -->|"login credentials plus vehicle records plus booking choice plus points to redeem plus cancel or reschedule reply"| SYS
+    SYS -->|"dashboard plus booking history plus points balance plus service due list plus reminder messages"| CUST
 
-    ADMIN -->|status updates, cancellations with reason, services, bundles, settings| SYS
-    SYS -->|dashboard, schedule, customer records, reports| ADMIN
+    ADMIN -->|"login credentials plus status changes plus cancellation reason plus catalog and settings edits plus report filters"| SYS
+    SYS -->|"schedule plus customer records plus delivery log plus audit trail plus report figures and CSV exports"| ADMIN
 
-    CRON -->|token-guarded tick, every 5 minutes| SYS
-    SYS -->|what ran, and for how long| CRON
+    CRON -->|"token guarded GET on slash cron slash schedule every five minutes"| SYS
+    SYS -->|"HTTP 200 plus task name plus elapsed milliseconds plus command output"| CRON
 
-    SYS -->|reminder and confirmation messages| MAIL
-    SYS -->|reminder text messages| SMS
-    MAIL -->|delivery result| SYS
-    SMS -->|message id, delivery status| SYS
+    SYS -->|"SMTP envelope plus HTML reminder or confirmation body"| MAIL
+    MAIL -->|"accepted or SMTP error raised as an exception"| SYS
+
+    SYS -->|"recipient in E164 plus GSM7 folded message body"| SMSGW
+    SMSGW -->|"provider reference id plus status or failure reason"| SYS

@@ -1,0 +1,82 @@
+%% APX AutoMai - Level 2 of 5.0 Reminders and Notifications (defense version)
+%% -
+%% Condensed from dfd-level2-scheduled-notifications.mmd, which is the full
+%% version and also carries the schedule frequencies.
+%% -
+%% Legend: stadium = process, rectangle = external entity, cylinder = datastore.
+%% -
+%% This diagram answers the other question a panel always asks: if the clock
+%% knocks every five minutes and a reminder window is a whole DATE, why does
+%% the customer not get the same text 1,440 times a day. The answer is 5.3,
+%% and it is deliberately on the path rather than implied. Nothing is sent
+%% until a claim is INSERTED against a unique key. The database decides who
+%% wins, so two overlapping ticks cannot both pass it. On a failure the claim
+%% is deleted rather than flagged, so one dead connection does not cancel the
+%% reminder for good.
+%% -
+%% Sixty second narration:
+%%   5.1 checks the shared secret. A wrong or missing token looks like a page
+%%       that does not exist, so a leaked URL is not an open door.
+%%   5.2 asks what is due: appointments coming up, and vehicles past their
+%%       service interval that have no work already booked.
+%%   5.3 claims the right to send, exactly once.
+%%   5.4 sends it, by email or text or both.
+%%   5.5 writes down what happened either way, because the question afterwards
+%%       is always "did the customer actually get it".
+%% -
+%% Process to code map:
+%%   5.1  CronController, hash_equals on APX_CRON_TOKEN
+%%   5.2  SendBookingReminders, SendMaintenanceReminders, MaintenanceDue
+%%   5.3  ReminderLedger::claim, the unique reminders.dedupe_key
+%%   5.4  Mail::html, SmsService::send with gsmSafe and normalise
+%%   5.5  SmsService writes sms_logs, ReminderLedger markSent or release
+
+flowchart TD
+    CRON["External Cron Service"]
+    MAIL["Email Service"]
+    SMSGW["SMS Gateway"]
+    CUST["Customer"]
+
+    P51(["5.1 Check the Cron Token"])
+    P52(["5.2 Find What Is Due"])
+    P53(["5.3 Claim the Right to Send Once"])
+    P54(["5.4 Send the Message"])
+    P55(["5.5 Record the Attempt"])
+
+    D1[("D1 Users")]
+    D2[("D2 Vehicles")]
+    D4[("D4 Bookings")]
+    D6[("D6 Reminder and Message Log")]
+    D7[("D7 Settings and Rules")]
+
+    %% 5.1 the door
+    CRON -->|"five minute tick with token"| P51
+    P51 -->|"looks like a missing page if the token is wrong"| CRON
+    P51 -->|"accepted tick"| P52
+    P52 -->|"what ran and for how long"| CRON
+
+    %% 5.2 what is due
+    D4 -->|"bookings seven and three and one days out"| P52
+    D2 -->|"last service date"| P52
+    D7 -->|"service intervals and which channels are on"| P52
+    D4 -->|"work already booked, so say nothing"| P52
+    P52 -->|"one reminder for one customer"| P53
+
+    %% 5.3 the gate, exactly once
+    P53 -->|"insert a unique dedupe key"| D6
+    D6 -->|"rejected, this one already went out"| P53
+    P53 -->|"nothing is sent"| D6
+    P53 -->|"claim granted"| P54
+
+    %% 5.4 send
+    D1 -->|"email and phone"| P54
+    D7 -->|"message template"| P54
+    P54 -->|"reminder email"| MAIL
+    P54 -->|"folded text and normalised number"| SMSGW
+    MAIL -->|"reminder"| CUST
+    SMSGW -->|"text message"| CUST
+    P54 -->|"result, good or bad"| P55
+
+    %% 5.5 the record
+    P55 -->|"marked sent, or the claim released so it can retry"| D6
+    P55 -->|"recipient and segments and status"| D6

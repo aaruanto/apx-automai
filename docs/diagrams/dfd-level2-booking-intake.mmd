@@ -1,0 +1,105 @@
+%% APX AutoMai - Level 2 Data Flow Diagram
+%% Decomposition of process 2.0 Booking Intake and Availability
+%% -
+%% Legend: stadium = process, rectangle = external entity, cylinder = datastore.
+%% -
+%% Code map for each sub-process:
+%%   2.1  AvailabilityController, BookingAvailability::monthAvailability
+%%        and dayAvailability and hoursFor
+%%   2.2  GuestBookingController::store validation rules
+%%   2.3  Customer\DashboardController::store validation rules
+%%   2.4  GuestBookingController, the find-or-create on email
+%%   2.5  Customer\DashboardController, vehicle ownership check scoped to auth user
+%%   2.6  Support\BookingPolicy::servicesNotFor and Bundle::suitsVehicleType
+%%   2.7  BookingAvailability::durationForServices
+%%   2.8  BookingAvailability::reserve, which wraps assertWithinHours,
+%%        assertAvailable, assertVehicleFree, dailyCap and nextReference
+%%        in one transaction with a row lock
+%%   2.9  BookingAvailability::attachServices and attachBundle, then 3.0
+%%   2.10 Admin\BookingController::sendBookingReceived and
+%%        GuestBookingController mail calls
+%% -
+%% Worth knowing when reading this: opening hours come from settings with the
+%% HOURS map in BookingAvailability as the fallback. Weekdays run 09:00 to
+%% 18:00 and weekends 09:00 to 12:00, so an afternoon weekend slot is refused
+%% rather than merely hidden. The picker only hides it; 2.8 is what refuses it,
+%% which is why a request that posts a time directly cannot book 3 AM Sunday.
+
+flowchart TD
+    GUEST["Guest"]
+    CUST["Registered Customer"]
+    MAIL["Brevo SMTP on port 2525"]
+
+    P21(["2.1 Serve Slot Availability"])
+    P22(["2.2 Validate Guest Submission"])
+    P23(["2.3 Validate Customer Submission"])
+    P24(["2.4 Find or Create Guest Account and Vehicle"])
+    P25(["2.5 Resolve Owned Vehicle"])
+    P26(["2.6 Check Vehicle Type Suitability"])
+    P27(["2.7 Compute Required Duration"])
+    P28(["2.8 Reserve the Slot inside a Transaction"])
+    P29(["2.9 Attach Services and Request Pricing"])
+    P210(["2.10 Issue Reference and Confirmation"])
+
+    P3(["3.0 Pricing and Discounts, see its own Level 2"])
+
+    D1[("D1 users and customers")]
+    D2[("D2 vehicles")]
+    D3[("D3 services and bundles and bundle_service")]
+    D4[("D4 bookings and booking_service")]
+    D9[("D9 settings")]
+
+    %% 2.1 the picker
+    GUEST -->|"month or date plus chosen service ids"| P21
+    CUST -->|"month or date plus chosen service ids"| P21
+    D9 -->|"open_time and close_time and weekend_open_time and weekend_close_time and slot_duration and max_bookings"| P21
+    D3 -->|"service durations to size the window"| P21
+    D4 -->|"start time and duration of every active booking on the date"| P21
+    P21 -->|"per start time free count against a capacity of three mechanics, and closed days"| GUEST
+    P21 -->|"per start time free count against a capacity of three mechanics, and closed days"| CUST
+
+    %% 2.2 and 2.3 the two intake paths
+    GUEST -->|"name and email and phone and plate and make and model and vehicle_type and service ids and date and time"| P22
+    CUST -->|"vehicle_id and service ids or bundle_id and date and time and points requested and notes"| P23
+
+    %% 2.4 guest path: account and vehicle
+    P22 -->|"validated guest details"| P24
+    D1 -->|"existing user matching that email, if any"| P24
+    P24 -->|"user row with is_guest true and a random password, only when the email is new"| D1
+    P24 -->|"vehicle row created from the plate, or the existing vehicle on that plate"| D2
+    P24 -->|"resolved user and vehicle"| P26
+
+    %% 2.5 authenticated path: vehicle must be theirs
+    P23 -->|"vehicle_id and the authenticated user id"| P25
+    D2 -->|"vehicle rows filtered to this user_id only"| P25
+    P25 -->|"the vehicle, or a refusal because it belongs to someone else"| P26
+    P25 -->|"that vehicle is not yours"| CUST
+
+    %% 2.6 suitability
+    D3 -->|"service and bundle vehicle_type, where null means any"| P26
+    P26 -->|"this bundle or service is for the other vehicle type"| CUST
+    P26 -->|"accepted user and vehicle and service ids and bundle"| P27
+
+    %% 2.7 duration
+    D3 -->|"duration in minutes per chosen service"| P27
+    P27 -->|"summed duration, floored at one grid step"| P28
+
+    %% 2.8 the reservation, where every rule is actually enforced
+    D9 -->|"opening hours and daily cap, read inside the transaction"| P28
+    D4 -->|"locked rows for active bookings on that date, for overlap and capacity"| P28
+    P28 -->|"refusal because the shop is closed or the time is outside hours"| CUST
+    P28 -->|"refusal because all three mechanic slots overlap or the daily cap is reached"| CUST
+    P28 -->|"refusal because this vehicle is already booked in that window"| CUST
+    P28 -->|"booking row with reference number and status pending and duration and legacy service_id"| D4
+    P28 -->|"the saved booking"| P29
+
+    %% 2.9 lines and pricing
+    P29 -->|"service ids and the owning user and bundle"| P3
+    P3 -->|"per service price snapshots and the booking level discount record"| D4
+    P29 -->|"booking ready to confirm"| P210
+
+    %% 2.10 confirmation out
+    D4 -->|"reference number and date and time and attached services"| P210
+    P210 -->|"booking received email, sent inline because nothing runs a queue worker"| MAIL
+    P210 -->|"reference number on screen"| CUST
+    P210 -->|"reference number plus a password set link for the new guest account"| GUEST
