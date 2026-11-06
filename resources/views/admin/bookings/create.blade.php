@@ -175,16 +175,28 @@
                                        value="{{ old('customer_phone', $src->user->phone ?? '') }}"
                                        placeholder="09XXXXXXXXX"
                                        style="{{ $isEdit ? 'opacity:.65;cursor:not-allowed;' : '' }}" />
-                                @if ($isEdit)
-                                <div class="form-hint">The customer changes their own details from their account.</div>
-                                @endif
                             </div>
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="form-label">Email Address</label>
-                            <input class="form-control" type="email" name="customer_email"
+                            {{-- Read-only on edit, for the same reason as the
+                                 name and the phone above: update() never read
+                                 customer_email, so an admin could type a new
+                                 address, save, and be told it worked while
+                                 nothing had changed. The address is the
+                                 customer's login and theirs to change. It
+                                 stays on screen because an admin needs to see
+                                 where the confirmation went; it is not a
+                                 field. store() still uses it, which is how a
+                                 walk-in gets an account. --}}
+                            <input class="form-control" type="email"
+                                   @if ($isEdit) disabled @else name="customer_email" @endif
                                    value="{{ old('customer_email', $src->user->email ?? '') }}"
-                                   placeholder="optional" />
+                                   placeholder="optional"
+                                   style="{{ $isEdit ? 'opacity:.65;cursor:not-allowed;' : '' }}" />
+                            @if ($isEdit)
+                            <div class="form-hint">The customer changes their name, phone and email from their own account.</div>
+                            @endif
                         </div>
                     </div>
                 </div>
