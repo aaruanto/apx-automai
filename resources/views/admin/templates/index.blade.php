@@ -294,22 +294,37 @@
                              a plain textarea with no preview and no explanation,
                              which reads as the system displaying raw HTML by
                              mistake. It is the email. --}}
+                        {{-- Collapsed, not hidden. <details> keeps the textarea in
+                             the DOM, so updateEmailPreview() and the save routine
+                             still read #maintenanceBody exactly as before; only its
+                             visibility changes. Closed by default because the
+                             preview is what the shop works from — the markup is for
+                             the rare edit, and a wall of table HTML sitting open
+                             between the subject line and the SMS body reads as
+                             something gone wrong rather than as a field. --}}
                         <div class="form-group">
-                            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-                                <label class="form-label" style="margin:0;">Email Body (HTML)</label>
-                                <button class="toolbar-btn" type="button" onclick="resetMaintenanceBody()"
-                                        style="font-size:.7rem;padding:5px 10px;">
-                                    <i class="fas fa-rotate-left"></i> Reset to default
-                                </button>
-                            </div>
-                            <textarea class="form-control" id="maintenanceBody" rows="8"
-                                      oninput="updateEmailPreview()"
-                                      style="resize:vertical;font-family:'Barlow',sans-serif;line-height:1.6;">{{ $settings['maintenance_body'] ?? '' }}</textarea>
-                            <div class="form-hint" style="margin-top:6px;">
-                                This is the email's HTML source — the preview on the right is what the
-                                customer sees. Mail clients ignore stylesheets, so the layout is written
-                                as tables with inline styles. If you mangle it, Reset brings the default back.
-                            </div>
+                            <details>
+                                <summary style="cursor:pointer;font-size:.78rem;font-weight:600;letter-spacing:.02em;color:#777777;padding:6px 0;">
+                                    Email body — HTML source
+                                </summary>
+                                <div style="padding-top:10px;">
+                                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                                        <label class="form-label" style="margin:0;">Email Body (HTML)</label>
+                                        <button class="toolbar-btn" type="button" onclick="resetMaintenanceBody()"
+                                                style="font-size:.7rem;padding:5px 10px;">
+                                            <i class="fas fa-rotate-left"></i> Reset to default
+                                        </button>
+                                    </div>
+                                    <textarea class="form-control" id="maintenanceBody" rows="8"
+                                              oninput="updateEmailPreview()"
+                                              style="resize:vertical;font-family:'Barlow',sans-serif;line-height:1.6;">{{ $settings['maintenance_body'] ?? '' }}</textarea>
+                                    <div class="form-hint" style="margin-top:6px;">
+                                        This is the email's HTML source — the preview on the right is what the
+                                        customer sees. Mail clients ignore stylesheets, so the layout is written
+                                        as tables with inline styles. If you mangle it, Reset brings the default back.
+                                    </div>
+                                </div>
+                            </details>
                         </div>
 
                         <div class="form-group" style="margin-bottom:0;">

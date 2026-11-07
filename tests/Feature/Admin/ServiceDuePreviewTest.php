@@ -31,7 +31,23 @@ it('tells the admin the field holds HTML', function () {
     $html = $this->actingAs(sdAdmin())->get('/admin/templates')->assertOk()->getContent();
 
     expect($html)->toContain('Email Body (HTML)');
-    expect($html)->toContain("the preview on the right is what the\n                                customer sees");
+
+    // Matched against collapsed whitespace: the sentence is what this asserts,
+    // not the indentation it happens to sit at in the Blade file. A literal
+    // match broke the moment the field was wrapped in <details> and re-indented,
+    // which changed nothing the admin sees.
+    $flat = preg_replace('/\s+/', ' ', $html);
+    expect($flat)->toContain('the preview on the right is what the customer sees');
+});
+
+it('keeps the HTML source collapsed but still in the page', function () {
+    $html = $this->actingAs(sdAdmin())->get('/admin/templates')->assertOk()->getContent();
+
+    // Collapsed, not removed. <details> without `open` hides the markup from a
+    // shop that works off the preview, while leaving #maintenanceBody in the
+    // DOM so updateEmailPreview() and the save routine still read it. Dropping
+    // the field, or hiding it with display:none, would break both.
+    expect($html)->toMatch('/<details(?![^>]*\bopen\b)[^>]*>.*?id="maintenanceBody"/s');
 });
 
 it('renders the preview for the service due tab, not just the email tab', function () {
