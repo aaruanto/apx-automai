@@ -17,14 +17,20 @@ use Illuminate\Notifications\Notification;
  * It was database-only, which meant a cancelled booking wrote a bell entry
  * and nothing else: a customer who does not open the app found out by turning
  * up at the shop. Email is now added per event — see MAILED — and not
- * globally, because two of the five would be wrong:
+ * globally, because two of the six would be wrong:
  *
  *   requested    goes to admins, who watch the dashboard. Mailing every admin
  *                on every request is noise, and the bell already has it.
  *   confirmed    is ALREADY emailed, by Admin\BookingController sending the
  *                BookingConfirmed mailable. Adding mail here would send two.
- *   completed    tells a customer something they learned at the counter ten
- *                minutes earlier.
+ *
+ * completed used to sit in that list, on the grounds that it "tells a customer
+ * something they learned at the counter ten minutes earlier". That holds only
+ * for a customer who waited. Someone who dropped the vehicle off and left has
+ * no way to know the work is done, and the bell reaches them only if they
+ * happen to open the app — so the one person the message exists for was the
+ * one person not getting it. It is mailed now, and texted from
+ * Admin\BookingController beside the confirmation text.
  *
  * Deliberately not ShouldQueue. QUEUE_CONNECTION is database and nothing on
  * Render runs a worker, so a queued notification would sit in the jobs table
@@ -69,6 +75,7 @@ class BookingNotification extends Notification
         self::BOOKING_CANCELLED,
         self::BOOKING_RESCHEDULED,
         self::RESCHEDULE_PROPOSED,
+        self::BOOKING_COMPLETED,
     ];
 
     /**
@@ -121,6 +128,10 @@ class BookingNotification extends Notification
         $heading = match ($this->event) {
             self::BOOKING_CANCELLED  => 'Booking Cancelled',
             self::RESCHEDULE_PROPOSED => 'A Change To Your Booking',
+            // Says the thing the customer needs, not the thing that happened
+            // to the record. "Booking Completed" is the status; what they
+            // want from the subject line is that the car can be collected.
+            self::BOOKING_COMPLETED  => 'Your Vehicle Is Ready',
             default                  => 'Booking Rescheduled',
         };
 

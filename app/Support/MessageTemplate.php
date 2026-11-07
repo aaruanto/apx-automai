@@ -156,6 +156,22 @@ class MessageTemplate
             // enough to say which booking. 140 worst case, 20 to spare.
             'cancellation_sms' => 'Hi {first_name}! APX Motors: your {service} on {date} is CANCELLED. Ref {reference}. Call us to rebook.',
 
+            // ── Work finished ──────────────────────────────────────────────
+            // The one message a customer who dropped their vehicle off cannot
+            // get any other way. Someone who waited at the counter was told
+            // in person; someone who left the car has no way to know it is
+            // ready until this arrives.
+            //
+            // {date} and {time} are dropped. They describe when the
+            // appointment was, which is behind the customer now and costs
+            // characters that "ready for pickup" needs. Same constraints as
+            // the two above: one segment, "APX Motors" for the sender ID, no
+            // {branch} or {contact}.
+            //
+            // 123 characters against a typical service name, 150 against the
+            // longest pair on file. ServiceCompletionSmsTest holds that line.
+            'completion_sms' => 'Hi {first_name}! APX Motors: your {service} is COMPLETE and your vehicle is ready for pickup. Ref {reference}. Thank you!',
+
             // ── Maintenance ────────────────────────────────────────────────
             'maintenance_subject' => 'Your {vehicle} is due for servicing',
             'maintenance_body'    => self::maintenanceBody(),

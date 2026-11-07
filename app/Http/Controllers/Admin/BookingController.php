@@ -651,6 +651,48 @@ class BookingController extends Controller
             }
         }
 
+        // The same news when the work is finished. The email for this goes
+        // out above, through BookingNotification — completed is in its MAILED
+        // list now — so this is only the text.
+        //
+        // Why it exists at all: a customer who waited at the counter was told
+        // in person, but one who dropped the vehicle off and left has no way
+        // to know it is ready. The bell entry reaches them only if they
+        // happen to open the app, which is the person this is for.
+        //
+        // Gated on the SMS channel but not on a trigger of its own. There is
+        // no completion toggle on the Message Templates screen yet, and a key
+        // the UI cannot set is a switch nobody can find — switching SMS off
+        // switches this off with everything else until the screen catches up.
+        //
+        // Exactly-once comes from the $oldStatus guard, as with the
+        // confirmation above, and not from a ReminderLedger claim: a status
+        // transition happens once, where a reminder window stays true all day.
+        //
+        // Its own try. The booking is already saved, the points already
+        // earned and the service history already stamped — a dead SMS gateway
+        // must not turn all of that into a 500 on the admin's screen.
+        if ($oldStatus !== 'completed' && $request->status === 'completed') {
+            try {
+                $completion = MessageTemplate::load();
+                $phone      = $booking->user?->phone ?: $booking->user?->customer?->phone;
+
+                if (
+                    $phone
+                    && ! empty($completion['channels']['send_sms'])
+                    && $sms->configured()
+                ) {
+                    $sms->send(
+                        $phone,
+                        MessageTemplate::fill($completion['completion_sms'], $booking->fresh()),
+                        ['booking_id' => $booking->id, 'trigger' => 'complete_booking'],
+                    );
+                }
+            } catch (\Throwable $e) {
+                \Log::error('Completion text failed for '.$booking->reference_number.': '.$e->getMessage());
+            }
+        }
+
         return redirect()->route('admin.bookings.index')
             ->with('success', 'Booking updated successfully.');
     }

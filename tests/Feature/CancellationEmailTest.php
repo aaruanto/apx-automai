@@ -158,18 +158,41 @@ it('leaves the booking cancelled when the mailer throws', function () {
 it('does not email the events that are mailed elsewhere or not worth mailing', function () {
     // confirmed already has its own BookingConfirmed mailable sent from the
     // admin controller, so mailing it here would send two. requested goes to
-    // admins who watch the dashboard. completed tells someone what they
-    // learned at the counter.
+    // admins who watch the dashboard.
+    //
+    // completed used to be in this list. It is mailed now — see the test
+    // below — because the reason it was excluded only covered the customer
+    // who waited at the counter.
     $booking = noticeBooking();
     $user    = $booking->user;
 
     $user->notify(BookingNotification::confirmed($booking));
-    $user->notify(BookingNotification::completed($booking));
     $user->notify(BookingNotification::requested($booking));
 
     expect(noticeMail())->toHaveCount(0)
-        // All three still land in the bell.
-        ->and($user->notifications()->count())->toBe(3);
+        // Both still land in the bell.
+        ->and($user->notifications()->count())->toBe(2);
+});
+
+it('emails a completion, because a drop-off customer has no other way to know', function () {
+    // The excluded-events comment above used to cover this one, on the
+    // grounds that completion "tells a customer what they learned at the
+    // counter". True of someone who waited; false of someone who left the
+    // vehicle, which is the whole reason the message exists.
+    $booking = noticeBooking();
+    $booking->update(['status' => 'completed']);
+
+    $booking->user->notify(BookingNotification::completed($booking->fresh()));
+
+    expect(noticeMail())->toHaveCount(1);
+
+    $body = noticeBody(noticeMail()->first());
+
+    expect($body)->toContain('Your Vehicle Is Ready')
+        // The closing line is chosen by status. Telling someone whose car is
+        // already serviced to arrive early is the bug this guards.
+        ->and($body)->toContain('ready for pickup')
+        ->and($body)->not->toContain('arrive');
 });
 
 it('emails a reschedule, which the approval flow will depend on', function () {
