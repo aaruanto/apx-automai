@@ -41,7 +41,7 @@
         </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 280px;gap:20px;align-items:start;">
+    <div class="wide-pair-grid" style="display:grid;grid-template-columns:1fr 280px;gap:20px;align-items:start;">
 
         <!-- TIMELINE -->
         <div class="card">
@@ -180,7 +180,7 @@
             <button class="modal-close" onclick="closeModal('viewModal')"><i class="fas fa-xmark"></i></button>
         </div>
         <div class="modal-body">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="pair-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
                 <div>
                     <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Booking ID</div>
                     <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;" id="modal-booking-id">—</div>

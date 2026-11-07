@@ -70,7 +70,7 @@
 
     <!-- ════════════════════ TAB: GENERAL ════════════════════ -->
     <div class="tab-panel active" id="tab-general">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div class="pair-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
 
             <!-- Business Info -->
             <div class="card">

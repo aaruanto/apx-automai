@@ -183,7 +183,7 @@
                 {{-- Months and lead days paired: both are how the timing works.
                      The km field used to sit beside months, and removing it
                      left months alone in a two-column grid with an empty half. --}}
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="pair-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="form-group">
                         <label class="form-label">Every (months) <span style="color:var(--red);">*</span></label>
                         <input class="form-control" type="number" name="interval_months" id="ruleMonths"

@@ -158,8 +158,12 @@
         </div>
     </div>
 
+    {{-- Classed, not just styled. An inline grid-template-columns with no
+         class is invisible to every media query in the project: the layout's
+         phone rules target .stat-grid and .pair-grid, so this row stayed two
+         columns at 320px and ran off the right of the screen. --}}
     <!-- CHARTS ROW 1 -->
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-bottom:20px;">
+    <div class="wide-pair-grid" style="display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-bottom:20px;">
 
         <!-- Revenue Over Time -->
         <div class="card">
@@ -213,7 +217,7 @@
     </div>
 
     <!-- CHARTS ROW 2 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+    <div class="pair-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
 
         <!-- Top Services -->
         <div class="card">

@@ -196,7 +196,7 @@
             <button class="modal-close" onclick="closeModal('viewCustomerModal')"><i class="fas fa-xmark"></i></button>
         </div>
         <div class="modal-body">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;">
+            <div class="pair-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;">
                 <div>
                     <div class="vc-label">Name</div>
                     <div class="vc-value" id="vc-name">—</div>

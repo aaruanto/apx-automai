@@ -39,7 +39,7 @@
 
                 <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;" />
 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left;">
+                <div class="pair-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left;">
                     <div style="background:var(--surface-2);border-radius:8px;padding:10px;">
                         <div style="font-size:.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Member Since</div>
                         <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.95rem;margin-top:2px;">

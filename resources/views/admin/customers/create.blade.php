@@ -33,7 +33,7 @@
         @csrf
         @if($isEdit) @method('PUT') @endif
 
-        <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;">
+        <div class="wide-pair-grid" style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;">
 
             <!-- LEFT COLUMN -->
             <div style="display:flex;flex-direction:column;gap:20px;">

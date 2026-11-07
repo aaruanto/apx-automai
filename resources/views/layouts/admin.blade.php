@@ -1251,6 +1251,15 @@
                override has to be !important to take effect. */
             .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
             .profile-shell { grid-template-columns: 1fr !important; }
+
+            /* The reports page's lopsided row — a wide chart beside a narrow
+               one. It stacks here rather than at 600 with .pair-grid below,
+               because the narrow column is already the squeezed one at full
+               width: by 768 it is a donut chart and a legend inside a third
+               of the screen. Both rows carried no class at all until now, so
+               neither of these rules could reach them and the page ran off
+               the right edge at phone width. */
+            .wide-pair-grid { grid-template-columns: 1fr !important; }
         }
 
         @media (max-width: 600px) {
