@@ -1474,12 +1474,30 @@
             }
         });
 
-        // Leaving mobile with the drawer open would otherwise strand the class
-        // on the sidebar, where the desktop rules render it as a normal panel.
+        // Each breakpoint has to clean up after the other, and only one half
+        // of that was here.
+        //
+        // Leaving mobile with the drawer open strands .mobile-open on the
+        // sidebar, where the desktop rules render it as a normal panel —
+        // handled since this went in. Entering mobile with the sidebar
+        // collapsed strands .collapsed, and that one is worse: .sidebar.collapsed
+        // hides .nav-label and .section-label at every width, so the drawer
+        // opens as a column of unlabelled icons with no way to tell the
+        // screens apart.
+        //
+        // A phone never reaches it, because it loads under the breakpoint and
+        // the toggle above returns before .collapsed is ever set. It takes a
+        // wide window being narrowed — which is exactly what a device-preview
+        // tool does, so the first place anyone sees it is while checking the
+        // mobile layout.
         window.addEventListener('resize', () => {
             if (window.innerWidth > MOBILE_BREAKPOINT) {
                 sidebar.classList.remove('mobile-open');
+                return;
             }
+
+            sidebar.classList.remove('collapsed');
+            mainContent.classList.remove('expanded');
         });
 
         // ── Sub-nav toggle ──
