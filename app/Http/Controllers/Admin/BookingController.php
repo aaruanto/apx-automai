@@ -623,22 +623,160 @@ class BookingController extends Controller
             ->with('success', 'Booking updated successfully.');
     }
 
+    /**
+     * The queue board: what is physically in the shop, right now.
+     *
+     * This was a timeline of everything booked today, in booking_time order,
+     * which answered a question the shop does not have — they have the
+     * appointments in the bookings list. What they cannot see anywhere else is
+     * which cars are actually here and how far along each one is.
+     *
+     * So only the four statuses that mean a vehicle is on the premises appear.
+     * Pending Review and Booking Confirmed are deliberately absent: they are
+     * expectations, not cars. They arrive here the moment somebody marks them
+     * arrived, which is what keeps the board a picture of the shop rather than
+     * of the calendar — and the counts below say how many are still to come,
+     * so nobody is left wondering where they went.
+     */
     public function schedule()
     {
-        $bookings = Booking::with(['user', 'service', 'vehicle', 'services'])
-                        ->whereDate('booking_date', today())
-                        ->orderBy('booking_time')
-                        ->get();
+        $onBoard = [
+            BookingStatus::Arrived,
+            BookingStatus::VehicleInspection,
+            BookingStatus::ServiceInProgress,
+            BookingStatus::ServiceCompleted,
+        ];
 
-        $totalToday = $bookings->count();
-
-        $statuses = collect(BookingStatus::cases())
-            ->mapWithKeys(fn (BookingStatus $s) => [
-                $s->value => $bookings->where('status', $s)->count(),
+        $bookings = Booking::with(['user', 'service', 'vehicle', 'mechanic', 'services'])
+            ->whereDate('booking_date', today())
+            ->whereIn('status', array_map(fn (BookingStatus $s) => $s->value, $onBoard))
+            ->get()
+            // Sorted in PHP, not SQL. The queue order is arrived_at ascending
+            // with the unstamped rows last, and "nulls last" is spelled
+            // differently on every driver — this is one day of one shop's
+            // bookings, so the cost of sorting a handful of rows in memory
+            // buys a sentence that reads the same on SQLite and PostgreSQL.
+            //
+            // A null arrived_at is possible: an admin can take a booking
+            // straight to Service Completed on the edit form without anyone
+            // pressing Arrived. Those belong on the board — their status says
+            // the work happened — but they cannot hold a place in a queue
+            // ordered by arrival, so they go to the end and show no number.
+            ->sortBy([
+                fn (Booking $a, Booking $b) => ($a->arrived_at === null) <=> ($b->arrived_at === null),
+                fn (Booking $a, Booking $b) => ($a->arrived_at?->timestamp ?? 0) <=> ($b->arrived_at?->timestamp ?? 0),
+                fn (Booking $a, Booking $b) => $a->id <=> $b->id,
             ])
-            ->all();
+            ->values();
 
-        return view('admin.bookings.schedule', compact('bookings', 'totalToday', 'statuses'));
+        // Queue numbers are per DAY, not per column, and are assigned in
+        // arrival order — so a car keeps its number as it moves across the
+        // board, which is the whole point of having one. Staff call out "car
+        // four", and car four must not become car one by being the first to
+        // reach Vehicle Inspection.
+        //
+        // Derived here rather than stored. A column would have to be kept in
+        // step with arrived_at by every path that writes it, and the two would
+        // eventually disagree about a real booking; this cannot, because
+        // arrived_at is the only input.
+        $queueNumbers = [];
+        $next         = 1;
+
+        foreach ($bookings as $booking) {
+            $queueNumbers[$booking->id] = $booking->arrived_at === null ? null : $next++;
+        }
+
+        // One column per status, in ladder order, each already in queue order
+        // because $bookings was sorted before it was grouped.
+        $columns = collect($onBoard)->mapWithKeys(fn (BookingStatus $s) => [
+            $s->value => $bookings->filter(fn (Booking $b) => $b->status === $s)->values(),
+        ]);
+
+        // Still to come: booked for today and not here yet. Counted, not
+        // listed — the board is for what is in the shop — but counted
+        // visibly, because a car that vanished off this screen when the
+        // timeline became a queue is the first thing staff would ask about.
+        $expected = Booking::whereDate('booking_date', today())
+            ->whereIn('status', [
+                BookingStatus::PendingReview->value,
+                BookingStatus::BookingConfirmed->value,
+            ])
+            ->get();
+
+        return view('admin.bookings.schedule', [
+            'columns'       => $columns,
+            'queueNumbers'  => $queueNumbers,
+            'onBoard'       => $onBoard,
+            'inShop'        => $bookings->count(),
+            // Reported separately rather than summed. A booking the shop has
+            // not agreed to yet is not "confirmed for today", and calling it
+            // that on a screen staff act on would be the sort of small lie
+            // that gets someone turned away at the counter.
+            'awaitingArrival' => $expected
+                ->filter(fn (Booking $b) => $b->status === BookingStatus::BookingConfirmed)->count(),
+            'awaitingReview'  => $expected
+                ->filter(fn (Booking $b) => $b->status === BookingStatus::PendingReview)->count(),
+        ]);
+    }
+
+    /**
+     * Move a booking one step up the ladder.
+     *
+     * The queue board's Advance control. One step, never a jump: the enum
+     * decides what next is, so this action does not know or care what the
+     * ladder looks like, and a board that moved a booking two places because
+     * the ladder changed shape would be worse than one that did nothing.
+     *
+     * Every consequence goes through BookingProgress, the same as the edit
+     * form — which is why it exists. Advancing the last step is a completion,
+     * and a completion earns points, stamps the vehicle's service history and
+     * texts the customer that the car is ready.
+     */
+    public function advance($id)
+    {
+        $booking = Booking::findOrFail($id);
+        $from    = $booking->status;
+        $next    = $from->next();
+
+        // Service Completed has no next step, and neither does Cancelled.
+        // Refused as 422 with something the board can display, rather than as
+        // a 404 with an HTML body the caller cannot parse — the mistake the
+        // Arrived action made for months.
+        if ($next === null || ! $booking->canMoveTo($next)) {
+            return response()->json([
+                'success' => false,
+                'message' => $booking->reference_number.' is '.$from->label()
+                             .', so there is nothing to advance it to.',
+            ], 422);
+        }
+
+        // Re-check inside the write, so two people pressing Advance on the
+        // same card — or one person pressing it twice — cannot both pass the
+        // guard above and move the booking two steps. 0 rows means somebody
+        // else got there first.
+        $moved = Booking::where('id', $booking->id)
+            ->where('status', $from->value)
+            ->update(['status' => $next->value]);
+
+        if ($moved === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This booking was just updated by someone else. Refresh to see its current status.',
+            ], 409);
+        }
+
+        app(BookingProgress::class)->statusChanged($booking->fresh(), $from, $next);
+
+        return response()->json([
+            'success'      => true,
+            'status'       => $next->value,
+            'status_label' => $next->label(),
+            'badge_class'  => $next->badgeClass(),
+            // Null once there is nowhere left to go, which is how the board
+            // knows to stop drawing the button.
+            'next'         => $next->next()?->value,
+            'message'      => $booking->reference_number.' is now '.$next->label().'.',
+        ]);
     }
 
     public function cancelled()

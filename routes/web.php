@@ -84,6 +84,10 @@ Route::middleware(['auth', 'role:admin'])
     Route::patch('/bookings/{id}/reschedule/apply',    [BookingController::class, 'applyReschedule'])   ->name('bookings.reschedule.apply');
     Route::patch('/bookings/{id}/reschedule/withdraw', [BookingController::class, 'withdrawReschedule'])->name('bookings.reschedule.withdraw');
     Route::patch('/bookings/{id}/arrive', [BookingController::class, 'arrive'])->name('bookings.arrive');
+    // One step up the ladder, from the queue board. PATCH rather than a GET
+    // link: it changes a booking, and the last step of it earns loyalty
+    // points and texts the customer.
+    Route::patch('/bookings/{id}/advance', [BookingController::class, 'advance'])->name('bookings.advance');
     Route::patch('/bookings/{id}/mechanic', [BookingController::class, 'assignMechanic'])->name('bookings.mechanic');
     // ── Customers ──────────────────────────────────────────────────────────
     Route::get('/customers/export',           [CustomerController::class, 'export'])  ->name('customers.export');
