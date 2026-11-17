@@ -105,6 +105,40 @@
                                        placeholder="e.g. juan@gmail.com" required />
                             @endif
                         </div>
+                        {{-- Customer type.
+                             Editable on both forms, unlike everything else on
+                             this screen. The name, email, phone and address
+                             belong to the customer and are read-only here —
+                             but how the shop came to have the record is the
+                             shop's own classification of it, not a personal
+                             detail, so they can correct it. update() accepts
+                             this field and nothing else.
+
+                             It is also the one field the backfill could get
+                             wrong: a customer the shop added with a real email
+                             address is indistinguishable from one who
+                             registered, so historic rows of that kind read
+                             Verified and this is where they are put right. --}}
+                        <div class="form-group">
+                            <label class="form-label required">Customer Type</label>
+                            @php $type = old('customer_type', ($customer->customer_type ?? \App\Enums\CustomerType::WalkIn)->value); @endphp
+                            <select class="form-control" name="customer_type">
+                                @foreach (\App\Enums\CustomerType::cases() as $case)
+                                <option value="{{ $case->value }}" {{ $type === $case->value ? 'selected' : '' }}>
+                                    {{ $case->label() }} — {{ $case->description() }}
+                                </option>
+                                @endforeach
+                            </select>
+                            <div class="form-hint">
+                                @unless($isEdit)
+                                    A customer you add here is a <strong>Walk-in</strong>: the record is as good as what
+                                    was typed, and they have never seen the account.
+                                @else
+                                    <strong>Verified</strong> means a password the customer set themselves — not a
+                                    verified email address, which this system never records.
+                                @endunless
+                            </div>
+                        </div>
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="form-label">Address</label>
                             <textarea class="form-control" name="address" rows="2" placeholder="Street, City" @if($isEdit) readonly @endif>{{ old('address', $customer->address ?? '') }}</textarea>

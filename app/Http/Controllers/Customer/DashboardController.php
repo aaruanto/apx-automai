@@ -31,7 +31,15 @@ class DashboardController extends Controller
         $user     = Auth::user();
         $customer = Customer::firstOrCreate(
             ['user_id' => $user->id],
-            ['phone' => $user->phone ?? null]
+            [
+                // From the account, not a literal. This lazy create is the
+                // last path that can still be the first to make a customers
+                // row — every other one now creates it up front — and it must
+                // not classify a registered customer as a guest just because
+                // their row happened to be made here.
+                'customer_type' => \App\Enums\CustomerType::forUser($user),
+                'phone'         => $user->phone ?? null,
+            ]
         );
 
         $bookings = Booking::with(['service', 'vehicle', 'mechanic', 'services'])
@@ -722,9 +730,18 @@ class DashboardController extends Controller
 
         $customer = Customer::firstOrCreate(
             ['user_id' => $user->id],
-            ['phone'   => $user->phone ?? null]
+            [
+                // Same reason as the one in index(): this can still be the
+                // first thing to create the row, and it must not classify a
+                // registered customer as a guest for having got here first.
+                'customer_type' => \App\Enums\CustomerType::forUser($user),
+                'phone'         => $user->phone ?? null,
+            ]
         );
 
+        // customer_type is deliberately absent from this update. It is the
+        // shop's classification of the record, not a detail the customer owns
+        // — everything else this method writes is theirs.
         $customer->update([
             'phone'   => $data['phone']   ?? $customer->phone,
             'address' => $data['address'] ?? $customer->address,

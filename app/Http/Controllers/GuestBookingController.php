@@ -213,6 +213,23 @@ class GuestBookingController extends Controller
 
                 $isNewGuest = $user->wasRecentlyCreated;
 
+                // The customers row, so this person appears on the admin
+                // Customer tab at all — that screen lists customers rows, and
+                // this path wrote a users row and stopped. "Guest" was a type
+                // almost nothing could have displayed.
+                //
+                // firstOrCreate, because a returning guest already has one,
+                // and the type is not rewritten for them: a guest who has
+                // since claimed their account is Verified, and coming back
+                // through the guest form does not undo that.
+                \App\Models\Customer::firstOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'customer_type' => \App\Enums\CustomerType::forUser($user),
+                        'phone'         => $user->phone,
+                    ]
+                );
+
                 if (! $isNewGuest) {
                     $user->update([
                         'name'  => $request->guest_name,

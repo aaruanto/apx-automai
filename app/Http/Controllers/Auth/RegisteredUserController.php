@@ -105,6 +105,20 @@ class RegisteredUserController extends Controller
             'role'     => 'customer',
         ]);
 
+        // The customers row, created with the account rather than lazily the
+        // first time they open their dashboard.
+        //
+        // Registration used to create a users row and nothing else, so a
+        // customer who signed up and did not sign in was absent from the
+        // admin Customer tab entirely — that screen lists customers rows. It
+        // is the only path that makes a Verified customer, and the type is
+        // asked of CustomerType rather than written as a literal.
+        \App\Models\Customer::create([
+            'user_id'       => $user->id,
+            'customer_type' => \App\Enums\CustomerType::forUser($user),
+            'phone'         => $user->phone,
+        ]);
+
         event(new Registered($user));
 
         // Deliberately no Auth::login here: registering should not grant a session.

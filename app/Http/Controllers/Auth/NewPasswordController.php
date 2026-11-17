@@ -61,11 +61,25 @@ class NewPasswordController extends Controller
                 // which is proof they own the address. Nothing is migrated: the
                 // bookings are already on this row, so their history simply becomes
                 // visible to them once they can sign in.
-                if ($user->is_guest) {
+                $wasGuest = (bool) $user->is_guest;
+
+                if ($wasGuest) {
                     $fields['is_guest'] = false;
                 }
 
                 $user->forceFill($fields)->save();
+
+                // And the customer record follows the account.
+                //
+                // A guest who sets a password here has proved they own the
+                // address and chosen their own credentials, which is exactly
+                // what Verified means — so leaving the row saying Guest would
+                // have the Customer tab contradicting the thing that just
+                // happened. Only on the transition, so an ordinary password
+                // reset by a registered customer changes nothing.
+                if ($wasGuest && $user->customer) {
+                    $user->customer->classify()->save();
+                }
 
                 event(new PasswordReset($user));
             }

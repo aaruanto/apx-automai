@@ -190,7 +190,7 @@ class BookingController extends Controller
             ]));
         }
 
-        return User::create([
+        $user = User::create([
             'name'     => $request->customer_name,
             'phone'    => $request->customer_phone,
             'email'    => $request->customer_email
@@ -204,6 +204,22 @@ class BookingController extends Controller
             // GuestBookingController already does.
             'password' => Str::password(32),
         ]);
+
+        // And a customers row, so a walk-in the shop booked in appears on the
+        // Customer tab. This path created a users row and stopped, which is
+        // half the reason "Guest" and "Walk-in" were types almost nothing
+        // could display — that screen lists customers rows.
+        //
+        // Walk-in, passed explicitly: this and CustomerController::store are
+        // the only two paths that know the shop created the account, because
+        // nothing on the row records it.
+        \App\Models\Customer::create([
+            'user_id'       => $user->id,
+            'customer_type' => \App\Enums\CustomerType::WalkIn,
+            'phone'         => $user->phone,
+        ]);
+
+        return $user;
     }
 
     /**

@@ -86,7 +86,10 @@ it('exports customers as csv', function () {
 
     $body = csvBody($this->actingAs(exportAdmin())->get('/admin/customers/export')->assertOk());
 
-    expect($body)->toContain('Customer,Vehicles,');
+    // Type joined the columns: it identifies nobody, and it answers the one
+    // question the shop would otherwise open every row for — how much of this
+    // list is real accounts and how much is counter records.
+    expect($body)->toContain('Customer,Type,Vehicles,');
     expect($body)->not->toContain('Phone');
     expect($body)->toContain('Export Tester');
 });

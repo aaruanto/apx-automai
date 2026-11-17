@@ -26,10 +26,23 @@
         </div>
 
         <!-- FILTERS -->
+        {{-- In the browser, like the search box beside it. This list already
+             loads every customer and filters client-side; adding a server-side
+             filter for one column would mean half the controls on this bar
+             reloading the page and half not. --}}
         <div class="filters-bar">
             <div style="position:relative;">
                 <i class="fas fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:.75rem;"></i>
                 <input class="filter-input" type="text" id="searchInput" placeholder="Search by name, phone, or plate..." style="padding-left:32px;" />
+            </div>
+            <div class="filter-field">
+                <label class="filter-label" for="filterType">Type</label>
+                <select class="filter-select" id="filterType">
+                    <option value="">All Types</option>
+                    @foreach (\App\Enums\CustomerType::options() as $value => $label)
+                    <option value="{{ $value }}">{{ $label }}</option>
+                    @endforeach
+                </select>
             </div>
             <button class="btn btn-ghost btn-sm" onclick="clearFilters()"><i class="fas fa-xmark"></i> Clear</button>
             <span style="font-size:.8rem;color:var(--text-muted);" id="rowCount">{{ $customers->count() }} records</span>
@@ -41,6 +54,7 @@
                 <thead>
                     <tr>
                         <th>Customer</th>
+                        <th>Type</th>
                         <th>Contact</th>
                         <th>Vehicles</th>
                         <th>Bookings</th>
@@ -53,7 +67,8 @@
                 @php
                     $initials = strtoupper(substr($c->name,0,1).substr(strrchr($c->name,' '),1,1));
                 @endphp
-                <tr data-search="{{ strtolower($c->name.' '.$c->phone.' '.$c->plate_search) }}">
+                <tr data-search="{{ strtolower($c->name.' '.$c->phone.' '.$c->plate_search) }}"
+                    data-type="{{ $c->customer_type->value }}">
                     <td>
                         <div style="display:flex;align-items:center;gap:10px;">
                             <div style="width:34px;height:34px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border);
@@ -66,6 +81,16 @@
                                 <div style="font-size:.74rem;color:var(--text-muted);">{{ $c->id_display ?? 'C-'.str_pad($c->id,3,'0',STR_PAD_LEFT) }}</div>
                             </div>
                         </div>
+                    </td>
+                    {{-- How the shop came to have this record, which is also
+                         how much of it can be relied on. The existing badge
+                         classes, not new ones: green for a real account, grey
+                         for a record the shop typed in, amber for a guest —
+                         which is unfinished rather than wrong, being one setup
+                         link away from Verified. --}}
+                    <td>
+                        <span class="badge {{ $c->customer_type->badgeClass() }}"
+                              title="{{ $c->customer_type->description() }}">{{ $c->customer_type->label() }}</span>
                     </td>
                     <td>
                         <div style="font-size:.83rem;">{{ $c->phone }}</div>
@@ -119,7 +144,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">No customers found.</td>
+                    <td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted);">No customers found.</td>
                 </tr>
                 @endforelse
                 </tbody>
@@ -306,20 +331,24 @@ function deleteCustomer(btn) {
 }
 function applyFilters() {
     const search = document.getElementById('searchInput').value.toLowerCase();
+    const type   = document.getElementById('filterType').value;
     const rows   = document.querySelectorAll('#tableBody tr');
     let visible  = 0;
     rows.forEach(row => {
         const ms = !search || (row.dataset.search || '').includes(search);
-        row.style.display = ms ? '' : 'none';
-        if(ms) visible++;
+        const mt = !type   || row.dataset.type === type;
+        row.style.display = (ms && mt) ? '' : 'none';
+        if(ms && mt) visible++;
     });
     document.getElementById('rowCount').textContent = visible + ' records';
     document.getElementById('footerCount').textContent = visible + ' customers';
 }
 function clearFilters() {
     document.getElementById('searchInput').value = '';
+    document.getElementById('filterType').value = '';
     applyFilters();
 }
 document.getElementById('searchInput').addEventListener('input', applyFilters);
+document.getElementById('filterType').addEventListener('change', applyFilters);
 </script>
 @endpush

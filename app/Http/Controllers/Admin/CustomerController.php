@@ -14,6 +14,7 @@ use App\Support\CsvExport;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CustomerController extends Controller
 {
@@ -76,6 +77,11 @@ class CustomerController extends Controller
             'email' => ['required', EmailRule::strict(), 'unique:users,email'],
             'phone' => 'required|string|max:20',
             'plate' => PlateNumber::rules(),
+            // Defaults to Walk-in below when absent, because that is what a
+            // customer added on this screen is. Accepted so the shop can say
+            // otherwise — a customer who rang up and has since registered,
+            // say — rather than having to correct it immediately afterwards.
+            'customer_type' => ['nullable', Rule::in(\App\Enums\CustomerType::values())],
             // Separate columns, separately posted. This form had one
             // "Car Model" field and wrote it into both.
             'car_make'  => 'nullable|string|max:100',
@@ -114,9 +120,16 @@ class CustomerController extends Controller
         ]);
 
         // Create customer profile
+        //
+        // Walk-in: this is the shop typing a customer in at the counter, and
+        // it is one of only two paths that can say so — nothing on the users
+        // row records who created it, which is why the type has to be written
+        // here rather than inferred later.
         $customer = Customer::create([
-            'user_id' => $user->id,
-            'phone'   => $request->phone,
+            'user_id'       => $user->id,
+            'customer_type' => \App\Enums\CustomerType::tryFrom((string) $request->customer_type)
+                               ?? \App\Enums\CustomerType::WalkIn,
+            'phone'         => $request->phone,
         ]);
 
         // Create vehicle
@@ -155,20 +168,64 @@ class CustomerController extends Controller
     }
 
     /**
-     * A customer's personal details are not the shop's to edit.
+     * A customer's personal details are not the shop's to edit. Their type is.
      *
      * Name, email, phone and address belong to the customer and are changed by
      * them from their own dashboard. This used to write all three straight onto
-     * the User record. It is refused here rather than only hidden in the form,
-     * so a crafted request cannot do what the screen no longer offers.
+     * the User record. They are still refused here rather than only hidden in
+     * the form, so a crafted request cannot do what the screen does not offer.
+     *
+     * customer_type is the exception, and it is a different kind of thing: it
+     * is how the shop came to have the record, which is the shop's own
+     * classification and not a detail about the person. It is also the one
+     * field the migration's backfill could get wrong — a customer added at
+     * the counter WITH a real email address is indistinguishable from one who
+     * registered, so those read Verified — and the shop needs somewhere to
+     * put that right.
+     *
+     * Audited, because it changes what the shop believes about a record and
+     * there is no other trace of who changed it.
      */
     public function update(Request $request, $id)
     {
-        Customer::findOrFail($id);
+        $customer = Customer::with('user')->findOrFail($id);
 
-        return redirect()
-            ->route('admin.customers.index')
-            ->with('error', 'Customer personal details are read-only. The customer can update them from their own account; booking details are edited from the booking itself.');
+        // nullable, not required. A post that does not mention the type is
+        // not an invalid request — it is somebody trying to change a field
+        // this screen does not accept, and the right answer to that is the
+        // read-only message below rather than a validation error about a
+        // field they never touched.
+        $data = $request->validate([
+            'customer_type' => ['nullable', Rule::in(\App\Enums\CustomerType::values())],
+        ]);
+
+        $was = $customer->customer_type;
+        $now = \App\Enums\CustomerType::tryFrom((string) ($data['customer_type'] ?? '')) ?? $was;
+
+        // Everything else on the form is read-only, so a submission that
+        // changes nothing should say so rather than claiming a save.
+        if ($was === $now) {
+            return redirect()->route('admin.customers.index')->with(
+                'error',
+                'Nothing was changed. A customer\'s name, email, phone and address are theirs to edit '
+                .'from their own account; booking details are edited from the booking itself. '
+                .'Only the customer type can be changed here.'
+            );
+        }
+
+        $customer->update(['customer_type' => $now]);
+
+        AuditLog::record(
+            'customer.type_changed', $customer,
+            ['customer_type' => $was->value], ['customer_type' => $now->value],
+            label: $customer->user->name ?? 'Customer',
+        );
+
+        return redirect()->route('admin.customers.index')->with(
+            'success',
+            ($customer->user->name ?? 'That customer').' is now recorded as '.$now->label().'. '
+            .'Their name, email, phone and address remain theirs to edit from their own account.'
+        );
     }
 
     /**
@@ -272,6 +329,10 @@ class CustomerController extends Controller
                 // without identifying any of them.
                 yield [
                     $c->user->name ?? 'N/A',
+                    // Identifies nobody, and answers the question the shop
+                    // would otherwise have to open every row for: how much of
+                    // this list is accounts versus counter records.
+                    $c->customer_type->label(),
                     $c->user?->vehicles->count() ?? 0,
                     $c->bookings_count,
                     $c->bookings()->latest('booking_date')->value('booking_date') ?? 'Never',
@@ -281,7 +342,7 @@ class CustomerController extends Controller
 
         return CsvExport::stream(
             CsvExport::filename('customers'),
-            ['Customer', 'Vehicles', 'Total Bookings', 'Last Visit'],
+            ['Customer', 'Type', 'Vehicles', 'Total Bookings', 'Last Visit'],
             $rows
         );
     }
