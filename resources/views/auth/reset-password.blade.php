@@ -14,7 +14,7 @@
     <title>Set a Password — APX AUTOMAI</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
-    <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-02" rel="stylesheet" />
+    <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-17" rel="stylesheet" />
     <link href="{{ asset('assets/css/auth.css') }}?v=2026-11-05" rel="stylesheet" />
     <script>
         (function () {
@@ -64,7 +64,7 @@
                     <input type="hidden" name="token" value="{{ $request->route('token') }}" />
 
                     <div class="form-group">
-                        <label class="form-label" for="inputEmail">Email Address</label>
+                        <label class="form-label required" for="inputEmail">Email Address</label>
                         <div class="input-wrap">
                             <i class="fas fa-envelope input-icon"></i>
                             <input class="form-control" id="inputEmail" name="email" type="email"
@@ -73,7 +73,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="inputPassword">New Password</label>
+                        <label class="form-label required" for="inputPassword">New Password</label>
                         <div class="input-wrap">
                             <i class="fas fa-lock input-icon"></i>
                             {{-- data-pw-group pairs this with the confirmation, so one
@@ -87,7 +87,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="inputPasswordConfirm">Confirm Password</label>
+                        <label class="form-label required" for="inputPasswordConfirm">Confirm Password</label>
                         <div class="input-wrap">
                             <i class="fas fa-lock input-icon"></i>
                             <input class="form-control" id="inputPasswordConfirm" name="password_confirmation"

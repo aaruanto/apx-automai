@@ -167,7 +167,7 @@
             <input type="hidden" name="_method" id="ruleMethod" value="POST" />
             <div class="modal-body">
                 <div class="form-group">
-                    <label class="form-label">Name <span style="color:var(--red);">*</span></label>
+                    <label class="form-label required">Name</label>
                     <input class="form-control" type="text" name="name" id="ruleName"
                            placeholder="e.g. Basic PMS due" required />
                     <div class="form-hint">The customer reads this, in the email and on their dashboard.</div>
@@ -185,14 +185,14 @@
                      left months alone in a two-column grid with an empty half. --}}
                 <div class="pair-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="form-group">
-                        <label class="form-label">Every (months) <span style="color:var(--red);">*</span></label>
+                        <label class="form-label required">Every (months)</label>
                         <input class="form-control" type="number" name="interval_months" id="ruleMonths"
                                min="1" max="120" placeholder="6" required />
                         <div class="form-hint">Counted from the last completed booking.</div>
                         <div class="fv-error" data-for="interval_months"></div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Warn ahead (days) <span style="color:var(--red);">*</span></label>
+                        <label class="form-label required">Warn ahead (days)</label>
                         <input class="form-control" type="number" name="lead_days" id="ruleLead"
                                min="0" max="180" value="14" required />
                         <div class="form-hint">Enough notice to book.</div>

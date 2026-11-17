@@ -161,13 +161,13 @@
                     currently has <strong id="pointsCurrentBalance" style="color:var(--text);"></strong> points.
                 </p>
                 <div class="form-group">
-                    <label class="form-label">Adjustment <span style="color:var(--red);">*</span></label>
+                    <label class="form-label required">Adjustment</label>
                     <input class="form-control" type="number" name="points" id="pointsAmount"
                            placeholder="e.g. 250, or -100 to remove" required />
                     <div class="form-hint">Positive adds, negative removes. A balance can never go below zero.</div>
                 </div>
                 <div class="form-group" style="margin-bottom:0;">
-                    <label class="form-label">Reason <span style="color:var(--red);">*</span></label>
+                    <label class="form-label required">Reason</label>
                     <textarea class="form-control" name="reason" rows="2"
                               placeholder="e.g. goodwill after a delayed service" required></textarea>
                     <div class="form-hint">Recorded against your account in the audit trail.</div>

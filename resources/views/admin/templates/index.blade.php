@@ -179,7 +179,7 @@
                 <div class="tab-panel active" id="panel-email">
                     <div class="card-body" style="padding:18px;">
                         <div class="form-group">
-                            <label class="form-label">Email Subject Line</label>
+                            <label class="form-label required">Email Subject Line</label>
                             <input class="form-control" type="text" id="emailSubject"
                                    value="{{ $settings['email_subject'] ?? 'Reminder: Your {service} appointment is on {date}' }}"
                                    placeholder="e.g. Your appointment at APX AUTOMAI is coming up!" />
@@ -192,7 +192,7 @@
                                    placeholder="Short preview shown under the subject in inbox" />
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
-                            <label class="form-label">Email Body</label>
+                            <label class="form-label required">Email Body</label>
                             <div class="editor-toolbar">
                                 <button class="toolbar-btn" onclick="execCmd('bold')" title="Bold"><i class="fas fa-bold"></i></button>
                                 <button class="toolbar-btn" onclick="execCmd('italic')" title="Italic"><i class="fas fa-italic"></i></button>
@@ -228,7 +228,7 @@
                 <div class="tab-panel" id="panel-sms">
                     <div class="card-body" style="padding:18px;">
                         <div class="form-group" style="margin-bottom:0;">
-                            <label class="form-label">SMS Message Body</label>
+                            <label class="form-label required">SMS Message Body</label>
                             <textarea class="form-control" id="smsBody" rows="5"
                                       oninput="updateSmsCounter(this)"
                                       style="resize:none;font-family:'Barlow',sans-serif;line-height:1.6;">{{ $settings['sms_body'] ?? 'Hi {name}! This is a reminder from APX AUTOMAI. Your {service} appointment is scheduled on {date} at {time}. Please arrive 10 minutes early. Reply STOP to unsubscribe.' }}</textarea>
@@ -242,7 +242,7 @@
                             </div>
                         </div>
                         <div class="form-group" style="margin-bottom:0;margin-top:18px;padding-top:18px;border-top:1px solid var(--border);">
-                            <label class="form-label">Booking Confirmation SMS</label>
+                            <label class="form-label required">Booking Confirmation SMS</label>
                             <div style="font-size:.73rem;color:var(--text-muted);margin-bottom:8px;">
                                 Sent once when a booking is confirmed, alongside the confirmation email.
                                 Switched on and off by the <strong>Booking confirmed</strong> trigger.
@@ -254,7 +254,7 @@
                         </div>
 
                         <div class="form-group" style="margin-bottom:0;margin-top:18px;padding-top:18px;border-top:1px solid var(--border);">
-                            <label class="form-label">Booking Cancellation SMS</label>
+                            <label class="form-label required">Booking Cancellation SMS</label>
                             <div style="font-size:.73rem;color:var(--text-muted);margin-bottom:8px;">
                                 Sent whenever a booking is cancelled &mdash; by the shop, by the customer,
                                 or by the no-show sweep. Switched on and off by the
@@ -281,7 +281,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Email Subject Line</label>
+                            <label class="form-label required">Email Subject Line</label>
                             <input class="form-control" type="text" id="maintenanceSubject"
                                    value="{{ $settings['maintenance_subject'] ?? '' }}" />
                         </div>
@@ -309,7 +309,7 @@
                                 </summary>
                                 <div style="padding-top:10px;">
                                     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-                                        <label class="form-label" style="margin:0;">Email Body (HTML)</label>
+                                        <label class="form-label required" style="margin:0;">Email Body (HTML)</label>
                                         <button class="toolbar-btn" type="button" onclick="resetMaintenanceBody()"
                                                 style="font-size:.7rem;padding:5px 10px;">
                                             <i class="fas fa-rotate-left"></i> Reset to default
@@ -328,7 +328,7 @@
                         </div>
 
                         <div class="form-group" style="margin-bottom:0;">
-                            <label class="form-label">SMS Message Body</label>
+                            <label class="form-label required">SMS Message Body</label>
                             <textarea class="form-control" id="maintenanceSms" rows="4"
                                       oninput="updateMaintenanceSmsCounter(this)"
                                       style="resize:none;font-family:'Barlow',sans-serif;line-height:1.6;">{{ $settings['maintenance_sms'] ?? '' }}</textarea>
@@ -567,7 +567,7 @@
                     </div>
                 </div>
                 <div class="form-group" style="margin-bottom:0;">
-                    <label class="form-label">Which template to test</label>
+                    <label class="form-label required">Which template to test</label>
                     <select class="form-control" name="template_type">
                         <option value="7d">7-day reminder</option>
                         <option value="3d">3-day reminder</option>

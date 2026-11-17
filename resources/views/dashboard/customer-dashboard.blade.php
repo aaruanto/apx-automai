@@ -15,7 +15,7 @@
     <title>My Dashboard — APX AUTOMAI</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
-    <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-02" rel="stylesheet" />
+    <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-17" rel="stylesheet" />
     <link href="{{ asset('assets/css/customer-dashboard.css') }}?v=2026-11-04" rel="stylesheet" />
     <link href="{{ asset('assets/css/availability-picker.css') }}" rel="stylesheet" />
     {{-- Before first paint. The theme used to be applied by the script at the
@@ -640,8 +640,8 @@
                              a car, where Honda Click 125i was a scooter being
                              suggested under Car. --}}
                         <div class="m-form-group">
-                            <label class="m-label">Make</label>
-                            <div class="m-input-wrap"><i class="fas fa-industry"></i><input class="m-control" id="avfMake" type="text" list="avfMakeList" placeholder="e.g. Honda" /></div>
+                            <label class="m-label required" for="avfMake">Make</label>
+                            <div class="m-input-wrap"><i class="fas fa-industry"></i><input class="m-control" id="avfMake" type="text" list="avfMakeList" placeholder="e.g. Honda" required /></div>
                         </div>
                         <div class="m-form-group">
                             <label class="m-label">Model</label>
@@ -649,12 +649,12 @@
                         </div>
                         <x-vehicle-datalists makes="avfMakeList" models="avfModelList" />
                         <div class="m-form-group">
-                            <label class="m-label">Year</label>
-                            <div class="m-input-wrap"><i class="fas fa-calendar"></i><input class="m-control" id="avfYear" type="number" placeholder="e.g. 2022" min="1990" max="2030" /></div>
+                            <label class="m-label required" for="avfYear">Year</label>
+                            <div class="m-input-wrap"><i class="fas fa-calendar"></i><input class="m-control" id="avfYear" type="number" placeholder="e.g. 2022" min="1990" max="2030" required /></div>
                         </div>
                         <div class="m-form-group">
-                            <label class="m-label">Plate / Unit No.</label>
-                            <div class="m-input-wrap"><i class="fas fa-id-card"></i><input class="m-control" id="avfPlate" type="text" placeholder="ABC 1234, 123 ABC or AB 12345" /></div>
+                            <label class="m-label required" for="avfPlate">Plate / Unit No.</label>
+                            <div class="m-input-wrap"><i class="fas fa-id-card"></i><input class="m-control" id="avfPlate" type="text" placeholder="ABC 1234, 123 ABC or AB 12345" required /></div>
                         </div>
                         <div class="m-form-group">
                             <label class="m-label">Color</label>
@@ -877,8 +877,8 @@
                             <div id="profileEditView" style="display:none;">
                                 <div class="profile-field-grid">
                                     <div class="profile-field">
-                                        <label>Full Name</label>
-                                        <input type="text" id="pef-name" value="{{ Auth::user()->name }}" />
+                                        <label class="required" for="pef-name">Full Name</label>
+                                        <input type="text" id="pef-name" value="{{ Auth::user()->name }}" required />
                                     </div>
                                     <div class="profile-field">
                                         <label>Email Address</label>
@@ -995,20 +995,20 @@
 
                         <div id="changePasswordForm" style="display:none;padding:4px 0 14px;">
                             <div class="m-form-group">
-                                <label class="m-label">Current password</label>
+                                <label class="m-label required">Current password</label>
                                 <div class="m-input-wrap"><i class="fas fa-lock"></i>
                                     <input class="m-control" id="cpCurrent" type="password" autocomplete="current-password" />
                                 </div>
                             </div>
                             <div class="m-form-group">
-                                <label class="m-label">New password</label>
+                                <label class="m-label required">New password</label>
                                 <div class="m-input-wrap"><i class="fas fa-key"></i>
                                     <input class="m-control" id="cpNew" type="password" data-pw-group="new" autocomplete="new-password" />
                                 </div>
                                 <div class="m-hint">At least 8 characters, with upper and lower case, a number and a symbol.</div>
                             </div>
                             <div class="m-form-group">
-                                <label class="m-label">Confirm new password</label>
+                                <label class="m-label required">Confirm new password</label>
                                 <div class="m-input-wrap"><i class="fas fa-key"></i>
                                     <input class="m-control" id="cpConfirm" type="password" data-pw-group="new" autocomplete="new-password" />
                                 </div>
@@ -1117,7 +1117,7 @@
                             </div>
                             @endif
                             <div class="m-form-group">
-                                <label class="m-label">Preferred Date &amp; Time</label>
+                                <label class="m-label required">Preferred Date &amp; Time</label>
                                 <input type="hidden" id="mDate" required />
                                 <input type="hidden" id="mTime" required />
                                 <x-availability-picker id="cdAvp" />
@@ -1131,7 +1131,7 @@
                                 </div>
                             </div>
                             <div class="m-form-group">
-                                <label class="m-label">Select Vehicle</label>
+                                <label class="m-label required" for="mVehicleSelect">Select Vehicle</label>
                                 <div class="m-input-wrap"><i class="fas fa-car"></i>
                                     <select class="m-control m-select" id="mVehicleSelect">
                                         <option value="">— Choose a registered vehicle —</option>
@@ -1206,10 +1206,10 @@
                 Enter your password to confirm. Your account will be deactivated and you'll be signed out &mdash; you can restore it by logging in again within 30 days.
             </p>
             <div class="m-form-group">
-                <label class="m-label">Password</label>
+                <label class="m-label required" for="deleteAccountPassword">Password</label>
                 <div class="m-input-wrap">
                     <i class="fas fa-lock"></i>
-                    <input class="m-control" id="deleteAccountPassword" type="password" placeholder="Your password" />
+                    <input class="m-control" id="deleteAccountPassword" type="password" placeholder="Your password" required />
                 </div>
             </div>
         </div>

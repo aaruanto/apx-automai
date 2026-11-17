@@ -25,7 +25,7 @@
     <link href="/assets/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- Template Stylesheet -->
-    <link href="/assets/css/design-tokens.css?v=2026-11-02" rel="stylesheet">
+    <link href="/assets/css/design-tokens.css?v=2026-11-17" rel="stylesheet">
     <link href="/assets/css/style.css" rel="stylesheet">
 </head>
 

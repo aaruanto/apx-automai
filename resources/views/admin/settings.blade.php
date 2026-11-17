@@ -81,12 +81,12 @@
                     <form method="POST" action="{{ route('admin.settings.general') }}">
                         @csrf @method('PUT')
                         <div class="form-group">
-                            <label class="form-label">Business Name</label>
+                            <label class="form-label required">Business Name</label>
                             <input class="form-control @error('business_name') fv-invalid @enderror" type="text" name="business_name" value="{{ old('business_name', $settings['business_name'] ?? 'APX Motors Service Center') }}" />
                             @error('business_name')<div class="fv-error show">{{ $message }}</div>@enderror
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Branch Name</label>
+                            <label class="form-label required">Branch Name</label>
                             <input class="form-control @error('branch_name') fv-invalid @enderror" type="text" name="branch_name" value="{{ old('branch_name', $settings['branch_name'] ?? 'Tandang Sora Branch') }}" />
                             @error('branch_name')<div class="fv-error show">{{ $message }}</div>@enderror
                         </div>
@@ -122,36 +122,36 @@
                         @csrf @method('PUT')
                         <div class="form-row cols-2">
                             <div class="form-group">
-                                <label class="form-label">Opening Time</label>
+                                <label class="form-label required">Opening Time</label>
                                 <input class="form-control @error('open_time') fv-invalid @enderror" type="time" name="open_time" value="{{ old('open_time', $settings['open_time'] ?? '08:00') }}" />
                             @error('open_time')<div class="fv-error show">{{ $message }}</div>@enderror
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Closing Time</label>
+                                <label class="form-label required">Closing Time</label>
                                 <input class="form-control @error('close_time') fv-invalid @enderror" type="time" name="close_time" value="{{ old('close_time', $settings['close_time'] ?? '17:00') }}" />
                             @error('close_time')<div class="fv-error show">{{ $message }}</div>@enderror
                             </div>
                         </div>
                         <div class="form-row cols-2">
                             <div class="form-group">
-                                <label class="form-label">Weekend Opening Time</label>
+                                <label class="form-label required">Weekend Opening Time</label>
                                 <input class="form-control @error('weekend_open_time') fv-invalid @enderror" type="time" name="weekend_open_time" value="{{ old('weekend_open_time', $settings['weekend_open_time'] ?? '09:00') }}" />
                             @error('weekend_open_time')<div class="fv-error show">{{ $message }}</div>@enderror
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Weekend Closing Time</label>
+                                <label class="form-label required">Weekend Closing Time</label>
                                 <input class="form-control @error('weekend_close_time') fv-invalid @enderror" type="time" name="weekend_close_time" value="{{ old('weekend_close_time', $settings['weekend_close_time'] ?? '12:00') }}" />
                             @error('weekend_close_time')<div class="fv-error show">{{ $message }}</div>@enderror
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Max Bookings Per Day</label>
+                            <label class="form-label required">Max Bookings Per Day</label>
                             <input class="form-control @error('max_bookings') fv-invalid @enderror" type="number" name="max_bookings" value="{{ old('max_bookings', $settings['max_bookings'] ?? 20) }}" min="1" max="100" />
                             @error('max_bookings')<div class="fv-error show">{{ $message }}</div>@enderror
                             <div class="form-hint">How many bookings can be accepted in a single day. Applies to the customer booking calendar.</div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Booking Slot Duration (minutes)</label>
+                            <label class="form-label required">Booking Slot Duration (minutes)</label>
                             <select class="form-control @error('slot_duration') fv-invalid @enderror" name="slot_duration">
                                 @foreach([30,45,60,90,120] as $min)
                                 <option value="{{ $min }}" {{ old('slot_duration', $settings['slot_duration'] ?? 60) == $min ? 'selected' : '' }}>{{ $min }} min</option>
@@ -195,7 +195,7 @@
                             </label>
                         </div>
                         <div class="form-group" style="max-width:220px;">
-                            <label class="form-label">Discount Percentage</label>
+                            <label class="form-label required">Discount Percentage</label>
                             <div style="display:flex;align-items:center;gap:8px;">
                                 <input class="form-control @error('account_discount_percent') fv-invalid @enderror"
                                        type="number" name="account_discount_percent" min="0" max="50"
@@ -236,7 +236,7 @@
 
                         <div class="form-row cols-2">
                             <div class="form-group">
-                                <label class="form-label">Pesos Per Point</label>
+                                <label class="form-label required">Pesos Per Point</label>
                                 <input class="form-control @error('loyalty_pesos_per_point') fv-invalid @enderror"
                                        type="number" name="loyalty_pesos_per_point" min="1" max="10000"
                                        value="{{ old('loyalty_pesos_per_point', $settings['loyalty_pesos_per_point'] ?? 50) }}"
@@ -245,7 +245,7 @@
                                 @error('loyalty_pesos_per_point')<div class="fv-error show">{{ $message }}</div>@enderror
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Point Value (₱)</label>
+                                <label class="form-label required">Point Value (₱)</label>
                                 <input class="form-control @error('loyalty_point_value') fv-invalid @enderror"
                                        type="number" step="0.01" name="loyalty_point_value" min="0" max="100"
                                        value="{{ old('loyalty_point_value', $settings['loyalty_point_value'] ?? 0.50) }}"
@@ -261,7 +261,7 @@
 
                         <div class="form-row cols-2">
                             <div class="form-group">
-                                <label class="form-label">Minimum To Redeem</label>
+                                <label class="form-label required">Minimum To Redeem</label>
                                 <input class="form-control @error('loyalty_min_redeem') fv-invalid @enderror"
                                        type="number" name="loyalty_min_redeem" min="0" max="100000"
                                        value="{{ old('loyalty_min_redeem', $settings['loyalty_min_redeem'] ?? 100) }}" />
@@ -269,7 +269,7 @@
                                 @error('loyalty_min_redeem')<div class="fv-error show">{{ $message }}</div>@enderror
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Most Of A Booking Points May Cover</label>
+                                <label class="form-label required">Most Of A Booking Points May Cover</label>
                                 <div style="display:flex;align-items:center;gap:8px;">
                                     <input class="form-control @error('loyalty_max_redeem_percent') fv-invalid @enderror"
                                            type="number" name="loyalty_max_redeem_percent" min="0" max="100"
@@ -281,7 +281,7 @@
                         </div>
 
                         <div class="form-group" style="max-width:260px;">
-                            <label class="form-label">Points Expire After</label>
+                            <label class="form-label required">Points Expire After</label>
                             <div style="display:flex;align-items:center;gap:8px;">
                                 <input class="form-control @error('loyalty_expiry_months') fv-invalid @enderror"
                                        type="number" name="loyalty_expiry_months" min="0" max="120"
@@ -472,7 +472,7 @@
             @csrf
             <div class="modal-body">
                 <div class="form-group">
-                    <label class="form-label">Service Name <span style="color:var(--red)">*</span></label>
+                    <label class="form-label required">Service Name</label>
                     <input class="form-control" type="text" name="name" placeholder="e.g. Full Car Wash" required />
                 </div>
                 <div class="form-row cols-2">
@@ -485,12 +485,12 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Duration (minutes) <span style="color:var(--red)">*</span></label>
+                        <label class="form-label required">Duration (minutes)</label>
                         <input class="form-control" type="number" name="duration" placeholder="60" min="15" step="15" required />
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Price (₱) <span style="color:var(--red)">*</span></label>
+                    <label class="form-label required">Price (₱)</label>
                     <input class="form-control" type="number" name="price" placeholder="0.00" min="0" step="0.01" required />
                 </div>
                 <div class="form-group">
@@ -529,7 +529,7 @@
             @method('PUT')
             <div class="modal-body">
                 <div class="form-group">
-                    <label class="form-label">Service Name <span style="color:var(--red)">*</span></label>
+                    <label class="form-label required">Service Name</label>
                     <input class="form-control" type="text" name="name" id="editServiceName" required />
                 </div>
                 <div class="form-row cols-2">
@@ -542,12 +542,12 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Duration (minutes) <span style="color:var(--red)">*</span></label>
+                        <label class="form-label required">Duration (minutes)</label>
                         <input class="form-control" type="number" name="duration" id="editServiceDuration" min="15" step="15" required />
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Price (₱) <span style="color:var(--red)">*</span></label>
+                    <label class="form-label required">Price (₱)</label>
                     <input class="form-control" type="number" name="price" id="editServicePrice" min="0" step="0.01" required />
                 </div>
                 <div class="form-group">

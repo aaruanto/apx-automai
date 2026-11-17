@@ -165,7 +165,7 @@
             <div class="modal-body">
                 <div class="form-row cols-2">
                     <div class="form-group">
-                        <label class="form-label">Full Name <span style="color:var(--red)">*</span></label>
+                        <label class="form-label required">Full Name</label>
                         <input class="form-control" type="text" name="name" value="{{ Auth::user()->name }}" required />
                     </div>
                     <div class="form-group">
@@ -174,7 +174,7 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Email Address <span style="color:var(--red)">*</span></label>
+                    <label class="form-label required">Email Address</label>
                     <input class="form-control" type="email" name="email" value="{{ Auth::user()->email }}" required />
                 </div>
             </div>
@@ -197,15 +197,15 @@
             @csrf @method('PUT')
             <div class="modal-body">
                 <div class="form-group">
-                    <label class="form-label">Current Password <span style="color:var(--red)">*</span></label>
+                    <label class="form-label required">Current Password</label>
                     <input class="form-control" type="password" name="current_password" required />
                 </div>
                 <div class="form-group">
-                    <label class="form-label">New Password <span style="color:var(--red)">*</span></label>
+                    <label class="form-label required">New Password</label>
                     <input class="form-control" type="password" name="password" data-pw-group="new" required />
                 </div>
                 <div class="form-group" style="margin-bottom:0;">
-                    <label class="form-label">Confirm New Password <span style="color:var(--red)">*</span></label>
+                    <label class="form-label required">Confirm New Password</label>
                     <input class="form-control" type="password" name="password_confirmation" data-pw-group="new" required />
                 </div>
             </div>

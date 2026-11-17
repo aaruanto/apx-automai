@@ -157,9 +157,7 @@
                                  and saving appeared to work and changed
                                  nothing. Customers own their own details. --}}
                             <div class="form-group">
-                                <label class="form-label">
-                                    Full Name @unless ($isEdit)<span style="color:var(--red)">*</span>@endunless
-                                </label>
+                                <label class="form-label @unless ($isEdit)required @endunless">Full Name</label>
                                 <input class="form-control" type="text"
                                        @if ($isEdit) disabled @else name="customer_name" id="adminCustomerName" required @endif
                                        value="{{ old('customer_name', $src->user->name ?? '') }}"
@@ -167,9 +165,7 @@
                                        style="{{ $isEdit ? 'opacity:.65;cursor:not-allowed;' : '' }}" />
                             </div>
                             <div class="form-group">
-                                <label class="form-label">
-                                    Phone Number @unless ($isEdit)<span style="color:var(--red)">*</span>@endunless
-                                </label>
+                                <label class="form-label @unless ($isEdit)required @endunless">Phone Number</label>
                                 <input class="form-control" type="tel"
                                        @if ($isEdit) disabled @else name="customer_phone" id="adminCustomerPhone" required @endif
                                        value="{{ old('customer_phone', $src->user->phone ?? '') }}"
@@ -223,10 +219,7 @@
                                  plate belongs to the vehicle; the customer
                                  edits it from their own garage. --}}
                             <div class="form-group">
-                                <label class="form-label">
-                                    Plate Number
-                                    @unless ($isEdit)<span style="color:var(--red)">*</span>@endunless
-                                </label>
+                                <label class="form-label @unless ($isEdit)required @endunless">Plate Number</label>
                                 <input class="form-control" type="text"
                                        @if ($isEdit) disabled @else name="plate" id="adminPlateInput" required @endif
                                        value="{{ old('plate', $src->vehicle->plate_number ?? '') }}"
@@ -300,7 +293,7 @@
                     </div>
                     <div class="card-body">
                         <div class="form-group">
-                            <label class="form-label">Services <span style="color:var(--red)">*</span></label>
+                            <label class="form-label required">Services</label>
                             @php
                                 // Services already on the booking, when editing or rebooking.
                                 $picked = isset($src)
@@ -381,7 +374,7 @@
                     </div>
                     <div class="card-body">
                         <div class="form-group" style="margin-bottom:0;">
-                            <label class="form-label">Preferred Date &amp; Time <span style="color:var(--red)">*</span></label>
+                            <label class="form-label required">Preferred Date &amp; Time</label>
                             @php
                                 // A rebook is handed its slot by rebook(),
                                 // which asks BookingAvailability whether the
@@ -476,8 +469,8 @@
                                 : ['pending' => 'Pending', 'confirmed' => 'Confirmed', 'in_progress' => 'In Progress', 'completed' => 'Completed'];
                         @endphp
                         <div class="form-group" style="margin-bottom:0;">
-                            <label class="form-label">Booking Status</label>
-                            <select class="form-control" name="status">
+                            <label class="form-label required">Booking Status</label>
+                            <select class="form-control" name="status" required>
                                 @foreach($statusOptions as $val => $label)
                                 <option value="{{ $val }}" {{ ($booking->status ?? '') === $val ? 'selected' : '' }}>
                                     {{ $label }}

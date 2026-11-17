@@ -46,13 +46,13 @@
                     <div class="card-body">
                         <div class="form-row cols-2">
                             <div class="form-group">
-                                <label class="form-label">Full Name <span style="color:var(--red)">*</span></label>
+                                <label class="form-label required">Full Name</label>
                                 <input class="form-control" type="text" name="name" id="custCreateName"
                                        value="{{ old('name', $customer->name ?? '') }}"
                                        placeholder="e.g. Juan dela Cruz" required @if($isEdit) readonly @endif />
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Phone Number <span style="color:var(--red)">*</span></label>
+                                <label class="form-label required">Phone Number</label>
                                 <input class="form-control" type="tel" name="phone" id="custCreatePhone"
                                        value="{{ old('phone', $customer->phone ?? '') }}"
                                        placeholder="09XXXXXXXXX" required @if($isEdit) readonly @endif />
@@ -87,10 +87,7 @@
                                  Only on create. On an existing customer the
                                  address is shown and not edited, for the
                                  reason set out above. --}}
-                            <label class="form-label">
-                                Email Address
-                                @unless ($isEdit)<span style="color:var(--red)">*</span>@endunless
-                            </label>
+                            <label class="form-label @unless ($isEdit)required @endunless">Email Address</label>
                             @if ($isEdit)
                                 <div class="form-control" aria-readonly="true"
                                      style="background:var(--surface-2);color:var(--text-muted);
@@ -123,7 +120,7 @@
                     <div class="card-body">
                         <div class="form-row cols-2">
                             <div class="form-group">
-                                <label class="form-label">Plate Number <span style="color:var(--red)">*</span></label>
+                                <label class="form-label required">Plate Number</label>
                                 <input class="form-control" type="text" name="plate" id="custCreatePlate"
                                        value="{{ old('plate', $customer->vehicle->plate_number ?? '') }}"
                                        placeholder="ABC 1234, 123 ABC or AB 12345" required

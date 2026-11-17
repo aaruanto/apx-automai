@@ -156,14 +156,14 @@
             <input type="hidden" name="_method" id="bundleMethod" value="POST" />
             <div class="modal-body">
                 <div class="form-group">
-                    <label class="form-label">Name <span style="color:var(--red);">*</span></label>
+                    <label class="form-label required">Name</label>
                     <input class="form-control" type="text" name="name" id="bundleName"
                            placeholder="e.g. Basic Maintenance Package" required />
                     <div class="fv-error" data-for="name"></div>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Included Services <span style="color:var(--red);">*</span></label>
+                    <label class="form-label required">Included Services</label>
                     <div class="svc-picker" id="svcPicker">
                         @foreach ($services as $s)
                         <label class="svc-row">
@@ -180,7 +180,7 @@
 
                 <div class="form-row cols-2">
                     <div class="form-group">
-                        <label class="form-label">Bundle Price <span style="color:var(--red);">*</span></label>
+                        <label class="form-label required">Bundle Price</label>
                         <input class="form-control" type="number" step="0.01" min="0"
                                name="price" id="bundlePrice" oninput="recalcBundle()" required />
                         <div class="fv-error" data-for="price"></div>

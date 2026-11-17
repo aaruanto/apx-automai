@@ -134,12 +134,22 @@
             if (opts.input.label) {
                 var lab = document.createElement('label');
                 lab.textContent = opts.input.label;
+                // The shared required marker, from design-tokens.css. Set here
+                // rather than by each caller: every reason prompt in the app —
+                // cancel a booking, delete one, a customer cancelling their
+                // own — comes through this one builder, and all of them post
+                // to a rule that says `required`.
+                if (opts.input.required) lab.classList.add('required');
                 lab.style.cssText = 'display:block;font-size:.76rem;color:var(--text-muted);margin-bottom:5px;';
                 wrap.appendChild(lab);
             }
 
             inputEl = document.createElement(opts.input.multiline ? 'textarea' : 'input');
             inputEl.className = 'apx-alert-input';
+            // So the asterisk is never the only signal: this is what a screen
+            // reader announces, and the dialog's own guard below is what
+            // actually refuses an empty value.
+            if (opts.input.required) inputEl.required = true;
             inputEl.placeholder = opts.input.placeholder || '';
             if (opts.input.maxlength) inputEl.maxLength = opts.input.maxlength;
             if (opts.input.multiline) inputEl.rows = 3;

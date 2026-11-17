@@ -37,7 +37,7 @@
     <link href="/assets/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- Template Stylesheet -->
-    <link href="/assets/css/design-tokens.css?v=2026-11-02" rel="stylesheet">
+    <link href="/assets/css/design-tokens.css?v=2026-11-17" rel="stylesheet">
     <link href="/assets/css/style.css" rel="stylesheet">
     <link href="/assets/css/availability-picker.css" rel="stylesheet">
 </head>
@@ -1429,14 +1429,14 @@
                     <!-- STEP 2: Details -->
                     <div id="apx-view-2" style="display:none;">
                         <div class="row g-2 mb-2">
-                            <div class="col-6"><label class="form-label">Full name</label><input type="text" class="form-control" id="apx-f-name" placeholder="Juan dela Cruz"></div>
-                            <div class="col-6"><label class="form-label">Email</label><input type="email" class="form-control" id="apx-f-email" placeholder="juan@email.com"></div>
+                            <div class="col-6"><label class="form-label required" for="apx-f-name">Full name</label><input type="text" class="form-control" id="apx-f-name" placeholder="Juan dela Cruz" required></div>
+                            <div class="col-6"><label class="form-label required" for="apx-f-email">Email</label><input type="email" class="form-control" id="apx-f-email" placeholder="juan@email.com" required></div>
                         </div>
                         <div class="row g-2 mb-3">
-                            <div class="col-12"><label class="form-label">Phone</label><input type="text" class="form-control" id="apx-f-phone" placeholder="09xxxxxxxxx"></div>
+                            <div class="col-12"><label class="form-label" for="apx-f-phone">Phone</label><input type="text" class="form-control" id="apx-f-phone" placeholder="09xxxxxxxxx"></div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Preferred date &amp; time</label>
+                            <label class="form-label required">Preferred date &amp; time</label>
                             <input type="hidden" id="apx-f-date">
                             <input type="hidden" id="apx-f-time">
                             <x-availability-picker id="guestAvp" />
@@ -1447,14 +1447,14 @@
                             <button class="apx-vtype-btn" id="apx-vtype-moto" onclick="apxSetVtype('motorcycle')">Motorcycle</button>
                         </div>
                         <div class="row g-2 mb-2">
-                            <div class="col-6"><label class="form-label">Manufacturer</label><select class="form-select" id="apx-v-make" onchange="apxOnMake()"><option value="">Select manufacturer</option></select></div>
-                            <div class="col-6"><label class="form-label">Model</label><select class="form-select" id="apx-v-model" disabled onchange="apxOnModel()"><option value="">Select model</option></select></div>
+                            <div class="col-6"><label class="form-label required" for="apx-v-make">Manufacturer</label><select class="form-select" id="apx-v-make" onchange="apxOnMake()" required><option value="">Select manufacturer</option></select></div>
+                            <div class="col-6"><label class="form-label required" for="apx-v-model">Model</label><select class="form-select" id="apx-v-model" disabled onchange="apxOnModel()" required><option value="">Select model</option></select></div>
                         </div>
                         <div class="row g-2 mb-2">
-                            <div class="col-6"><label class="form-label">Year</label><select class="form-select" id="apx-v-year" disabled><option value="">Select year</option></select></div>
-                            <div class="col-6"><label class="form-label">Plate number <span style="color:#e63946">*</span></label><input type="text" class="form-control" id="apx-v-plate" placeholder="ABC 1234, 123 ABC or AB 12345"></div>
+                            <div class="col-6"><label class="form-label required" for="apx-v-year">Year</label><select class="form-select" id="apx-v-year" disabled required><option value="">Select year</option></select></div>
+                            <div class="col-6"><label class="form-label required" for="apx-v-plate">Plate number</label><input type="text" class="form-control" id="apx-v-plate" required placeholder="ABC 1234, 123 ABC or AB 12345"></div>
                         </div>
-                        <div class="mt-2"><label class="form-label">Notes / special request</label><textarea class="form-control" id="apx-f-notes" rows="2" placeholder="Anything we should know?"></textarea></div>
+                        <div class="mt-2"><label class="form-label" for="apx-f-notes">Notes / special request</label><textarea class="form-control" id="apx-f-notes" rows="2" placeholder="Anything we should know?"></textarea></div>
                     </div>
 
                     <!-- STEP 3: Confirm -->

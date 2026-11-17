@@ -14,7 +14,7 @@
     <title>Create Account — APX AUTOMAI</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
-    <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-02" rel="stylesheet" />
+    <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-17" rel="stylesheet" />
     <link href="{{ asset('assets/css/auth.css') }}?v=2026-11-05" rel="stylesheet" />
     {{-- Before first paint, deliberately. Setting the class from a script
          at the end of the body would render the page dark and then repaint
@@ -82,7 +82,7 @@
 
                     <div class="form-row-2">
                         <div class="form-group">
-                            <label class="form-label" for="inputFirstName">First Name</label>
+                            <label class="form-label required" for="inputFirstName">First Name</label>
                             <div class="input-wrap">
                                 <i class="fas fa-user input-icon"></i>
                                 <input class="form-control" id="inputFirstName" name="first_name" type="text"
@@ -90,7 +90,7 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="inputLastName">Last Name</label>
+                            <label class="form-label required" for="inputLastName">Last Name</label>
                             <div class="input-wrap">
                                 <i class="fas fa-user input-icon"></i>
                                 <input class="form-control" id="inputLastName" name="last_name" type="text"
@@ -100,7 +100,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="inputEmail">Email Address</label>
+                        <label class="form-label required" for="inputEmail">Email Address</label>
                         <div class="input-wrap">
                             <i class="fas fa-envelope input-icon"></i>
                             <input class="form-control" id="inputEmail" name="email" type="email"
@@ -122,7 +122,7 @@
 
                     <div class="form-row-2">
                         <div class="form-group">
-                            <label class="form-label" for="inputPassword">Password</label>
+                            <label class="form-label required" for="inputPassword">Password</label>
                             <div class="input-wrap">
                                 <i class="fas fa-lock input-icon"></i>
                                 <input class="form-control" id="inputPassword" name="password" type="password" data-pw-group="new"
@@ -134,7 +134,7 @@
                             <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="inputPasswordConfirm">Confirm Password</label>
+                            <label class="form-label required" for="inputPasswordConfirm">Confirm Password</label>
                             <div class="input-wrap">
                                 <i class="fas fa-lock input-icon"></i>
                                 <input class="form-control" id="inputPasswordConfirm" name="password_confirmation" data-pw-group="new"

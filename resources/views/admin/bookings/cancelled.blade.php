@@ -152,7 +152,7 @@
                 logged against your account.
             </p>
             <div class="form-group" style="margin-top:14px;margin-bottom:0;">
-                <label class="form-label">Reason <span style="color:var(--red);">*</span></label>
+                <label class="form-label required">Reason</label>
                 <textarea class="form-control" id="deleteReason" rows="2"
                           placeholder="e.g. duplicate of APX-0042"></textarea>
                 <div class="fv-error" id="deleteReasonError"></div>

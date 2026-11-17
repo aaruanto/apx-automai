@@ -131,3 +131,41 @@
     padding: 2px 6px;
     border-radius: 3px;
 }
+/* ── Required-field marker ─────────────────────────────────────────────────
+   One rule for every form in the project.
+
+   There are three form idioms here — the Blade <x-input-label> component on
+   the auth and profile pages, Bootstrap's .form-label on the public pages,
+   and the admin panel's own .form-label — and before this each one that
+   bothered to mark a required field did it with its own inline
+   <span style="color:var(--red)">*</span>. Six of them existed, four forms
+   marked nothing at all, and two marked a field the backend accepts empty.
+
+   This file is loaded by every layout that contains a form (admin, auth,
+   customer dashboard, landing, guest, app), so the marker is defined once
+   here rather than copied into the admin and public stylesheets.
+
+   Add the class to the <label>, never an element inside it: the asterisk is
+   generated, so there is nothing to forget and nothing to get wrong.
+
+   ACCESSIBILITY, and the limit of this approach. Generated content cannot
+   carry aria-hidden — it is not an element — so a screen reader may read the
+   star on a plain <label>. That is why the asterisk is never the only
+   signal: every label marked with this class sits on an input that carries
+   the `required` attribute, which is what assistive technology actually
+   announces, and which is also what makes the browser refuse an empty
+   submission. The <x-input-label required> component does render a real
+   aria-hidden="true" span, because there the markup is written once in one
+   file and the attribute costs nothing. */
+.required::after {
+    content: ' *';
+    color: var(--red, #E8192C);
+    font-weight: 700;
+}
+
+/* The component's marker. Same colour, same weight, so a page mixing the two
+   idioms — the customer dashboard does — shows one asterisk, not two. */
+.required-mark {
+    color: var(--red, #E8192C);
+    font-weight: 700;
+}

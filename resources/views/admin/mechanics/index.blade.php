@@ -114,13 +114,13 @@
             <input type="hidden" name="_method" id="mechanicMethod" value="POST" />
             <div class="modal-body">
                 <div class="form-group">
-                    <label class="form-label">Name <span style="color:var(--red);">*</span></label>
+                    <label class="form-label required">Name</label>
                     <input class="form-control" type="text" name="name" id="mechanicName"
                            placeholder="e.g. Jose Santos" required />
                     <div class="fv-error" data-for="name"></div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Contact Number <span style="color:var(--red);">*</span></label>
+                    <label class="form-label required">Contact Number</label>
                     <input class="form-control" type="tel" name="contact_number" id="mechanicContact"
                            placeholder="09171234567" required />
                     <div class="form-hint">Philippine mobile number. 09XX, +639XX and 639XX are all accepted.</div>
