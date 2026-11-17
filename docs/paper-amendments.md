@@ -349,6 +349,129 @@ a sentence if the paper enumerates every message that names a reference.
 
 ---
 
+## 12. The booking lifecycle has six named steps — AMEND THE PAPER
+
+**The paper said:** a booking is *pending*, *confirmed*, *in progress*,
+*completed* or *cancelled*.
+
+**What the system does now**, at the panel's request:
+
+| # | Label | Stored as |
+| --- | --- | --- |
+| 1 | Pending Review | `pending_review` |
+| 2 | Booking Confirmed | `booking_confirmed` |
+| 3 | Arrived | `arrived` |
+| 4 | Vehicle Inspection | `vehicle_inspection` |
+| 5 | Service In Progress | `service_in_progress` |
+| 6 | Service Completed | `service_completed` |
+
+`cancelled` is unchanged and is deliberately **not** a step on that ladder. It
+is reached by its own action, which requires a reason, and `cancel_reason`,
+`cancelled_by` and `cancelled_at` still record who did it and why. Cancelling
+is allowed from anywhere before Service Completed — so a car that has arrived
+or is being inspected can still be cancelled, which it must be, because it is
+standing in the shop.
+
+Two of the six are new. **Arrived** existed only as a timestamp before:
+`arrived_at` was stamped and the status jumped straight to in progress, so a
+car checked in at the counter was reported as being worked on before anybody
+had looked at it. **Vehicle Inspection** was not recorded at all. The
+timestamp is still written — the queue board orders by it, because it is the
+only thing that says who was here first — so there is still exactly one way to
+mark a car as arrived.
+
+Forward-only and skip-ahead are both unchanged: a walk-in can go from Pending
+Review straight to Service Completed in one move.
+
+**If the paper enumerates the statuses, or shows a state diagram, both need
+redrawing.** The transition rules themselves did not change.
+
+---
+
+## 13. Vehicle type and transmission decide what can be booked — AMEND THE PAPER
+
+**The paper said:** the customer chooses a service, then gives their details
+and their vehicle.
+
+**What the system does now:** the vehicle comes first. The public booking
+wizard is four steps — **1 Vehicle → 2 Service → 3 Your details → 4
+Confirm** — because which services apply is decided by what the customer
+drives. Asking afterwards made the dependency run backwards: a customer chose
+an Aircon Performance Check, said "motorcycle" two screens later, and had the
+service taken off their booking.
+
+`services.transmission` joins `services.vehicle_type` on the same convention —
+NULL means no restriction — and `vehicles.transmission` records manual or
+automatic. Both are nullable and **"not sure" is a real answer**: there was no
+honest value to give the vehicles already on record, and forcing a guess would
+hide the gearbox service the customer came for. NULL narrows nothing.
+
+`bundles` and `maintenance_rules` deliberately did **not** gain a transmission
+column. A bundle's restriction already follows from the services inside it.
+
+A booking keeps its own copy of both, on `bookings.vehicle_type` and
+`bookings.transmission`, written at creation. This is the same decision as
+`booking_service.price`: editing a vehicle next March must not rewrite what
+last week's booking says the mechanic was asked to work on.
+
+**If the paper has a booking-flow figure, it needs a fourth step.** The ERDs
+have been updated.
+
+---
+
+## 14. Today's Schedule is a queue board — AMEND THE PAPER
+
+**The paper said:** the admin sees a timeline of the day's bookings.
+
+**What the system does now:** the screen shows what is physically in the shop
+— the four statuses from Arrived to Service Completed, as four columns, each
+in arrival order with a queue number on the card. Pending Review and Booking
+Confirmed are counted above the board and linked to the bookings list, but do
+not appear on it: they are expectations, not cars.
+
+The queue number is **per day, assigned at arrival**, so a car keeps its
+number as it crosses the board — staff call out "car four". It is derived from
+`arrived_at` rather than stored, so it cannot drift from it.
+
+An **Advance** control moves a booking one step. Advancing the last step is a
+completion and does everything a completion does: awards the loyalty points,
+stamps the vehicle's service history and texts the customer that the car is
+ready.
+
+---
+
+## 15. Customers are Guest, Walk-in or Verified — AMEND THE PAPER
+
+**The paper said:** nothing about customer categories, or — if it reused the
+old tier wording — something that is no longer true.
+
+**What the system does now:** `customers.customer_type` records how the shop
+came to have each record.
+
+- **Guest** — an account created on someone's behalf by a guest booking. They
+  have never set a password, so nobody has proved they own the address.
+- **Walk-in** — created by the shop at the counter. As good as whoever typed
+  it; the customer has never seen the account.
+- **Verified** — a registered account with a password the customer set
+  themselves.
+
+**Verified does not mean email-verified, and the paper must not say it does.**
+Nothing in this system ever writes `users.email_verified_at` — §10's
+neighbouring note records that assuming otherwise already caused a real
+defect. Verified is `is_guest = false`: someone who registered, or a guest who
+followed the setup link from their inbox, which proves they own the address.
+
+This is **not** the loyalty `tier` column coming back. That was dropped (§6),
+there are no tiers, and none of these three is a rank.
+
+One imprecision worth being able to defend: the backfill classifies a customer
+the shop added **with a real email address** as Verified, because nothing
+records who created a `users` row and that case is indistinguishable from a
+self-registration. It does not arise for new records, and the shop can correct
+any row from the Customers screen.
+
+---
+
 ## Figures to regenerate
 
 All four diagrams in [`docs/diagrams/`](diagrams/) have been updated to match
@@ -367,3 +490,10 @@ the system as it now stands, including `maintenance_rules`, `reminders`,
 no longer carry `interval_km` or `mileage_at_last_service`, and in the DFD
 processes 4.0 and 8.0 no longer stamp or read mileage. `dfd-context.mmd` is
 unaffected.
+
+**And re-export both ERDs again for §§12–15.** They now carry
+`customers.customer_type`, `vehicles.transmission`, `services.transmission`,
+`bookings.vehicle_type`, `bookings.transmission`, and the six-step status
+list in place of the old four. Any state diagram of the booking lifecycle in
+the manuscript is redrawn from the table in §12, and any booking-flow figure
+gains the vehicle step from §13.

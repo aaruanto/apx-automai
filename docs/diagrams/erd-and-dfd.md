@@ -199,6 +199,7 @@ erDiagram
     CUSTOMERS {
         int id PK
         int user_id FK "cascade on delete, no unique index"
+        string customer_type "guest walk_in verified, NOT the old loyalty tier"
         string phone "nullable"
         date dob "nullable"
         string address "nullable"
@@ -216,6 +217,7 @@ erDiagram
         string color "nullable"
         boolean is_primary
         string vehicle_type "car or motorcycle"
+        string transmission "nullable means not recorded, else manual or automatic"
         date last_service_date "nullable, maintained by ServiceHistory on completion"
         int mileage "nullable, the shop reads it and nothing decides from it"
         date mileage_updated_at "nullable"
@@ -233,6 +235,7 @@ erDiagram
         string category "nullable"
         boolean is_active
         string vehicle_type "nullable means it suits any"
+        string transmission "nullable means it suits both"
         datetime deleted_at "soft delete"
         datetime created_at
         datetime updated_at
@@ -281,9 +284,11 @@ erDiagram
         date booking_date
         time booking_time
         int duration "nullable, minutes, summed from the chosen services"
-        string status "pending confirmed in_progress completed cancelled"
+        string status "pending_review booking_confirmed arrived vehicle_inspection service_in_progress service_completed cancelled"
+        string vehicle_type "snapshot of what the vehicle was when booked"
+        string transmission "snapshot, nullable means it was not recorded"
         text notes "nullable"
-        datetime arrived_at "nullable"
+        datetime arrived_at "nullable, stamped by the Arrived action and what the queue board orders by"
         string cancel_reason "nullable"
         int cancelled_by FK "nullable, null also means the system cancelled it"
         datetime cancelled_at "nullable"

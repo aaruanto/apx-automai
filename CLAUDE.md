@@ -34,7 +34,7 @@ includes `migrate:fresh` anywhere but a local SQLite file.
 duplicating it.
 
 **Tests must pass before anything is pushed.** `php artisan test` — currently
-1,051. A push to `main` deploys to the live site, so a broken push is a broken
+1,179. A push to `main` deploys to the live site, so a broken push is a broken
 demo.
 
 ## Verify, don't assume
@@ -143,6 +143,36 @@ changing its name serves the old one to anyone who has visited before.
 - **`MaintenanceDue`** decides whether a vehicle is due. The scheduled command
   and the customer dashboard both call it, so the screen and the inbox cannot
   disagree.
+- **`App\Enums\BookingStatus`** is the only copy of the booking lifecycle:
+  the six-step ladder, the labels, the badge classes and the transition
+  rules, cast on `Booking`. `$booking->status` is an enum, not a string.
+  The Blade and JavaScript maps are generated from it — `forJs()` is what a
+  page is handed — so **never retype a status map in a view**: there were
+  seven copies of this before, and they had drifted far enough that a
+  completed booking wore an amber Pending badge on the admin list.
+  `cancelled` is a case but is deliberately **off** the ladder: `order()` is
+  null, `canMoveTo()` refuses it both ways, and cancelling keeps its own
+  action because it demands a reason.
+- **`BookingProgress`** owns everything that follows from a status change —
+  the audit row, the loyalty award, the service-history stamp, the bell
+  entries, the confirmation email and both texts. The booking edit form and
+  the queue board's Advance control both call it. Add a consequence of
+  completion here, never in a controller, or one of the two paths will not
+  have it: that is the fault `BookingCancellation` already exists to prevent.
+- **`App\Models\Concerns\AppliesToVehicle`** (was `AppliesToVehicleType`)
+  answers "is this for this vehicle" for services, bundles and maintenance
+  rules. NULL means no restriction, on both `vehicle_type` and
+  `transmission`. Only `services` carries transmission; the other two read
+  their missing attribute as null, which already means "both", so the trait
+  needs no special case. A booking snapshots both onto itself at
+  `reserve()` time — editing a vehicle later must not rewrite what was
+  booked.
+- **`App\Enums\CustomerType`** — Guest, Walk-in, Verified, on
+  `customers.customer_type`. **Verified does not mean email-verified**:
+  nothing writes `users.email_verified_at`, so it means `is_guest = false`.
+  Not the dropped loyalty `tier` column under a new name. Every path that
+  creates a customer account creates the `customers` row too, because the
+  admin Customer tab lists those rows and two paths used not to.
 - **Roles are `admin` and `customer`, and that is all.** Mechanics are records
   with a name and a number, not accounts. There is no staff portal.
 

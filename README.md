@@ -523,7 +523,7 @@ php artisan tinker
 |---|---|
 | Guest booking submitted | `BookingReceived` |
 | New guest account created | `GuestAccountCreated` |
-| Admin confirms a booking | `BookingConfirmed` |
+| A booking reaches Booking Confirmed | `BookingConfirmed` |
 | Scheduled reminders | `BookingReminder` |
 
 In-app notifications (the bell) are separate and work regardless of mail

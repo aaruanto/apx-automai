@@ -11,13 +11,13 @@
 
 flowchart TD
     USERS["users: id PK, name, email UK, phone, role admin or customer, is_guest, is_active, soft delete"]
-    CUSTOMERS["customers: id PK, user_id FK, phone, dob, address"]
-    VEHICLES["vehicles: id PK, user_id FK, plate_number UK, make, model, year, vehicle_type, is_primary, last_service_date, mileage, soft delete"]
-    SERVICES["services: id PK, name, category, price, duration, vehicle_type, is_active, soft delete"]
+    CUSTOMERS["customers: id PK, user_id FK, customer_type guest/walk_in/verified, phone, dob, address"]
+    VEHICLES["vehicles: id PK, user_id FK, plate_number UK, make, model, year, vehicle_type, transmission, is_primary, last_service_date, mileage, soft delete"]
+    SERVICES["services: id PK, name, category, price, duration, vehicle_type, transmission, is_active, soft delete"]
     BUNDLES["bundles: id PK, name UK, price, starts_at, ends_at, vehicle_type, is_active, soft delete"]
     BUNDLESVC["bundle_service: id PK, bundle_id FK, service_id FK, unique pair"]
     MECHANICS["mechanics: id PK, name, contact_number, specialty, status"]
-    BOOKINGS["bookings: id PK, user_id FK, vehicle_id FK, service_id FK legacy primary, mechanic_id FK, bundle_id FK, reference_number UK, booking_date, booking_time, duration, status, arrived_at, cancel_reason, cancelled_by FK, cancelled_at, list_price, discount_percent, discount_amount, points_earned, points_spent, points_discount, soft delete"]
+    BOOKINGS["bookings: id PK, user_id FK, vehicle_id FK, service_id FK legacy primary, mechanic_id FK, bundle_id FK, reference_number UK, booking_date, booking_time, duration, status 6-step ladder plus cancelled, vehicle_type snapshot, transmission snapshot, arrived_at, cancel_reason, cancelled_by FK, cancelled_at, list_price, discount_percent, discount_amount, points_earned, points_spent, points_discount, soft delete"]
     BOOKINGSVC["booking_service: id PK, booking_id FK, service_id FK, price snapshot, duration snapshot, unique pair"]
     RULES["maintenance_rules: id PK, name, bundle_id FK, service_id FK, interval_months nullable, lead_days, vehicle_type, is_active, sort_order"]
     REMINDERS["reminders: id PK, type, user_id FK, vehicle_id FK, booking_id FK, maintenance_rule_id FK, trigger_key, channel, due_date, status, error, sent_at, dedupe_key UK"]
