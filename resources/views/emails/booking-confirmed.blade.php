@@ -33,6 +33,14 @@ Good news — APX Motors Service Center has **confirmed** your booking. Your ref
 
 @component('mail::panel')
 **Service:** {{ $booking->service_list }}
+{{-- The vehicle this booking is for, from the booking's own snapshot rather
+     than the vehicle record — so an email sent today and the same booking read
+     next year agree about what was booked. It is here because some of the work
+     is transmission-specific, and the customer is the only person who can tell
+     us we have it wrong before the car arrives. --}}
+@if ($booking->vehicle_profile)
+**Vehicle:** {{ $booking->vehicle?->make_model ?: $booking->vehicle_type_label }} ({{ $booking->vehicle_profile }})
+@endif
 **Date:** {{ \Carbon\Carbon::parse($booking->booking_date)->format('F d, Y') }}
 **Time:** {{ \Carbon\Carbon::parse($booking->booking_time)->format('g:i A') }}
 **Status:** Confirmed ✅

@@ -12,7 +12,7 @@ class Vehicle extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'user_id', 'make', 'model', 'plate_number', 'vehicle_type', 'year', 'color', 'is_primary',
+        'user_id', 'make', 'model', 'plate_number', 'vehicle_type', 'transmission', 'year', 'color', 'is_primary',
         'last_service_date', 'mileage', 'mileage_updated_at',
     ];
 
@@ -100,11 +100,35 @@ class Vehicle extends Model
         });
     }
 
+    /**
+     * 'Manual', 'Automatic', or null when nothing is recorded.
+     *
+     * Null rather than a guess: the column is nullable precisely because
+     * every vehicle registered before the shop started asking has no answer,
+     * and printing "Manual" for those would be inventing it. Callers decide
+     * what to show in its place — "Not recorded" on a detail screen, nothing
+     * at all in a tight list.
+     */
+    protected function transmissionLabel(): Attribute
+    {
+        return Attribute::get(fn () => match ($this->transmission) {
+            'manual'    => 'Manual',
+            'automatic' => 'Automatic',
+            default     => null,
+        });
+    }
+
+    /** 'Car' or 'Motorcycle'. The column defaults to car, so this never is null. */
+    protected function vehicleTypeLabel(): Attribute
+    {
+        return Attribute::get(fn () => $this->vehicle_type === 'motorcycle' ? 'Motorcycle' : 'Car');
+    }
+
     /** "Car — Honda Civic", for lists where the kind of vehicle matters. */
     protected function displayName(): Attribute
     {
         return Attribute::get(function () {
-            $type = $this->vehicle_type === 'motorcycle' ? 'Motorcycle' : 'Car';
+            $type = $this->vehicle_type_label;
 
             return $this->make_model !== '' ? $type . ' — ' . $this->make_model : $type;
         });

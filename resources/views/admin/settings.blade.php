@@ -407,6 +407,7 @@
                         <tr>
                             <th>Service Name</th>
                             <th>Category</th>
+                            <th>Applies to</th>
                             <th>Price (₱)</th>
                             <th>Duration</th>
                             <th>Status</th>
@@ -418,6 +419,27 @@
                     <tr>
                         <td class="primary-col">{{ $service->name }}</td>
                         <td>{{ $service->category ?? 'General' }}</td>
+                        {{-- What this service is narrowed to, so the shop can
+                             see it without opening every row. "Any" is the
+                             common case and says nothing louder than it
+                             deserves. --}}
+                        <td style="font-size:.8rem;color:var(--text-muted);">
+                            @php
+                                $applies = array_filter([
+                                    match ($service->vehicle_type) {
+                                        'car'        => 'Car',
+                                        'motorcycle' => 'Motorcycle',
+                                        default      => null,
+                                    },
+                                    match ($service->transmission) {
+                                        'manual'    => 'Manual',
+                                        'automatic' => 'Automatic',
+                                        default     => null,
+                                    },
+                                ]);
+                            @endphp
+                            {{ $applies ? implode(' · ', $applies) : 'Any' }}
+                        </td>
                         <td style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--text);">
                             ₱{{ number_format($service->price ?? 0, 2) }}
                         </td>
@@ -435,6 +457,7 @@
                                     data-name="{{ $service->name }}"
                                     data-category="{{ $service->category }}"
                                     data-vehicle-type="{{ $service->vehicle_type }}"
+                                    data-transmission="{{ $service->transmission }}"
                                     data-duration="{{ $service->duration }}"
                                     data-price="{{ $service->price }}"
                                     data-description="{{ $service->description }}"><i class="fas fa-pen"></i></button>
@@ -447,7 +470,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">No services configured yet.</td>
+                        <td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted);">No services configured yet.</td>
                     </tr>
                     @endforelse
                     </tbody>
@@ -493,15 +516,32 @@
                     <label class="form-label required">Price (₱)</label>
                     <input class="form-control" type="number" name="price" placeholder="0.00" min="0" step="0.01" required />
                 </div>
+                <div class="form-row cols-2">
+                    <div class="form-group">
+                        <label class="form-label">Applies to</label>
+                        <select class="form-control" name="vehicle_type">
+                            <option value="">Any vehicle</option>
+                            <option value="car">Car only</option>
+                            <option value="motorcycle">Motorcycle only</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Transmission</label>
+                        <select class="form-control" name="transmission">
+                            {{-- "Both" writes NULL, which is what the column
+                                 means by "no restriction". An empty string
+                                 would be a transmission no vehicle has. --}}
+                            <option value="">Both</option>
+                            <option value="manual">Manual only</option>
+                            <option value="automatic">Automatic only</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="form-group">
-                    <label class="form-label">Applies to</label>
-                    <select class="form-control" name="vehicle_type">
-                        <option value="">Any vehicle</option>
-                        <option value="car">Car only</option>
-                        <option value="motorcycle">Motorcycle only</option>
-                    </select>
-                    <div class="form-hint">A motorcycle has no aircon and most cars are not CVT. Services set to one
-                        type are not offered for the other, on the website and when a booking is submitted.</div>
+                    <div class="form-hint" style="margin-top:0;">A motorcycle has no aircon, and a manual gearbox has no
+                        CVT fluid to change. A service narrowed to one vehicle type or one transmission is not offered
+                        for the other — on the website, in the portal, and when a booking is submitted. Leave both as
+                        <strong>Any</strong> and <strong>Both</strong> unless the work genuinely does not apply.</div>
                 </div>
                 <div class="form-group" style="margin-bottom:0;">
                     <label class="form-label">Description</label>
@@ -550,15 +590,29 @@
                     <label class="form-label required">Price (₱)</label>
                     <input class="form-control" type="number" name="price" id="editServicePrice" min="0" step="0.01" required />
                 </div>
+                <div class="form-row cols-2">
+                    <div class="form-group">
+                        <label class="form-label">Applies to</label>
+                        <select class="form-control" name="vehicle_type" id="editServiceVehicleType">
+                            <option value="">Any vehicle</option>
+                            <option value="car">Car only</option>
+                            <option value="motorcycle">Motorcycle only</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Transmission</label>
+                        <select class="form-control" name="transmission" id="editServiceTransmission">
+                            {{-- "Both" writes NULL — see the Add form. --}}
+                            <option value="">Both</option>
+                            <option value="manual">Manual only</option>
+                            <option value="automatic">Automatic only</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="form-group">
-                    <label class="form-label">Applies to</label>
-                    <select class="form-control" name="vehicle_type" id="editServiceVehicleType">
-                        <option value="">Any vehicle</option>
-                        <option value="car">Car only</option>
-                        <option value="motorcycle">Motorcycle only</option>
-                    </select>
-                    <div class="form-hint">A motorcycle has no aircon and most cars are not CVT. Services set to one
-                        type are not offered for the other, on the website and when a booking is submitted.</div>
+                    <div class="form-hint" style="margin-top:0;">A motorcycle has no aircon, and a manual gearbox has no
+                        CVT fluid to change. A service narrowed to one vehicle type or one transmission is not offered
+                        for the other — on the website, in the portal, and when a booking is submitted.</div>
                 </div>
                 <div class="form-group" style="margin-bottom:0;">
                     <label class="form-label">Description</label>
@@ -616,6 +670,10 @@ function openEditService(btn) {
     document.getElementById('editServiceName').value         = btn.dataset.name;
     document.getElementById('editServiceCategory').value     = btn.dataset.category;
     document.getElementById('editServiceVehicleType').value  = btn.dataset.vehicleType || '';
+    // '' is the "Both" option, which posts back as NULL — a null column and
+    // an unset select have to be the same thing in both directions or a save
+    // would narrow a service nobody narrowed.
+    document.getElementById('editServiceTransmission').value = btn.dataset.transmission || '';
     document.getElementById('editServiceDuration').value     = btn.dataset.duration;
     document.getElementById('editServicePrice').value        = btn.dataset.price;
     document.getElementById('editServiceDescription').value  = btn.dataset.description;

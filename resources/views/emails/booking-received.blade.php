@@ -18,6 +18,13 @@ Thanks for booking with APX Motors Service Center. Your request is in and is **w
 
 @component('mail::panel')
 **Service:** {{ $booking->service_list }}
+{{-- See booking-confirmed: the snapshot, not the vehicle record. It matters
+     most here — the request has not been priced or scheduled yet, so this is
+     the cheapest moment for the customer to tell us the transmission is
+     wrong. --}}
+@if ($booking->vehicle_profile)
+**Vehicle:** {{ $booking->vehicle?->make_model ?: $booking->vehicle_type_label }} ({{ $booking->vehicle_profile }})
+@endif
 **Requested date:** {{ \Carbon\Carbon::parse($booking->booking_date)->format('F d, Y') }}
 **Requested time:** {{ \Carbon\Carbon::parse($booking->booking_time)->format('g:i A') }}
 **Status:** Pending review ⏳

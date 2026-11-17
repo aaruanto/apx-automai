@@ -209,6 +209,22 @@ class BookingAvailability
             $attributes['duration']          = $duration;
             $attributes['reference_number'] ??= $this->nextReference();
 
+            // What the vehicle is, recorded onto the booking.
+            //
+            // Here rather than in the three controllers, for the reason every
+            // other shared rule ended up here: customer, admin and guest all
+            // come through reserve(), so one line covers all three and there
+            // are no copies to drift apart — and a fourth booking path
+            // written next year cannot forget it, because it cannot create a
+            // booking without coming through this method.
+            //
+            // A caller may still pass its own values, and the admin walk-in
+            // path does: it creates the vehicle and the booking in the same
+            // request, and what the admin selected on the form is the better
+            // answer than re-reading the row. Only filled in when absent, so
+            // this never overrides a caller that knows better.
+            $this->snapshotVehicle($attributes);
+
             $booking = Booking::create($attributes);
 
             // Inside the same transaction, so a failure here rolls the booking
@@ -217,6 +233,48 @@ class BookingAvailability
 
             return $booking;
         });
+    }
+
+    /**
+     * Fill in the booking's vehicle snapshot from the vehicle it names.
+     *
+     * Mutates $attributes in place, and only where a key is missing or null —
+     * see the call site for why a caller's own values win.
+     *
+     * A vehicle_id that names nothing leaves both columns null rather than
+     * throwing. The foreign key will refuse the insert a moment later with a
+     * better message than anything this method could raise, and a snapshot
+     * helper is the wrong place to be deciding whether a booking is valid.
+     */
+    private function snapshotVehicle(array &$attributes): void
+    {
+        // A blank select posts an empty string, which is not an answer. Drop
+        // it so ??= below treats it as the absence it is, rather than storing
+        // '' and then declining to replace it.
+        foreach (['vehicle_type', 'transmission'] as $key) {
+            if (isset($attributes[$key]) && $attributes[$key] === '') {
+                $attributes[$key] = null;
+            }
+        }
+
+        if (! empty($attributes['vehicle_type']) && ! empty($attributes['transmission'])) {
+            return;
+        }
+
+        $vehicle = ! empty($attributes['vehicle_id'])
+            // withTrashed: the admin and guest paths both restore a
+            // soft-deleted vehicle rather than duplicating it, and the restore
+            // and the booking happen in the same request — so a plain lookup
+            // here could miss a row that is about to be perfectly valid.
+            ? \App\Models\Vehicle::withTrashed()->find($attributes['vehicle_id'])
+            : null;
+
+        if (! $vehicle) {
+            return;
+        }
+
+        $attributes['vehicle_type'] ??= $vehicle->vehicle_type;
+        $attributes['transmission'] ??= $vehicle->transmission;
     }
 
     /**

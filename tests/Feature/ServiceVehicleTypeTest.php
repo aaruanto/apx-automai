@@ -55,7 +55,7 @@ it('uses one implementation for services, bundles and rules', function () {
     // needed a third. A single trait is what stops them disagreeing.
     foreach ([Service::class, Bundle::class, \App\Models\MaintenanceRule::class] as $model) {
         expect(in_array(
-            \App\Models\Concerns\AppliesToVehicleType::class,
+            \App\Models\Concerns\AppliesToVehicle::class,
             class_uses_recursive($model),
             true
         ))->toBeTrue("{$model} should use the shared trait");

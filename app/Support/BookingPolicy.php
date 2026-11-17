@@ -48,33 +48,89 @@ class BookingPolicy
     /**
      * The chosen services that are not offered for this vehicle.
      *
-     * services.vehicle_type follows the same convention as bundles and
-     * maintenance rules — null applies to everything — and the comparison
-     * itself lives in one place, AppliesToVehicleType.
+     * services.vehicle_type and services.transmission follow the same
+     * convention as bundles and maintenance rules — null applies to
+     * everything — and the comparison itself lives in one place,
+     * AppliesToVehicle.
      *
-     * Both booking paths hide these in the UI, which is presentation, not
-     * enforcement: the browser decides what to post and is not trusted.
+     * All three booking paths hide these in the UI, which is presentation,
+     * not enforcement: the browser decides what to post and is not trusted.
+     *
      * A null type means no vehicle has been identified yet, so there is
-     * nothing to check against and nothing is refused here.
+     * nothing to check against and nothing is refused. $transmission is
+     * independently optional for a different reason: the column is nullable
+     * and plenty of vehicles predate it, so "not recorded" must not refuse a
+     * booking that was fine yesterday. The trait reads both absences as "do
+     * not narrow on this".
      *
      * @return Collection<int, \App\Models\Service>
      */
-    public static function servicesNotFor(Collection $services, ?string $vehicleType): Collection
-    {
-        if ($vehicleType === null || $vehicleType === '') {
+    public static function servicesNotFor(
+        Collection $services,
+        ?string $vehicleType,
+        ?string $transmission = null
+    ): Collection {
+        $noType         = $vehicleType === null || $vehicleType === '';
+        $noTransmission = $transmission === null || $transmission === '';
+
+        if ($noType && $noTransmission) {
             return collect();
         }
 
-        return $services->reject(fn ($service) => $service->suitsVehicleType($vehicleType))->values();
+        return $services
+            ->reject(fn ($service) => $service->suitsVehicle(
+                $noType ? null : $vehicleType,
+                $noTransmission ? null : $transmission
+            ))
+            ->values();
     }
 
-    /** Names the work rather than the rule, so the customer knows what to drop. */
-    public static function wrongVehicleMessage(Collection $offending, ?string $vehicleType): string
-    {
-        $kind = $vehicleType === 'motorcycle' ? 'motorcycles' : 'cars';
+    /**
+     * Names the work rather than the rule, so the customer knows what to drop.
+     *
+     * Says which of the two conditions each service failed, because "not
+     * offered for cars" on an automatic-only service sent customers back to
+     * the vehicle type to change something that was already right. Where a
+     * service fails both, the type is named: it is the coarser fact and the
+     * one more likely to be the real mistake.
+     */
+    public static function wrongVehicleMessage(
+        Collection $offending,
+        ?string $vehicleType,
+        ?string $transmission = null
+    ): string {
+        $byType = $offending->reject(fn ($service) => $service->suitsVehicleType($vehicleType));
+        $byGear = $offending->reject(fn ($service) => $service->suitsTransmission($transmission))
+                            ->reject(fn ($service) => $byType->contains('id', $service->id));
 
-        return $offending->pluck('name')->join(', ', ' and ')
-            .($offending->count() === 1 ? ' is' : ' are')
-            .' not offered for '.$kind.'. Please remove it and try again.';
+        $parts = [];
+
+        if ($byType->isNotEmpty()) {
+            $kind = $vehicleType === 'motorcycle' ? 'motorcycles' : 'cars';
+
+            $parts[] = $byType->pluck('name')->join(', ', ' and ')
+                .($byType->count() === 1 ? ' is' : ' are')
+                .' not offered for '.$kind.'.';
+        }
+
+        if ($byGear->isNotEmpty()) {
+            $gear = $transmission === 'manual' ? 'manual' : 'automatic';
+
+            $parts[] = $byGear->pluck('name')->join(', ', ' and ')
+                .($byGear->count() === 1 ? ' is' : ' are')
+                .' not offered for '.$gear.' vehicles.';
+        }
+
+        // A service can land here without failing either check only if the
+        // caller passed a collection it did not get from servicesNotFor().
+        // Keep the old wording rather than returning an empty sentence.
+        if ($parts === []) {
+            $parts[] = $offending->pluck('name')->join(', ', ' and ')
+                .($offending->count() === 1 ? ' is' : ' are')
+                .' not offered for this vehicle.';
+        }
+
+        return implode(' ', $parts)
+            .' Please remove '.($offending->count() === 1 ? 'it' : 'them').' and try again.';
     }
 }

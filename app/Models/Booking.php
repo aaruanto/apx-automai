@@ -49,6 +49,10 @@ class Booking extends Model
 
     protected $fillable = [
         'user_id', 'vehicle_id', 'service_id', 'bundle_id', 'bundle_price',
+        // What the vehicle was when it was booked. Snapshotted rather than
+        // read through the relation, for the same reason as
+        // booking_service.price — see the migration.
+        'vehicle_type', 'transmission',
         'list_price', 'discount_percent', 'discount_amount',
         'points_earned', 'points_spent', 'points_discount', 'mechanic_id',
         'booking_date', 'booking_time', 'duration', 'status', 'notes', 'reference_number',
@@ -245,6 +249,50 @@ class Booking extends Model
 
             return $this->service->name ?? 'N/A';
         });
+    }
+
+    /** 'Car' or 'Motorcycle', as recorded on the booking. */
+    protected function vehicleTypeLabel(): Attribute
+    {
+        return Attribute::get(fn () => match ($this->vehicle_type) {
+            'motorcycle' => 'Motorcycle',
+            'car'        => 'Car',
+            // Null only for a booking written outside reserve() — a fixture,
+            // or a row from before the snapshot existed that had no vehicle
+            // left to backfill from. Honest rather than guessed at.
+            default      => null,
+        });
+    }
+
+    /** 'Manual', 'Automatic', or null when it was never recorded. */
+    protected function transmissionLabel(): Attribute
+    {
+        return Attribute::get(fn () => match ($this->transmission) {
+            'manual'    => 'Manual',
+            'automatic' => 'Automatic',
+            default     => null,
+        });
+    }
+
+    /**
+     * "Car · Automatic" — the vehicle as it was when this was booked.
+     *
+     * From the booking's own snapshot, never through the vehicle relation, so
+     * a customer correcting their car in their garage next March does not
+     * rewrite what last week's booking says. Drops whichever half is not
+     * recorded rather than printing a placeholder, so an old booking reads
+     * "Car" and not "Car · Unknown".
+     *
+     * Composed here because six screens want it — the confirm step, both
+     * emails, the admin list and detail modal, the queue board, the customer
+     * cards and two CSV exports — and the last time something this shape was
+     * left to each screen, four of them did it differently.
+     */
+    protected function vehicleProfile(): Attribute
+    {
+        return Attribute::get(fn () => collect([$this->vehicle_type_label, $this->transmission_label])
+            ->filter()
+            ->implode(' · '));
     }
 
     public function service()

@@ -239,10 +239,41 @@
                                     {{-- Recorded rather than assumed: the column
                                          defaults to "car", so every motorcycle
                                          a walk-in brought in was filed as one. --}}
-                                    <select class="form-control" name="car_type">
+                                    <select class="form-control" name="car_type" id="adminCarType">
                                         <option value="car" {{ old('car_type', 'car') === 'car' ? 'selected' : '' }}>Car</option>
                                         <option value="motorcycle" {{ old('car_type') === 'motorcycle' ? 'selected' : '' }}>Motorcycle</option>
                                     </select>
+                                @endif
+                            </div>
+                        </div>
+                        {{-- Transmission.
+
+                             Blank is a real answer and the default. The
+                             column is nullable because there is no honest
+                             value for a vehicle nobody asked about, and the
+                             same holds at the counter: a walk-in who has not
+                             been asked should be recorded as not asked, not
+                             as a guess. Nothing filters on blank, so the full
+                             service list stays available.
+
+                             Read-only on edit, like the rest of this card: a
+                             transmission belongs to the vehicle, and update()
+                             does not write vehicle columns. --}}
+                        <div class="form-row cols-2">
+                            <div class="form-group">
+                                <label class="form-label">Transmission</label>
+                                @if ($isEdit)
+                                    <input class="form-control" type="text" disabled
+                                           value="{{ $src->vehicle?->transmission_label ?? 'Not recorded' }}"
+                                           style="opacity:.65;cursor:not-allowed;" />
+                                @else
+                                    <select class="form-control" name="car_transmission" id="adminCarTransmission">
+                                        <option value="" {{ old('car_transmission') ? '' : 'selected' }}>Not recorded</option>
+                                        <option value="manual" {{ old('car_transmission') === 'manual' ? 'selected' : '' }}>Manual</option>
+                                        <option value="automatic" {{ old('car_transmission') === 'automatic' ? 'selected' : '' }}>Automatic</option>
+                                    </select>
+                                    <div class="form-hint">Decides which gearbox services are offered below. Leave as
+                                        Not recorded if nobody has checked.</div>
                                 @endif
                             </div>
                         </div>
@@ -315,7 +346,14 @@
                                     {{ $category ?: 'Other' }}
                                 </div>
                                     @foreach($group as $svc)
-                                    <label style="display:flex;align-items:center;gap:9px;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:.85rem;"
+                                    {{-- data-vehicle and data-transmission drive
+                                         the filter below. Empty means the
+                                         service applies to everything, which
+                                         is what NULL in the column means. --}}
+                                    <label class="svc-option"
+                                           data-vehicle="{{ $svc->vehicle_type }}"
+                                           data-transmission="{{ $svc->transmission }}"
+                                           style="display:flex;align-items:center;gap:9px;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:.85rem;"
                                            onmouseover="this.style.background='var(--surface-2,rgba(0,0,0,.03))'"
                                            onmouseout="this.style.background='none'">
                                         <input type="checkbox" name="service_ids[]" value="{{ $svc->id }}"
@@ -675,6 +713,77 @@ function refreshServiceSummary() {
 
 serviceBoxes().forEach(b => b.addEventListener('change', refreshServiceSummary));
 refreshServiceSummary();
+
+/* ── Narrow the service list to the vehicle ───────────────────────────────
+   The vehicle card sits above the service picker on this form, which is the
+   order the booking actually depends on: which services apply is decided by
+   what the customer drives. Changing either select hides the work that does
+   not apply and unticks it if it was already ticked.
+
+   Display only, and deliberately not a refusal. Unlike the customer-facing
+   paths, the admin side does not block a mismatch on the server: the person
+   at the counter has the vehicle in front of them and may legitimately know
+   better than the catalogue — a service narrowed last month, a car that is an
+   exception. Hiding it keeps the common case honest without the shop having
+   to argue with its own software. The booking records what was chosen either
+   way, on its own vehicle_type and transmission columns.
+
+   Both selects are absent on the edit screen, where the vehicle is read-only,
+   so this whole block no-ops there. */
+(function () {
+    const typeSel  = document.getElementById('adminCarType');
+    const transSel = document.getElementById('adminCarTransmission');
+    if (!typeSel && !transSel) return;
+
+    function narrowServices() {
+        const type  = typeSel ? typeSel.value : '';
+        const trans = transSel ? transSel.value : '';
+        let untickedAny = false;
+
+        document.querySelectorAll('#servicePicker .svc-option').forEach(function (opt) {
+            const svcType  = opt.dataset.vehicle || '';
+            const svcTrans = opt.dataset.transmission || '';
+
+            // Empty on either side means "no restriction", matching the
+            // columns and AppliesToVehicle.
+            const suits = (!svcType  || !type  || svcType  === type)
+                       && (!svcTrans || !trans || svcTrans === trans);
+
+            opt.style.display = suits ? 'flex' : 'none';
+
+            if (!suits) {
+                const box = opt.querySelector('input[type="checkbox"]');
+                if (box && box.checked) { box.checked = false; untickedAny = true; }
+            }
+        });
+
+        // A category heading with nothing under it reads as a category with
+        // no services, which is not what has happened.
+        let heading = null;
+        let shown   = 0;
+        Array.from(document.getElementById('servicePicker').children).forEach(function (el) {
+            if (el.classList.contains('svc-option')) {
+                if (el.style.display !== 'none') shown++;
+                return;
+            }
+            if (heading) heading.style.display = shown ? '' : 'none';
+            heading = el;
+            shown   = 0;
+        });
+        if (heading) heading.style.display = shown ? '' : 'none';
+
+        // Re-total and re-check the slot: unticking changes how long the
+        // booking occupies the bay, which changes which slots are open.
+        if (untickedAny) refreshServiceSummary();
+    }
+
+    if (typeSel)  typeSel.addEventListener('change', narrowServices);
+    if (transSel) transSel.addEventListener('change', narrowServices);
+
+    // Once on load, so a rebook or a refused submit comes back already
+    // narrowed to the vehicle it is carrying.
+    narrowServices();
+})();
 
 // The submit button is driven by FormValidate, which does not know about the
 // checkbox group, so the service rule is enforced here as well.

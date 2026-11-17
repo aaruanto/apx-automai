@@ -48,6 +48,12 @@ class GuestBookingController extends Controller
             'vehicle_year'   => 'required|integer|min:2000',
             'vehicle_plate'  => PlateNumber::rules(),
             'vehicle_type'   => 'nullable|in:car,motorcycle',
+            // Nullable, not required: the wizard asks for it on step 1 and a
+            // customer who genuinely does not know should still be able to
+            // book. NULL reads as "applies to both" everywhere it is
+            // compared, so the only thing an unanswered transmission costs is
+            // that no transmission-specific service can be refused for it.
+            'transmission'   => 'nullable|in:manual,automatic',
         ], [
             ...PlateNumber::messages('vehicle_plate'),
         ]);
@@ -124,12 +130,16 @@ class GuestBookingController extends Controller
         // own vehicle_type, already checked above, and its contents are the
         // shop's choice rather than the customer's.
         if (! $bundle) {
-            $wrongVehicle = BookingPolicy::servicesNotFor($services, $request->vehicle_type);
+            $wrongVehicle = BookingPolicy::servicesNotFor(
+                $services, $request->vehicle_type, $request->transmission
+            );
 
             if ($wrongVehicle->isNotEmpty()) {
                 return response()->json([
                     'success' => false,
-                    'message' => BookingPolicy::wrongVehicleMessage($wrongVehicle, $request->vehicle_type),
+                    'message' => BookingPolicy::wrongVehicleMessage(
+                        $wrongVehicle, $request->vehicle_type, $request->transmission
+                    ),
                 ], 422);
             }
         }
@@ -218,6 +228,20 @@ class GuestBookingController extends Controller
                     $vehicle->restore();
                 }
 
+                // A returning guest telling us something we did not know.
+                //
+                // Fills a blank only. Their saved record is the authority on
+                // their own car — the booking form prefills from it and asks
+                // them to confirm — so this can add the transmission to a
+                // vehicle registered before the shop asked, and can never
+                // overwrite one they have already set. Nothing else about the
+                // vehicle is touched here, for the same reason.
+                if ($vehicle
+                    && $vehicle->transmission === null
+                    && in_array($request->transmission, ['manual', 'automatic'], true)) {
+                    $vehicle->update(['transmission' => $request->transmission]);
+                }
+
                 if (! $vehicle) {
                     $vehicle = Vehicle::create([
                         'user_id'      => $user->id,
@@ -225,6 +249,10 @@ class GuestBookingController extends Controller
                         'make'         => $request->vehicle_make,
                         'model'        => $request->vehicle_model,
                         'vehicle_type' => in_array($request->vehicle_type, ['car', 'motorcycle']) ? $request->vehicle_type : 'car',
+                        // No fallback, unlike vehicle_type: there is no
+                        // majority to guess at, and a wrong value here sends
+                        // the customer a quote for the wrong gearbox work.
+                        'transmission' => in_array($request->transmission, ['manual', 'automatic']) ? $request->transmission : null,
                         'year'         => $request->vehicle_year,
                         'color'        => null,
                     ]);

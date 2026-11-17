@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class Bundle extends Model
 {
-    use \App\Models\Concerns\AppliesToVehicleType, HasFactory, SoftDeletes;
+    use \App\Models\Concerns\AppliesToVehicle, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'name', 'description', 'price', 'is_active',

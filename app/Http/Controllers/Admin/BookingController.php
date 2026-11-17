@@ -92,6 +92,10 @@ class BookingController extends Controller
             'car_model'      => 'nullable|string|max:100',
             'car_year'       => 'nullable|integer|min:1990|max:'.(date('Y') + 1),
             'car_type'       => 'nullable|in:car,motorcycle',
+            // A walk-in may not know, or may not be asked, so nullable — but
+            // the booking records whatever was said, because it decides which
+            // gearbox services were legitimate to put on it.
+            'car_transmission' => 'nullable|in:manual,automatic',
 
             // Was not validated at all — read only as a firstOrCreate default,
             // so a malformed address went into the users table and an address
@@ -249,7 +253,25 @@ class BookingController extends Controller
                 'model'        => $request->car_model ?: '',
                 'year'         => $request->car_year ?: null,
                 'vehicle_type' => $request->car_type ?: 'car',
+                // No fallback. 'car' is a safe guess for a type; neither
+                // transmission is a safe guess for a gearbox.
+                'transmission' => $request->car_transmission ?: null,
             ]);
+        }
+
+        // The counter learning something the record did not have.
+        //
+        // Fills a blank only, and never overwrites. Every vehicle registered
+        // before the shop started asking has no transmission on file, and the
+        // person standing at the counter with the car in front of them is the
+        // best source there will ever be for it — but if the customer has
+        // already set it from their own garage, that is theirs and stands.
+        //
+        // The same rule as the guest booking path, deliberately: a plate
+        // arriving through either door should end up with the same record.
+        if ($vehicle->transmission === null
+            && in_array($request->car_transmission, ['manual', 'automatic'], true)) {
+            $vehicle->update(['transmission' => $request->car_transmission]);
         }
 
         // Is the chosen mechanic already busy then?
@@ -1062,7 +1084,7 @@ class BookingController extends Controller
     {
         return CsvExport::stream(
             CsvExport::filename('bookings'),
-            ['Reference', 'Customer', 'Service', 'Date', 'Time', 'Status', 'Booked On'],
+            ['Reference', 'Customer', 'Vehicle Type', 'Transmission', 'Service', 'Date', 'Time', 'Status', 'Booked On'],
             $this->bookingRows(Booking::with(['user', 'service', 'vehicle', 'services'])->latest()->cursor())
         );
     }
@@ -1072,7 +1094,7 @@ class BookingController extends Controller
     {
         return CsvExport::stream(
             CsvExport::filename('cancelled-bookings'),
-            ['Reference', 'Customer', 'Service', 'Date', 'Time', 'Status', 'Booked On'],
+            ['Reference', 'Customer', 'Vehicle Type', 'Transmission', 'Service', 'Date', 'Time', 'Status', 'Booked On'],
             $this->bookingRows(
                 Booking::with(['user', 'service', 'vehicle', 'services'])->where('status', 'cancelled')->latest()->cursor()
             )
@@ -1092,6 +1114,17 @@ class BookingController extends Controller
             yield [
                 $b->reference_number,
                 $b->user->name ?? 'N/A',
+                // The kind of vehicle and its gearbox, from the booking's own
+                // snapshot — so a file exported last month still says what
+                // was booked then.
+                //
+                // "Vehicle Type", not "Vehicle". A Vehicle column holding the
+                // make, model and plate was deliberately taken out of every
+                // export, and the header has to stay distinguishable from
+                // that one: this is 'Car' or 'Motorcycle' and identifies
+                // nobody, which is exactly why it is allowed back in.
+                $b->vehicle_type_label ?? '',
+                $b->transmission_label ?? '',
                 $b->service_list,
                 $b->booking_date,
                 $b->booking_time,

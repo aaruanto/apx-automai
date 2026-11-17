@@ -35,6 +35,7 @@ class MessageTemplate
         '{time}'       => 'Booking time, e.g. 9:00 AM',
         '{plate}'      => 'Vehicle plate number',
         '{vehicle}'    => 'Make, model and year',
+        '{transmission}' => 'Manual or Automatic, or blank if not recorded',
         '{reference}'  => 'Booking reference',
         '{branch}'     => 'Branch name',
         '{contact}'    => 'Shop contact number',
@@ -103,6 +104,13 @@ class MessageTemplate
             '{vehicle}'    => trim(preg_replace('/\s+/', ' ',
                 ($vehicle->make ?? '').' '.($vehicle->model ?? '').' '.($vehicle->year ?? '')
             )),
+            // From the booking's snapshot rather than the vehicle, like every
+            // other record of what was booked, and GSM-7 safe without help:
+            // 'Manual' and 'Automatic' are plain ASCII. Empty rather than
+            // "Unknown" when it was never recorded — a text is 160
+            // characters and a word that says nothing is not worth any of
+            // them. Any template using it should expect it to be blank.
+            '{transmission}' => $booking->transmission_label ?? '',
             '{reference}'  => $booking->reference_number ?? '#BK-'.str_pad((string) $booking->id, 4, '0', STR_PAD_LEFT),
             '{branch}'     => config('apx.branch_name', 'APX Motors — Tandang Sora'),
             '{contact}'    => config('apx.contact_number', ''),

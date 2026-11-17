@@ -617,6 +617,27 @@
                                 </select>
                             </div>
                         </div>
+                        {{-- Optional, and the blank option is the default.
+
+                             vehicles.transmission is nullable because there
+                             was no honest value to give the vehicles already
+                             on record, and the same reasoning applies to a
+                             customer who is not sure: NULL means "not
+                             recorded", nothing filters on it, and the shop
+                             checks when the car arrives. Defaulting to one or
+                             the other would hide the gearbox service they
+                             came for, with no sign of why. --}}
+                        <div class="m-form-group">
+                            <label class="m-label">Transmission</label>
+                            <div class="m-input-wrap"><i class="fas fa-gears"></i>
+                                <select class="m-control" id="avfTransmission">
+                                    <option value="">Not sure</option>
+                                    <option value="manual">Manual</option>
+                                    <option value="automatic">Automatic</option>
+                                </select>
+                            </div>
+                            <div class="m-hint">Lets us show you the right gearbox services. Leave it if you are not sure.</div>
+                        </div>
                         {{-- One field called "Make & Model" used to post the
                              whole string as the make and an empty model, so a
                              vehicle added here had nothing in vehicles.model
@@ -1052,6 +1073,43 @@
                             <button class="modal-close" onclick="closeModal()"><i class="fas fa-xmark"></i></button>
                         </div>
                         <div class="modal-body">
+                            {{-- The vehicle first.
+
+                                 It used to sit below the date, the time and
+                                 the phone number, which made the dependency
+                                 run backwards: which services apply is
+                                 decided by the car, so asking last meant a
+                                 customer could fill the whole form in and
+                                 then be told the work they had chosen is not
+                                 offered for the vehicle they picked.
+
+                                 A signed-in customer does not retype any of
+                                 this — their vehicles are on record, so this
+                                 is a choice between them, and the type and
+                                 transmission are read back from the one they
+                                 pick for them to confirm rather than enter. --}}
+                            <div class="m-form-group">
+                                <label class="m-label required" for="mVehicleSelect">Select Vehicle</label>
+                                <div class="m-input-wrap"><i class="fas fa-car"></i>
+                                    <select class="m-control m-select" id="mVehicleSelect">
+                                        <option value="">— Choose a registered vehicle —</option>
+                                    </select>
+                                </div>
+                                {{-- Read back from the vehicle record, not
+                                     entered here: a booking should not be the
+                                     place a customer corrects their car. The
+                                     link goes where it can be corrected. --}}
+                                <div class="m-vehicle-hint" id="mVehicleProfile" style="display:none;">
+                                    <i class="fas fa-gears" style="font-size:0.68rem;color:var(--red);"></i>
+                                    <span id="mVehicleProfileText"></span>
+                                    <a onclick="switchSection(null,'vehicles'); closeModal()">Change in My Vehicles</a>
+                                </div>
+                                <div class="m-vehicle-hint">
+                                    <i class="fas fa-circle-info" style="font-size:0.68rem;color:var(--red);"></i>
+                                    Vehicle not listed? <a onclick="switchSection(null,'vehicles'); closeModal()">Add it in My Vehicles</a>
+                                </div>
+                            </div>
+
                             <div class="modal-service-chip">
                                 <i class="fas fa-wrench" id="modalServiceIcon"></i>
                                 <div>
@@ -1128,18 +1186,6 @@
                                 <div class="m-vehicle-hint" id="mPhoneHint" style="display:none;">
                                     <i class="fas fa-circle-info" style="font-size:0.68rem;color:var(--red);"></i>
                                     No number saved. <a onclick="switchSection(null,'profile'); closeModal()">Edit number in My Profile</a>
-                                </div>
-                            </div>
-                            <div class="m-form-group">
-                                <label class="m-label required" for="mVehicleSelect">Select Vehicle</label>
-                                <div class="m-input-wrap"><i class="fas fa-car"></i>
-                                    <select class="m-control m-select" id="mVehicleSelect">
-                                        <option value="">— Choose a registered vehicle —</option>
-                                    </select>
-                                </div>
-                                <div class="m-vehicle-hint">
-                                    <i class="fas fa-circle-info" style="font-size:0.68rem;color:var(--red);"></i>
-                                    Vehicle not listed? <a onclick="switchSection(null,'vehicles'); closeModal()">Add it in My Vehicles</a>
                                 </div>
                             </div>
                             <div class="m-form-group">
@@ -1351,7 +1397,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             { match: /free.*inspect|basic.*inspect/i, cat:'free',       catLabel:'Free Service',       icon:'fa-clipboard-check',    duration:'20–30 min', free:true  },
         ];
         const defaults = { cat:'inspection', catLabel:'Inspection', icon:'fa-wrench', duration:'30–60 min', free:false };
-        const dbServices = {!! json_encode($services->map(fn($s) => ['id'=>$s->id,'name'=>$s->name,'desc'=>$s->description??'','duration'=>$s->duration,'price'=>(float)$s->price,'vehicle'=>$s->vehicle_type])->values()) !!};
+        const dbServices = {!! json_encode($services->map(fn($s) => ['id'=>$s->id,'name'=>$s->name,'desc'=>$s->description??'','duration'=>$s->duration,'price'=>(float)$s->price,'vehicle'=>$s->vehicle_type,'transmission'=>$s->transmission])->values()) !!};
         return dbServices.map((s, i) => {
             const meta = META_MAP.find(m => m.match.test(s.name)) || defaults;
             let dur = meta.duration;
@@ -1363,6 +1409,12 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                      // Raw values, for summing across several services.
                      // null means every vehicle, same convention as bundles.
                      vehicle:s.vehicle ?? null,
+                     // And null means both transmissions. Carried through
+                     // explicitly: leaving it off left serviceSuitsVehicle()
+                     // reading `undefined`, which is falsy, so the
+                     // transmission half of the filter quietly did nothing at
+                     // all while the vehicle-type half worked.
+                     transmission:s.transmission ?? null,
                      priceValue:s.price||0, durationValue:parseInt(s.duration)||0,
                      price:(s.price ? '₱'+Number(s.price).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}) : 'Free') };
         });
@@ -1476,6 +1528,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                             <span><i class="fas fa-clock"></i>${b.time}</span>
                             <span><i class="fas fa-user"></i>${esc(b.staff)}</span>
                             <span><i class="fas fa-car"></i>${esc(b.vehicle)}</span>
+                            ${b.vehicleProfile ? `<span><i class="fas fa-gears"></i>${esc(b.vehicleProfile)}</span>` : ''}
                         </div>
                         ${cancelBtn}
                         ${cancelNote}
@@ -1588,21 +1641,53 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         );
     }
 
+    /* The vehicle the modal is currently booking for, or null. */
+    function chosenVehicle() {
+        const sel = document.getElementById('mVehicleSelect');
+        if (!sel || !sel.value) return null;
+        return MY_VEHICLES.find(v => String(v.id) === String(sel.value)) || null;
+    }
+
+    /* Does this service apply to that vehicle?
+
+       Null on either side of either comparison means "no restriction" — the
+       convention the columns use, and the one AppliesToVehicle enforces on
+       the server. A vehicle with no recorded transmission is not narrowed on:
+       plenty were registered before the shop started asking, and refusing
+       those would break booking for customers who have done nothing wrong. */
+    function serviceSuitsVehicle(s, v) {
+        if (!s) return true;
+        const type  = v ? (v.type || 'car') : null;
+        const trans = v ? (v.transmission || null) : null;
+        if (s.vehicle && type && s.vehicle !== type) return false;
+        if (s.transmission && trans && s.transmission !== trans) return false;
+        return true;
+    }
+
     function renderExtras() {
         const list = document.getElementById('extrasList');
         if (!list || !selectedService) return;
 
+        // What was ticked before, so a re-render over a vehicle change does
+        // not quietly drop extras that are still perfectly valid.
+        const wasTicked = new Set(extraBoxes().filter(b => b.checked).map(b => b.value));
+
+        const vehicle = chosenVehicle();
+
         list.innerHTML = SERVICES
             .filter(s => s.dbId !== selectedService.dbId)
-            // Same rule the Services tab applies: only work at least one of
-            // their own vehicles could actually have. Without this the tab
-            // narrowed by vehicle but this list did not, so a customer with
-            // nothing but motorcycles could tick a car-only extra here, fill
-            // in a date and a time, and be refused at submit — the exact late
-            // failure the rest of this panel now avoids.
-            .filter(s => !s.vehicle
-                || !MY_VEHICLES.length
-                || MY_VEHICLES.some(v => (v.type || 'car') === s.vehicle))
+            // Narrowed to the vehicle actually chosen, now that the vehicle is
+            // chosen first. This used to be the best it could do before that
+            // was true — "work at least one of their vehicles could have" —
+            // which still offered a customer with a car and a bike the
+            // car-only work while they had the bike selected.
+            //
+            // With no vehicle chosen yet it falls back to that older, wider
+            // rule rather than showing nothing.
+            .filter(s => vehicle
+                ? serviceSuitsVehicle(s, vehicle)
+                : (!s.vehicle || !MY_VEHICLES.length
+                    || MY_VEHICLES.some(v => (v.type || 'car') === s.vehicle)))
             .map(s => `<label style="display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:6px;cursor:pointer;font-size:.82rem;">
                     <input type="checkbox" value="${s.dbId}" data-price="${s.priceValue ?? 0}" data-duration="${s.durationValue ?? 0}">
                     <span style="flex:1;">${esc(s.name)}</span>
@@ -1610,10 +1695,13 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                 </label>`)
             .join('');
 
-        extraBoxes().forEach(b => b.addEventListener('change', () => {
-            refreshBookingTotal();
-            if (typeof bookingPicker !== 'undefined') bookingPicker.refresh();
-        }));
+        extraBoxes().forEach(b => {
+            if (wasTicked.has(b.value)) b.checked = true;
+            b.addEventListener('change', () => {
+                refreshBookingTotal();
+                if (typeof bookingPicker !== 'undefined') bookingPicker.refresh();
+            });
+        });
     }
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -1815,48 +1903,109 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             sel.appendChild(opt);
         }
 
-        // The service is chosen before the vehicle here, so a customer with
-        // both a car and a bike can pick car-only work and then select the
-        // bike. Say so at that moment rather than letting them fill in the
-        // date, the time and the notes first and be refused at the end.
-        sel.onchange = function () {
-            const chosen = MY_VEHICLES.find(v => String(v.id) === String(sel.value));
-            if (!chosen) return;
+        sel.onchange = onVehicleChosen;
 
-            const type = chosen.type || 'car';
+        // Run it once for the vehicle that is already selected — their
+        // primary. Without this the extras list opened unfiltered and the
+        // readout was blank until the customer touched a select they had no
+        // reason to touch, since it was already showing the right car.
+        onVehicleChosen();
 
-            // The extras list is filtered to what SOME vehicle of theirs could
-            // have, which is all it can know before a vehicle is picked. A
-            // customer with both a car and a bike is still offered car-only
-            // work, so the check has to run again here, over everything that
-            // is actually on the booking — not just the service they opened.
-            const picked = [selectedService].concat(
-                extraBoxes()
-                    .filter(b => b.checked)
-                    .map(b => SERVICES.find(s => String(s.dbId) === String(b.value)))
-            ).filter(Boolean);
-
-            const offending = picked.filter(s => s.vehicle && s.vehicle !== type);
-            if (!offending.length) return;
-
-            // Names the work rather than the rule, so they know what to drop —
-            // the same shape as BookingPolicy::wrongVehicleMessage, which is
-            // what the server would say if this were posted anyway.
-            const names = offending.map(s => s.name).join(', ');
-
-            apxDialog({
-                type: 'warning',
-                title: 'Not offered for that vehicle',
-                msg: names + (offending.length === 1 ? ' is' : ' are')
-                     + ' only offered for '
-                     + (offending[0].vehicle === 'motorcycle' ? 'motorcycles' : 'cars')
-                     + '. Please choose a different vehicle, or remove '
-                     + (offending.length === 1 ? 'it' : 'them') + '.',
-                confirmLabel: 'OK',
-            });
-        };
         document.getElementById('bookingModal').classList.add('open');
         document.body.style.overflow = 'hidden';
+    }
+
+    /* The vehicle changed — or was read for the first time when the modal
+       opened. Three things follow from it, and they belong together because
+       each one is wrong on its own.
+
+       It shows what the record says the vehicle is, so a customer confirms it
+       rather than retyping it. It re-filters the extras to that vehicle. And
+       it says, at that moment, if anything already on the booking does not
+       apply — which is the whole point of asking for the vehicle first: being
+       told now rather than after choosing a date, a time and a phone number.
+
+       Not a silent removal. The primary service is the one the customer
+       clicked to get here, so taking it off would empty the modal they just
+       opened; they are told which work does not apply and choose whether to
+       change the vehicle or drop the work. The server refuses it either way
+       — Customer\DashboardController runs BookingPolicy over the request. */
+    function onVehicleChosen() {
+        const chosen  = chosenVehicle();
+        const readout = document.getElementById('mVehicleProfile');
+        const text    = document.getElementById('mVehicleProfileText');
+
+        if (readout && text) {
+            if (chosen) {
+                const type = (chosen.type || 'car') === 'motorcycle' ? 'Motorcycle' : 'Car';
+                const gear = chosen.transmission === 'manual' ? 'Manual'
+                           : chosen.transmission === 'automatic' ? 'Automatic'
+                           : null;
+                // Named plainly when it is not on record, because that is why
+                // no transmission-specific work is being filtered out.
+                text.textContent = gear
+                    ? type + ' · ' + gear + '. '
+                    : type + ' · transmission not on record. ';
+                readout.style.display = 'flex';
+            } else {
+                readout.style.display = 'none';
+            }
+        }
+
+        // Re-filter the extras to this vehicle, keeping whatever is still
+        // valid ticked, then re-total in case something ticked has gone.
+        renderExtras();
+        refreshBookingTotal();
+        if (typeof bookingPicker !== 'undefined') bookingPicker.refresh();
+
+        if (!chosen) return;
+
+        const picked = [selectedService].concat(
+            extraBoxes()
+                .filter(b => b.checked)
+                .map(b => SERVICES.find(s => String(s.dbId) === String(b.value)))
+        ).filter(Boolean);
+
+        const offending = picked.filter(s => !serviceSuitsVehicle(s, chosen));
+        if (!offending.length) return;
+
+        // Names the work rather than the rule, so they know what to drop, and
+        // says which of the two conditions it failed — "not offered for cars"
+        // on an automatic-only service sent people to change something that
+        // was already right. Same shape as
+        // BookingPolicy::wrongVehicleMessage, which is what the server says
+        // if this is posted anyway.
+        const type  = chosen.type || 'car';
+        const trans = chosen.transmission || null;
+        const byType = offending.filter(s => s.vehicle && s.vehicle !== type);
+        const byGear = offending.filter(s => !byType.includes(s));
+
+        const sentence = [];
+
+        if (byType.length) {
+            sentence.push(byType.map(s => s.name).join(', ')
+                + (byType.length === 1 ? ' is' : ' are')
+                + ' only offered for ' + (byType[0].vehicle === 'motorcycle' ? 'motorcycles' : 'cars') + '.');
+        }
+
+        if (byGear.length) {
+            // Named the same way round as the server does — what the vehicle
+            // IS, not what the service is for. The two have to agree: this is
+            // only the early warning, and BookingPolicy says the same thing
+            // if the booking is posted anyway.
+            sentence.push(byGear.map(s => s.name).join(', ')
+                + (byGear.length === 1 ? ' is' : ' are')
+                + ' not offered for ' + (trans || 'this') + ' vehicles.');
+        }
+
+        apxDialog({
+            type: 'warning',
+            title: 'Not offered for that vehicle',
+            msg: sentence.join(' ')
+                 + ' Please choose a different vehicle, or remove '
+                 + (offending.length === 1 ? 'it' : 'them') + '.',
+            confirmLabel: 'OK',
+        });
     }
 
     function closeModal() {
@@ -2212,6 +2361,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                     <div class="vehicle-plate">${esc(v.plate || 'No plate')}</div>
                     <div class="vehicle-meta-row">
                         <span><i class="fas ${v.type === 'motorcycle' ? 'fa-motorcycle' : 'fa-car'}"></i>${v.type === 'motorcycle' ? 'Motorcycle' : 'Car'}</span>
+                        ${v.transmission ? `<span><i class="fas fa-gears"></i>${v.transmission === 'manual' ? 'Manual' : 'Automatic'}</span>` : ''}
                         ${v.year  ? `<span><i class="fas fa-calendar"></i>${esc(v.year)}</span>` : ''}
                         ${v.color ? `<span><i class="fas fa-palette"></i>${esc(v.color)}</span>` : ''}
                         ${v.mileage ? `<span><i class="fas fa-gauge"></i>${Number(v.mileage).toLocaleString()} km</span>` : ''}
@@ -2260,6 +2410,10 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             setVehicleFormMode('add');
             ['avfMake','avfModel','avfYear','avfPlate','avfColor','avfMileage'].forEach(id => document.getElementById(id).value = '');
             document.getElementById('avfType').value = 'car';
+            // '' is the "Not sure" option, which posts as null. Blanking it
+            // on a fresh form rather than carrying over the last vehicle's
+            // answer, which would be a guess wearing a customer's clothes.
+            document.getElementById('avfTransmission').value = '';
             avfSyncTypeIcon();
             setTimeout(() => document.getElementById('avfMake').focus(), 100);
         }
@@ -2283,6 +2437,8 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         document.getElementById('avfPlate').value = (v.plate && v.plate !== 'Not provided') ? v.plate : '';
         document.getElementById('avfColor').value = v.color || '';
         document.getElementById('avfType').value  = v.type  || 'car';
+        // null reads back as "Not sure", which is what it means.
+        document.getElementById('avfTransmission').value = v.transmission || '';
         avfSyncTypeIcon();
         document.getElementById('avfMileage').value = v.mileage || '';
 
@@ -2299,6 +2455,9 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
 
     function saveNewVehicle() {
     const vtype = document.getElementById('avfType').value;
+    // '' for "Not sure", posted as null — the column means "not recorded",
+    // and an empty string there would be a transmission no vehicle has.
+    const vtrans = document.getElementById('avfTransmission').value || null;
     const make  = document.getElementById('avfMake').value.trim();
     const model = document.getElementById('avfModel').value.trim();
     const year  = document.getElementById('avfYear').value.trim();
@@ -2324,7 +2483,8 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         msg: `Please confirm the vehicle details:<br><br>
               <strong>Make / Model:</strong> ${[make, model].filter(Boolean).join(' ')}<br>
               <strong>Year:</strong> ${year}<br>
-              <strong>Plate:</strong> ${plate}${color ? '<br><strong>Color:</strong> ' + color : ''}`,
+              <strong>Plate:</strong> ${plate}<br>
+              <strong>Transmission:</strong> ${vtrans ? vtrans.charAt(0).toUpperCase() + vtrans.slice(1) : 'Not recorded'}${color ? '<br><strong>Color:</strong> ' + color : ''}`,
         confirmLabel: editing
             ? '<i class="fas fa-floppy-disk" style="margin-right:5px;"></i> Save Changes'
             : '<i class="fas fa-floppy-disk" style="margin-right:5px;"></i> Register',
@@ -2333,7 +2493,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             fetch(editing ? `/customer/vehicles/${editingVehicleId}` : '/customer/vehicles', {
                 method: editing ? 'PATCH' : 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                body: JSON.stringify({ brand: make, model, plate, year: parseInt(year), color, vehicle_type: vtype, mileage })
+                body: JSON.stringify({ brand: make, model, plate, year: parseInt(year), color, vehicle_type: vtype, transmission: vtrans, mileage })
             })
             .then(r => r.json().catch(() => ({})).then(d => ({ ok: r.ok, data: d })))
             .then(({ ok, data }) => {

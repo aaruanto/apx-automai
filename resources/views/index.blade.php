@@ -286,13 +286,15 @@
             var make  = document.getElementById('apx-sc-make').value;
             var model = document.getElementById('apx-sc-model').value;
             if (!make) { ApxAlertModal.show({ variant: 'error', title: 'Select a manufacturer', message: 'Please select a manufacturer first.' }); return; }
-            // Open modal then pre-fill vehicle on step 2
             var modal = new bootstrap.Modal(document.getElementById('bookingModal'));
             modal.show();
-            // Pre-fill vehicle after modal opens and grid renders
+            // Pre-fill the vehicle step, which is now the step the modal opens
+            // on — so what this card collected is visible straight away
+            // rather than waiting two screens to appear. The card asks for
+            // type, make and model but not transmission, so that one stays on
+            // "Not sure" for the customer to answer or leave.
             setTimeout(function() {
                 if (typeof apxPreFillVehicle === 'function') apxPreFillVehicle(vt, make, model);
-                // Jump straight to step 1 (services) — vehicle will be pre-filled when they reach step 2
             }, 200);
         };
 
@@ -1102,7 +1104,11 @@
         .apx-step-dot { width:22px; height:22px; border-radius:50%; border:2px solid #dee2e6; background:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#999; position:relative; z-index:1; }
         .apx-step-item.active .apx-step-dot { background:#e63946; border-color:#e63946; color:#fff; }
         .apx-step-item.done .apx-step-dot { background:#28a745; border-color:#28a745; color:#fff; }
-        .apx-step-lbl { font-size:11px; color:#aaa; font-family:'Ubuntu', sans-serif; }
+        /* text-align and a tight line-height because the bar went from three
+           steps to four: each label now has a quarter of a 560px modal — less
+           on a phone — and "Your details" wraps. Two centred short lines read
+           correctly; the default left alignment under a centred dot did not. */
+        .apx-step-lbl { font-size:11px; color:#aaa; font-family:'Ubuntu', sans-serif; text-align:center; line-height:1.25; padding:0 2px; }
         .apx-step-item.active .apx-step-lbl { color:#e63946; font-weight:600; }
         .apx-step-item.done .apx-step-lbl { color:#28a745; }
 
@@ -1291,14 +1297,20 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <h5 class="modal-title mb-0" id="bookingModalLabel" style="font-family:'Barlow',sans-serif; font-weight:700; color:#222;">Book a service</h5>
                             <div class="d-flex align-items-center gap-3">
-                                <span id="apx-step-label" style="font-size:0.78rem; color:#aaa;">Step 1 of 3</span>
+                                <span id="apx-step-label" style="font-size:0.78rem; color:#aaa;">Step 1 of 4</span>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                         </div>
+                        {{-- The vehicle comes first now, and that is the whole
+                             point of the reorder: which services are even on
+                             offer depends on what the customer drives, so
+                             asking afterwards meant choosing work and then
+                             being told some of it did not apply. --}}
                         <div class="apx-step-bar">
-                            <div class="apx-step-item active" id="apx-s1"><div class="apx-step-dot">1</div><span class="apx-step-lbl">Choose service</span></div>
-                            <div class="apx-step-item" id="apx-s2"><div class="apx-step-dot">2</div><span class="apx-step-lbl">Your details</span></div>
-                            <div class="apx-step-item" id="apx-s3"><div class="apx-step-dot">3</div><span class="apx-step-lbl">Confirm</span></div>
+                            <div class="apx-step-item active" id="apx-s1"><div class="apx-step-dot">1</div><span class="apx-step-lbl">Vehicle</span></div>
+                            <div class="apx-step-item" id="apx-s2"><div class="apx-step-dot">2</div><span class="apx-step-lbl">Service</span></div>
+                            <div class="apx-step-item" id="apx-s3"><div class="apx-step-dot">3</div><span class="apx-step-lbl">Your details</span></div>
+                            <div class="apx-step-item" id="apx-s4"><div class="apx-step-dot">4</div><span class="apx-step-lbl">Confirm</span></div>
                         </div>
                     </div>
                 </div>
@@ -1306,8 +1318,60 @@
                 <!-- body -->
                 <div class="modal-body" style="padding:20px 24px;">
 
-                    <!-- STEP 1: Services -->
+                    <!-- STEP 1: Vehicle -->
+                    {{-- First, because it decides what step 2 may offer.
+
+                         These fields used to sit at the bottom of "Your
+                         details", after the service had been chosen, which
+                         made the dependency run backwards: a customer picked
+                         an Aircon Performance Check, said "motorcycle" two
+                         screens later, and had the service taken off their
+                         booking by apxSetVtype. The same was about to be true
+                         of transmission, and more sharply — there are three
+                         gearbox services and they divide cleanly. --}}
                     <div id="apx-view-1">
+                        <h6 class="apx-path-heading">What are we working on?</h6>
+                        <p class="apx-path-sub">This decides which services we can offer you, so it comes first.</p>
+
+                        <label class="form-label required">Vehicle type</label>
+                        <div class="apx-vtype-toggle">
+                            <button type="button" class="apx-vtype-btn active" id="apx-vtype-car" onclick="apxSetVtype('car')" aria-pressed="true">Car</button>
+                            <button type="button" class="apx-vtype-btn" id="apx-vtype-moto" onclick="apxSetVtype('motorcycle')" aria-pressed="false">Motorcycle</button>
+                        </div>
+
+                        {{-- "Not sure" is a real answer, not a cop-out.
+
+                             vehicles.transmission and services.transmission
+                             are both nullable and NULL means "applies to
+                             both", so an unanswered transmission narrows
+                             nothing and the customer still sees every service.
+                             Forcing a guess would be worse than not asking:
+                             picking the wrong one hides the gearbox service
+                             they actually came for, and they would have no way
+                             of knowing why it had gone. --}}
+                        <label class="form-label">Transmission</label>
+                        <div class="apx-vtype-toggle">
+                            <button type="button" class="apx-vtype-btn" id="apx-vtrans-manual" onclick="apxSetVtrans('manual')" aria-pressed="false">Manual</button>
+                            <button type="button" class="apx-vtype-btn" id="apx-vtrans-auto" onclick="apxSetVtrans('automatic')" aria-pressed="false">Automatic</button>
+                            <button type="button" class="apx-vtype-btn active" id="apx-vtrans-none" onclick="apxSetVtrans('')" aria-pressed="true">Not sure</button>
+                        </div>
+                        <p style="font-size:0.75rem; color:#aaa; margin:-6px 0 14px;">
+                            Not sure? Leave it — we will check when you arrive. Telling us just means we can show
+                            you the right gearbox services now.
+                        </p>
+
+                        <div class="row g-2 mb-2">
+                            <div class="col-6"><label class="form-label required" for="apx-v-make">Manufacturer</label><select class="form-select" id="apx-v-make" onchange="apxOnMake()" required><option value="">Select manufacturer</option></select></div>
+                            <div class="col-6"><label class="form-label required" for="apx-v-model">Model</label><select class="form-select" id="apx-v-model" disabled onchange="apxOnModel()" required><option value="">Select model</option></select></div>
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6"><label class="form-label required" for="apx-v-year">Year</label><select class="form-select" id="apx-v-year" disabled required><option value="">Select year</option></select></div>
+                            <div class="col-6"><label class="form-label required" for="apx-v-plate">Plate number</label><input type="text" class="form-control" id="apx-v-plate" required placeholder="ABC 1234, 123 ABC or AB 12345"></div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2: Services -->
+                    <div id="apx-view-2" style="display:none;">
 
                         {{-- 1a — THE THREE PATHS
                              Most people booking a car in do not know what
@@ -1426,8 +1490,8 @@
                         </div>
                     </div>
 
-                    <!-- STEP 2: Details -->
-                    <div id="apx-view-2" style="display:none;">
+                    <!-- STEP 3: Your details -->
+                    <div id="apx-view-3" style="display:none;">
                         <div class="row g-2 mb-2">
                             <div class="col-6"><label class="form-label required" for="apx-f-name">Full name</label><input type="text" class="form-control" id="apx-f-name" placeholder="Juan dela Cruz" required></div>
                             <div class="col-6"><label class="form-label required" for="apx-f-email">Email</label><input type="email" class="form-control" id="apx-f-email" placeholder="juan@email.com" required></div>
@@ -1441,30 +1505,23 @@
                             <input type="hidden" id="apx-f-time">
                             <x-availability-picker id="guestAvp" />
                         </div>
-                        <p style="font-size:0.82rem; font-weight:700; color:#333; margin:0 0 10px; font-family:'Ubuntu',sans-serif;">Vehicle information</p>
-                        <div class="apx-vtype-toggle">
-                            <button class="apx-vtype-btn active" id="apx-vtype-car" onclick="apxSetVtype('car')">Car</button>
-                            <button class="apx-vtype-btn" id="apx-vtype-moto" onclick="apxSetVtype('motorcycle')">Motorcycle</button>
-                        </div>
-                        <div class="row g-2 mb-2">
-                            <div class="col-6"><label class="form-label required" for="apx-v-make">Manufacturer</label><select class="form-select" id="apx-v-make" onchange="apxOnMake()" required><option value="">Select manufacturer</option></select></div>
-                            <div class="col-6"><label class="form-label required" for="apx-v-model">Model</label><select class="form-select" id="apx-v-model" disabled onchange="apxOnModel()" required><option value="">Select model</option></select></div>
-                        </div>
-                        <div class="row g-2 mb-2">
-                            <div class="col-6"><label class="form-label required" for="apx-v-year">Year</label><select class="form-select" id="apx-v-year" disabled required><option value="">Select year</option></select></div>
-                            <div class="col-6"><label class="form-label required" for="apx-v-plate">Plate number</label><input type="text" class="form-control" id="apx-v-plate" required placeholder="ABC 1234, 123 ABC or AB 12345"></div>
-                        </div>
                         <div class="mt-2"><label class="form-label" for="apx-f-notes">Notes / special request</label><textarea class="form-control" id="apx-f-notes" rows="2" placeholder="Anything we should know?"></textarea></div>
                     </div>
 
-                    <!-- STEP 3: Confirm -->
-                    <div id="apx-view-3" style="display:none;">
+                    <!-- STEP 4: Confirm -->
+                    <div id="apx-view-4" style="display:none;">
                         <div class="apx-confirm-block">
                             <div class="apx-confirm-row"><span>Name</span><span id="apx-c-name">—</span></div>
                             <div class="apx-confirm-row"><span>Email</span><span id="apx-c-email">—</span></div>
                             <div class="apx-confirm-row"><span>Phone</span><span id="apx-c-phone">—</span></div>
                             <div class="apx-confirm-row"><span>Date &amp; Time</span><span id="apx-c-date">—</span></div>
                             <div class="apx-confirm-row"><span>Vehicle</span><span id="apx-c-vehicle">—</span></div>
+                            {{-- Its own row rather than folded into the line
+                                 above. It is what decides which gearbox work
+                                 was on offer, so it is the one thing on this
+                                 screen a customer should be able to notice is
+                                 wrong before they confirm. --}}
+                            <div class="apx-confirm-row"><span>Transmission</span><span id="apx-c-transmission">—</span></div>
                             <div class="apx-confirm-row"><span>Services</span><span id="apx-c-services">—</span></div>
                             <div class="apx-confirm-row"><span>Notes</span><span id="apx-c-notes">—</span></div>
                             <div class="apx-confirm-total"><span>Estimated total</span><span id="apx-c-total">—</span></div>
@@ -1572,6 +1629,8 @@
                 'category' => $s->category ?? 'General',
                 // Null means every vehicle, same convention as bundles.
                 'vehicle'  => $s->vehicle_type,
+                // Null means both transmissions, same convention as vehicle.
+                'transmission' => $s->transmission,
                 'price'    => (float) $s->price,
             ];
         })->values();
@@ -1640,7 +1699,21 @@
         // discount applies to the extras, and the answer is no.
         var selectedBundle = null;
         var vtype = 'car';
+        // '' is "not sure", which is NOT a third kind of transmission — it is
+        // the absence of an answer, and it posts as null. Nothing filters on
+        // it, which is the behaviour the nullable column already describes.
+        var vtrans = '';
         var step = 1;
+
+        // Which step each view belongs to. Four now: vehicle, service,
+        // details, confirm. Written down once because three separate places
+        // used to iterate a hardcoded list of view ids, and adding a step
+        // meant finding all three.
+        var VIEW_IDS = ['apx-view-1', 'apx-view-2', 'apx-view-3', 'apx-view-4'];
+        var STEP_IDS = ['apx-s1', 'apx-s2', 'apx-s3', 'apx-s4'];
+        var SERVICE_STEP = 2;
+        var DETAIL_STEP  = 3;
+        var CONFIRM_STEP = 4;
 
         var guestPicker = new AvailabilityPicker({
             root: '#guestAvp',
@@ -1677,7 +1750,17 @@
             // The estimate bar and Next button are meaningless on the menu
             // itself — there is nothing chosen yet to total or advance.
             document.getElementById('apx-estimate-bar').style.display = which === 'root' ? 'none' : '';
-            document.getElementById('apx-btn-next').style.visibility  = which === 'root' ? 'hidden' : 'visible';
+
+            // Only while the service step is the one on screen. This used to
+            // be unconditional, which was harmless when the service screen
+            // was step 1 — it is not now: apxOpenWithService() preselects a
+            // service and calls through here while step 1 (the vehicle) is
+            // showing, and that would have hidden the Next button on a step
+            // the customer has to get past.
+            if (step === SERVICE_STEP) {
+                document.getElementById('apx-btn-next').style.visibility = which === 'root' ? 'hidden' : 'visible';
+            }
+
             apxSyncBack();
 
             if (which === 'checkup') {
@@ -1696,11 +1779,15 @@
             apxUpdateEst();
         };
 
-        /* Back is shown whenever there is somewhere to go back to: a later
-           step, or a sub-screen of step 1. */
+        /* Back is shown whenever there is somewhere to go back to.
+
+           Simply "not on the first step" now. It used to also have to ask
+           whether a step-1 sub-screen was open, because the service screen
+           with its four paths WAS step 1; the vehicle step is, and it has no
+           sub-screens. */
         function apxSyncBack() {
             document.getElementById('apx-btn-back').style.visibility =
-                (step > 1 || pathView !== 'root') ? 'visible' : 'hidden';
+                step > 1 ? 'visible' : 'hidden';
         }
 
         function apxStartCheckup() {
@@ -1803,9 +1890,18 @@
                 // The maintenance screen offers packages only.
                 if (showBundles) return;
 
-                // Cars do not need a CVT service and bikes have no aircon.
-                // Same rule as the bundle filter above: null means all.
+                // Bikes have no aircon, and a manual gearbox has no CVT
+                // fluid to change. Same rule as the bundle filter above:
+                // null on the service means "all", and an unanswered
+                // transmission on the customer's side narrows nothing — so
+                // "Not sure" shows everything rather than nothing.
+                //
+                // Convenience only. GuestBookingController runs the same two
+                // comparisons on the request through BookingPolicy, and that
+                // is the one that actually decides; this just means the
+                // customer never picks work we would have to refuse.
                 if (s.vehicle && s.vehicle !== vtype) return;
+                if (vtrans && s.transmission && s.transmission !== vtrans) return;
 
                 if (pathView === 'browse') {
                     if (catFilter && s.category !== catFilter) return;
@@ -1920,10 +2016,12 @@
                 note.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
             }
 
-            // Only ever disabled on step 1: steps 2 and 3 have their own
-            // reasons to stop, and an empty selection keeps the button live so
-            // its existing "choose a service" message still fires.
-            next.disabled = blocked && step === 1;
+            // Only ever disabled on the service step: the other three have
+            // their own reasons to stop, and an empty selection keeps the
+            // button live so its existing "choose a service" message still
+            // fires. This said `step === 1` while the service list WAS step 1
+            // — unchanged in meaning, moved in number.
+            next.disabled = blocked && step === SERVICE_STEP;
         }
 
         /* The guest nudge. Quotes the actual peso saving on what is selected,
@@ -1962,7 +2060,17 @@
             // Open modal
             var modal = new bootstrap.Modal(document.getElementById('bookingModal'));
             modal.show();
-            // After grid is built, select the card
+            // After grid is built, select the card.
+            //
+            // The modal still opens on step 1, the vehicle — deliberately,
+            // and it is the one place this reorder costs something. Tapping a
+            // service on the page used to land straight on it; now there is a
+            // screen in between. The alternative is worse: which services are
+            // on offer depends on the vehicle, so opening on the service list
+            // would mean showing a selection we might have to take away again
+            // the moment they answer. The selection is made here regardless,
+            // so when they reach step 2 their service is already ticked and
+            // Browse All is already open.
             setTimeout(function() {
                 apxChoosePath('browse');
 
@@ -1975,23 +2083,41 @@
             }, 80);
         };
 
-        window.apxSetVtype = function(t) {
-            vtype = t;
-            // Bundles can be restricted to one vehicle type, so a switch may
-            // change which are on offer. Drop a selection that no longer
-            // applies rather than letting the server refuse it later.
+        /* Does this service still apply to what the customer says they drive?
+
+           Null on either side of either comparison means "no restriction" —
+           the same convention the columns use, and the same one
+           AppliesToVehicle enforces on the server. */
+        function apxSuitsVehicle(svc) {
+            if (!svc) return true;
+            if (svc.vehicle && svc.vehicle !== vtype) return false;
+            if (vtrans && svc.transmission && svc.transmission !== vtrans) return false;
+            return true;
+        }
+
+        /* Drop whatever the vehicle no longer fits, and say what went.
+
+           Neither of the two things that would be wrong here: it does not
+           silently carry an invalid service through to the confirm step, and
+           it does not silently clear the whole selection either. It removes
+           exactly what no longer applies, names it, and leaves the rest of
+           the booking alone.
+
+           Shared by the type and the transmission toggles, because the two
+           raise an identical question and a second copy of the answer would
+           drift from this one. The caller passes the phrase rather than a
+           whole message, so the customer is told which of their two answers
+           caused it. */
+        function apxDropUnsuitable(reason) {
+            // A bundle carries a vehicle type and not a transmission — see
+            // the services migration for why that column stopped at services.
             var b = currentBundle();
             if (b && b.vehicle && b.vehicle !== vtype) { selectedBundle = null; }
 
-            // Services need the same treatment, and more urgently: the type
-            // toggle is on step 2 but services are chosen on step 1, so a
-            // customer can pick car-only work and then say motorcycle. Drop
-            // those rather than letting the server refuse the whole booking
-            // after they have filled in everything else.
             var dropped = [];
             Array.from(selected).forEach(function (i) {
                 var svc = SERVICES[i];
-                if (svc && svc.vehicle && svc.vehicle !== vtype) {
+                if (!apxSuitsVehicle(svc)) {
                     selected.delete(i);
                     dropped.push(svc.name);
                 }
@@ -2002,15 +2128,47 @@
                     variant: 'info',
                     title:   dropped.length === 1 ? 'One service removed' : 'Some services removed',
                     message: dropped.join(', ') + (dropped.length === 1 ? ' is' : ' are')
-                             + ' not offered for a ' + (vtype === 'car' ? 'car' : 'motorcycle')
-                             + ', so it has been taken off your booking.',
+                             + ' not offered for ' + reason
+                             + ', so ' + (dropped.length === 1 ? 'it has' : 'they have')
+                             + ' been taken off your booking.',
                 });
             }
+
             buildGrid();
             apxUpdateEst();
+        }
+
+        window.apxSetVtype = function(t) {
+            vtype = t;
+
+            // The toggle sits on step 1 now, ahead of the service list, so
+            // most of the time this runs before anything has been chosen. It
+            // still has to run: Back is allowed, so a customer can choose
+            // car-only work on step 2, come back here, and say motorcycle.
+            apxDropUnsuitable('a ' + (vtype === 'car' ? 'car' : 'motorcycle'));
+
             document.getElementById('apx-vtype-car').className = 'apx-vtype-btn'+(t==='car'?' active':'');
             document.getElementById('apx-vtype-moto').className = 'apx-vtype-btn'+(t==='motorcycle'?' active':'');
+            document.getElementById('apx-vtype-car').setAttribute('aria-pressed', t==='car' ? 'true' : 'false');
+            document.getElementById('apx-vtype-moto').setAttribute('aria-pressed', t==='motorcycle' ? 'true' : 'false');
             apxPopMakes();
+        };
+
+        /* '' is "not sure", which narrows nothing — so moving TO it can never
+           drop a service. Only moving to a real value can. */
+        window.apxSetVtrans = function(t) {
+            vtrans = t;
+
+            apxDropUnsuitable(t === 'manual'    ? 'manual vehicles'
+                            : t === 'automatic' ? 'automatic vehicles'
+                            : 'this vehicle');
+
+            [['apx-vtrans-manual', 'manual'], ['apx-vtrans-auto', 'automatic'], ['apx-vtrans-none', '']]
+                .forEach(function (pair) {
+                    var el = document.getElementById(pair[0]);
+                    el.className = 'apx-vtype-btn' + (t === pair[1] ? ' active' : '');
+                    el.setAttribute('aria-pressed', t === pair[1] ? 'true' : 'false');
+                });
         };
 
         function apxPopMakes() {
@@ -2046,7 +2204,7 @@
             }
         };
 
-        // FIX 3: sticky card passes vehicle data into step 2
+        // The sticky card hands its vehicle to step 1.
         window.apxPreFillVehicle = function(vt, make, model) {
             apxSetVtype(vt);
             setTimeout(function() {
@@ -2078,35 +2236,37 @@
 
         function apxSetStep(n) {
             step = n;
-            ['apx-s1','apx-s2','apx-s3'].forEach(function(id, i) {
+            STEP_IDS.forEach(function(id, i) {
                 var el = document.getElementById(id);
                 el.className = 'apx-step-item';
                 if (i+1 < n) el.classList.add('done');
                 if (i+1 === n) el.classList.add('active');
             });
-            document.getElementById('apx-step-label').textContent = 'Step '+n+' of 3';
-            ['apx-view-1','apx-view-2','apx-view-3'].forEach(function(id, i){
+            document.getElementById('apx-step-label').textContent = 'Step '+n+' of '+STEP_IDS.length;
+            VIEW_IDS.forEach(function(id, i){
                 document.getElementById(id).style.display = (i+1===n) ? '' : 'none';
             });
             apxSyncBack();
             var btn = document.getElementById('apx-btn-next');
-            btn.textContent = n===3 ? 'Confirm booking ✓' : 'Next →';
-            btn.className = n===3 ? 'btn-apx-next confirm' : 'btn-apx-next';
+            btn.textContent = n===CONFIRM_STEP ? 'Confirm booking ✓' : 'Next →';
+            btn.className = n===CONFIRM_STEP ? 'btn-apx-next confirm' : 'btn-apx-next';
             // On the path menu there is nothing to advance to yet; the cards
             // are the action. Everywhere else Next behaves as it always did.
-            btn.style.visibility = (n === 1 && pathView === 'root') ? 'hidden' : 'visible';
-            // Coming back to step 1 with a free-only selection must re-block;
-            // leaving step 1 must release the button for its own checks.
+            // Keyed on the service step rather than on step 1, which is now
+            // the vehicle and always has somewhere to go.
+            btn.style.visibility = (n === SERVICE_STEP && pathView === 'root') ? 'hidden' : 'visible';
+            // Coming back to the service step with a free-only selection must
+            // re-block; leaving it must release the button for its own checks.
             apxRefreshFreeOnly();
 
-            // The picker only exists on step 2, and what it shows depends on
-            // the selection step 1 made — so step 2 is where the two have to
-            // be reconciled, whatever step 1 did to get here.
+            // The picker only exists on the details step, and what it shows
+            // depends on the selection the service step made — so this is
+            // where the two have to be reconciled, whatever route got here.
             //
             // It used to be each path's own job to say so. apxToggle() and
             // apxToggleBundle() called refresh(); apxStartCheckup() set
             // `selected` directly and did not, so the guided check-up reached
-            // step 2 with the chrome _monthChrome() paints when nothing is
+            // the picker with the chrome _monthChrome() paints when nothing is
             // chosen — a blank calendar reading "Choose a service first to see
             // availability." under a selection of one service. Check-up ->
             // Browse -> Check-up was the same fault wearing a disguise: the
@@ -2115,11 +2275,37 @@
             //
             // Refreshing here holds for paths nobody has written yet, because
             // a path cannot show the picker without coming through this line.
-            if (n === 2) guestPicker.refresh();
+            if (n === DETAIL_STEP) guestPicker.refresh();
+        }
+
+        /* 'Manual', 'Automatic', or the honest answer when they did not say. */
+        function apxTransLabel() {
+            return vtrans === 'manual' ? 'Manual'
+                 : vtrans === 'automatic' ? 'Automatic'
+                 : 'Not sure — we will check';
         }
 
         window.apxNext = function() {
             if (step===1) {
+                // The vehicle, which decides what step 2 may offer. Checked
+                // here rather than leaving it to the server, because being
+                // refused on this is being refused before you have chosen
+                // anything — there is nothing yet to go back and fix.
+                var make  = document.getElementById('apx-v-make').value;
+                var model = document.getElementById('apx-v-model').value;
+                var year  = document.getElementById('apx-v-year').value;
+
+                if (!FormValidate.validateForm([document.getElementById('apx-v-plate')])) return;
+
+                if (!make||!model||!year) {
+                    ApxAlertModal.show({ variant: 'error', title: 'Incomplete vehicle info', message: 'Please complete your vehicle information.' });
+                    return;
+                }
+
+                // Deliberately nothing about transmission: "Not sure" is a
+                // real answer and the column is nullable for exactly that.
+                apxSetStep(SERVICE_STEP);
+            } else if (step===SERVICE_STEP) {
                 if (selected.size === 0 && selectedBundle === null) {
                     ApxAlertModal.show({ variant: 'error', title: 'Nothing selected', message: 'Please choose a bundle or at least one service.' });
                     return;
@@ -2134,8 +2320,8 @@
                     apxRefreshFreeOnly();
                     return;
                 }
-                apxSetStep(2);
-            } else if (step===2) {
+                apxSetStep(DETAIL_STEP);
+            } else if (step===DETAIL_STEP) {
                 var name  = document.getElementById('apx-f-name').value.trim();
                 var email = document.getElementById('apx-f-email').value.trim();
                 var date  = document.getElementById('apx-f-date').value;
@@ -2146,12 +2332,10 @@
                 var fieldsValid = FormValidate.validateForm([
                     document.getElementById('apx-f-name'),
                     document.getElementById('apx-f-email'),
-                    document.getElementById('apx-f-phone'),
-                    document.getElementById('apx-v-plate')
+                    document.getElementById('apx-f-phone')
                 ]);
                 if (!fieldsValid) return;
                 if (!date||!time) { ApxAlertModal.show({ variant: 'error', title: 'Missing date & time', message: 'Please pick a preferred date and time.' }); return; }
-                if (!make||!model||!year) { ApxAlertModal.show({ variant: 'error', title: 'Incomplete vehicle info', message: 'Please complete your vehicle information.' }); return; }
                 var names = Array.from(selected).map(function(i){ return SERVICES[i].name; }).join(', ');
                 var total = 0;
                 selected.forEach(function(i){ total += SERVICES[i].price; });
@@ -2170,11 +2354,12 @@
                 })();
                 document.getElementById('apx-c-date').textContent     = date + ' at ' + timeLabel;
                 document.getElementById('apx-c-vehicle').textContent  = vStr;
+                document.getElementById('apx-c-transmission').textContent = apxTransLabel();
                 document.getElementById('apx-c-services').textContent = names;
                 document.getElementById('apx-c-notes').textContent    = document.getElementById('apx-f-notes').value||'—';
                 document.getElementById('apx-c-total').textContent    = fmt(total) + ' *';
-                apxSetStep(3);
-            } else if (step===3) {
+                apxSetStep(CONFIRM_STEP);
+            } else if (step===CONFIRM_STEP) {
                 apxSubmitBooking(false);
             }
         };
@@ -2193,6 +2378,10 @@
                 booking_date:  document.getElementById('apx-f-date').value,
                 booking_time:  document.getElementById('apx-f-time').value,
                 vehicle_type:  vtype,
+                // '' for "not sure", which the controller validates as
+                // nullable and stores as NULL — the column means "not
+                // recorded", and that is exactly what this is.
+                transmission:  vtrans || null,
                 vehicle_make:  document.getElementById('apx-v-make').value,
                 vehicle_model: document.getElementById('apx-v-model').value,
                 vehicle_year:  document.getElementById('apx-v-year').value,
@@ -2249,7 +2438,7 @@
                     } else {
                         acct.style.display = 'none';
                     }
-                    ['apx-view-1','apx-view-2','apx-view-3'].forEach(function(id){ document.getElementById(id).style.display='none'; });
+                    VIEW_IDS.forEach(function(id){ document.getElementById(id).style.display='none'; });
                     document.getElementById('apx-view-success').style.display = '';
                     document.getElementById('apx-modal-footer').style.display = 'none';
                     // Cleared, not set to "Done". The step counter has nothing
@@ -2260,7 +2449,7 @@
                     // step bar below already says it, and says it better:
                     // all three dots turn green on this same line.
                     document.getElementById('apx-step-label').textContent = '';
-                    ['apx-s1','apx-s2','apx-s3'].forEach(function(id){ document.getElementById(id).className='apx-step-item done'; });
+                    STEP_IDS.forEach(function(id){ document.getElementById(id).className='apx-step-item done'; });
                 } else {
                     ApxAlertModal.show({ variant: 'error', title: 'Booking failed', message: data.message || 'Booking failed. Please try again.' });
                 }
@@ -2289,12 +2478,17 @@
             });
         }
 
-        /* Back walks out of a step-1 sub-screen before it walks out of a
+        /* Back walks out of a service sub-screen before it walks out of a
            step, so the three paths are reachable again without closing the
-           modal. Nothing typed into step 2 is cleared on the way. */
+           modal. Nothing typed anywhere is cleared on the way.
+
+           The order is reversed from how this read before, and it had to be:
+           the sub-screens now live on step 2 rather than step 1, so checking
+           `step > 1` first would have walked straight back to the vehicle
+           step from inside Browse All and skipped the path menu entirely. */
         window.apxBack = function () {
-            if (step > 1) { apxSetStep(step - 1); return; }
-            if (pathView !== 'root') { apxChoosePath('root'); }
+            if (step === SERVICE_STEP && pathView !== 'root') { apxChoosePath('root'); return; }
+            if (step > 1) { apxSetStep(step - 1); }
         };
 
         /* reset modal state when it closes */
@@ -2322,6 +2516,11 @@
             document.getElementById('apx-v-plate').value='';
             vtype='car';
             apxSetVtype('car');
+            // Back to "not sure", not to a guess. Carrying the last visitor's
+            // answer over on a shared or public machine would quietly hide
+            // services from the next person with no sign of why.
+            vtrans='';
+            apxSetVtrans('');
         });
 
         /* skip nudge — submit as guest */
@@ -2351,6 +2550,12 @@
         apxBuildCategoryChips();
         apxChoosePath('root');
         apxPopMakes();
+        // The wizard opens on the vehicle step. apxSetStep does the work the
+        // markup's initial display attributes only approximate — the step
+        // label, the dots, the Back and Next visibility — so calling it once
+        // here means there is a single description of what step 1 looks like
+        // rather than two that have to agree.
+        apxSetStep(1);
     })();
     </script>
 

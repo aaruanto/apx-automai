@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Schema;
  *
  * Same column and same convention as the other two, deliberately — NULL means
  * it applies to every vehicle, and the comparison is against
- * vehicles.vehicle_type. App\Models\Concerns\AppliesToVehicleType is the one
+ * vehicles.vehicle_type. App\Models\Concerns\AppliesToVehicle is the one
  * implementation all three now share.
  *
  * Nullable with no default, so every existing service keeps applying to

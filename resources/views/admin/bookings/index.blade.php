@@ -167,7 +167,16 @@
                         <div class="primary-col">{{ $b->customer->name ?? 'N/A' }}</div>
                         <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;">{{ $b->reference_number }}</div>
                     </td>
-                    <td>{{ $b->vehicle?->display_name ?? '—' }}</td>
+                    {{-- The vehicle, plus what the booking recorded it as.
+                         From the booking's snapshot and not the vehicle, so a
+                         customer correcting their car does not rewrite what
+                         this booking says the mechanic was asked to work on. --}}
+                    <td>
+                        {{ $b->vehicle?->display_name ?? '—' }}
+                        @if ($b->transmission_label)
+                        <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;">{{ $b->transmission_label }}</div>
+                        @endif
+                    </td>
                     <td style="white-space:nowrap;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.04em;">{{ $b->vehicle?->display_plate ?? 'Not provided' }}</td>
                     <td>{{ $b->service_list }}</td>
                     <td>{{ $b->booking_date }} {{ $b->booking_time }}</td>
@@ -203,6 +212,7 @@
                                 data-customer="{{ $b->customer->name ?? 'N/A' }}"
                                 data-vehicle="{{ $b->vehicle?->display_plate ?? 'Not provided' }}"
                                 data-model="{{ $b->vehicle?->display_name ?? '' }}"
+                                data-profile="{{ $b->vehicle_profile }}"
                                 data-service="{{ $b->service_list }}"
                                 data-datetime="{{ $b->booking_date }} {{ $b->booking_time }}"
                                 data-notes="{{ $b->notes ?? '—' }}"
@@ -309,7 +319,12 @@ function openViewModal(btn) {
 
     const plate   = btn.dataset.vehicle;
     const vehicle = btn.dataset.model;
-    document.getElementById('modal-vehicle').textContent = vehicle ? vehicle + ' (' + plate + ')' : plate;
+    // "Car · Automatic" from the booking's own snapshot, appended rather than
+    // given its own row: the modal is a two-column grid and a seventh cell
+    // would leave an odd one hanging on its own line.
+    const profile = btn.dataset.profile;
+    document.getElementById('modal-vehicle').textContent =
+        (vehicle ? vehicle + ' (' + plate + ')' : plate) + (profile ? ' · ' + profile : '');
 
     const cancelBlock = document.getElementById('modal-cancel-block');
     if (btn.dataset.status === 'cancelled') {

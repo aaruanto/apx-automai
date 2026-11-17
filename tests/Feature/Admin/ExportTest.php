@@ -59,9 +59,14 @@ it('exports bookings as csv', function () {
     // The BOM matters: without it Excel reads the peso sign and accented
     // names using the system codepage and mangles them.
     expect($body)->toStartWith("\xEF\xBB\xBF");
-    // 5c removed Email, Phone, Vehicle and Plate from every export.
-    expect($body)->toContain('Reference,Customer,Service');
+    // 5c removed Email, Phone, Vehicle and Plate from every export, and that
+    // still holds. Vehicle Type and Transmission are a different thing from
+    // the Vehicle column that was taken out: 'Car' and 'Automatic' identify
+    // nobody, where a make, model and plate identify one real car.
+    // Quoted because CsvExport quotes any field containing a space.
+    expect($body)->toContain('Reference,Customer,"Vehicle Type",Transmission,Service');
     expect($body)->not->toContain('Email');
+    expect($body)->not->toContain('Plate');
     expect($body)->toContain('Export Tester');
 });
 

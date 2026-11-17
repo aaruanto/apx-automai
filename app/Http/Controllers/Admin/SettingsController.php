@@ -165,6 +165,8 @@ class SettingsController extends Controller
             'duration' => 'required|integer|min:1',
             // Blank means every vehicle; the column is nullable for exactly that.
             'vehicle_type' => 'nullable|in:car,motorcycle',
+            // And blank means both transmissions, by the same convention.
+            'transmission' => 'nullable|in:manual,automatic',
         ]);
 
         Service::create([
@@ -176,6 +178,8 @@ class SettingsController extends Controller
             // Empty select means "any vehicle", which is null in the column —
             // an empty string there would mean a vehicle type nothing matches.
             'vehicle_type' => $request->vehicle_type ?: null,
+            // "Both" is the same story: null, never ''.
+            'transmission' => $request->transmission ?: null,
             'is_active'   => true,
         ]);
 
@@ -190,6 +194,8 @@ class SettingsController extends Controller
             'duration' => 'required|integer|min:1',
             // Blank means every vehicle; the column is nullable for exactly that.
             'vehicle_type' => 'nullable|in:car,motorcycle',
+            // And blank means both transmissions, by the same convention.
+            'transmission' => 'nullable|in:manual,automatic',
         ]);
 
         $service  = Service::findOrFail($id);
@@ -197,7 +203,10 @@ class SettingsController extends Controller
 
         $service->update($request->only(
             'name', 'category', 'price', 'duration', 'description'
-        ) + ['vehicle_type' => $request->vehicle_type ?: null]);
+        ) + [
+            'vehicle_type' => $request->vehicle_type ?: null,
+            'transmission' => $request->transmission ?: null,
+        ]);
 
         // Only the price is logged. Renaming or re-describing a service
         // changes nothing about what anything earned; re-pricing it sets the

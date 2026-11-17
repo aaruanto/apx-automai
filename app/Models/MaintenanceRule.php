@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class MaintenanceRule extends Model
 {
-    use \App\Models\Concerns\AppliesToVehicleType;
+    use \App\Models\Concerns\AppliesToVehicle;
 
     protected $fillable = [
         'name', 'description', 'bundle_id', 'service_id',

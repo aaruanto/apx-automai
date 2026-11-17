@@ -66,6 +66,12 @@ class DashboardController extends Controller
                 'time'      => date('g:i A', strtotime($b->booking_time)),
                 'mechanic'  => $b->mechanic->name ?? 'TBA',
                 'vehicle'   => trim(($b->vehicle?->make_model ?? '') . ' (' . ($b->vehicle?->display_plate ?? 'Not provided') . ')'),
+                // "Car · Automatic", from the booking's own snapshot rather
+                // than the vehicle — so correcting the car later does not
+                // rewrite what a past booking says was worked on. Empty
+                // string when neither half was recorded, which the card
+                // treats as nothing to show.
+                'vehicleProfile' => $b->vehicle_profile,
                 'vehicle_id'=> $b->vehicle_id,
                 'amount'    => 'TBA',
                 'status'    => in_array($b->status, ['confirmed', 'pending']) ? 'upcoming' : $b->status,
@@ -104,6 +110,9 @@ class DashboardController extends Controller
                 'plate'   => $v->display_plate,
                 'color'   => $v->color ?? '',
                 'type'    => $v->vehicle_type ?? 'car',
+                // null when not recorded, which the booking modal reads as
+                // "ask" rather than as a value to prefill.
+                'transmission' => $v->transmission,
                 'primary' => (bool) $v->is_primary,
                 'mileage' => $v->mileage,
 
@@ -274,12 +283,16 @@ class DashboardController extends Controller
         // carries its own vehicle_type and was checked a few lines up.
         if (! $bundle) {
             $chosen       = Service::whereIn('id', $data['service_ids'])->get();
-            $wrongVehicle = BookingPolicy::servicesNotFor($chosen, $vehicle->vehicle_type);
+            $wrongVehicle = BookingPolicy::servicesNotFor(
+                $chosen, $vehicle->vehicle_type, $vehicle->transmission
+            );
 
             if ($wrongVehicle->isNotEmpty()) {
                 return response()->json([
                     'success' => false,
-                    'message' => BookingPolicy::wrongVehicleMessage($wrongVehicle, $vehicle->vehicle_type),
+                    'message' => BookingPolicy::wrongVehicleMessage(
+                        $wrongVehicle, $vehicle->vehicle_type, $vehicle->transmission
+                    ),
                 ], 422);
             }
         }
@@ -413,6 +426,10 @@ class DashboardController extends Controller
             'year'         => 'required|integer|min:1990|max:2100',
             'color'        => 'nullable|string|max:40',
             'vehicle_type' => 'nullable|in:car,motorcycle',
+            // Nullable for the same reason the column is: a customer who does
+            // not know must still be able to save their vehicle, and NULL
+            // reads as "applies to both" wherever it is compared.
+            'transmission' => 'nullable|in:manual,automatic',
 
             // Optional on purpose. Plenty of customers do not know their
             // odometer reading, and nothing depends on it: maintenance
@@ -458,6 +475,10 @@ class DashboardController extends Controller
             'model'        => $data['model'] ?? '',
             'plate_number' => $plate,
             'vehicle_type' => $data['vehicle_type'] ?? 'car',
+            // No 'car'-style fallback: there is no sensible default
+            // transmission, and a wrong one decides which gearbox services
+            // this customer is offered.
+            'transmission' => $data['transmission'] ?? null,
             'year'         => $data['year'],
             'color'        => $data['color'] ?? '',
             'is_primary'   => $isFirst,
@@ -479,6 +500,7 @@ class DashboardController extends Controller
                 'plate'   => $vehicle->display_plate,
                 'color'   => $vehicle->color,
                 'type'    => $vehicle->vehicle_type,
+                'transmission' => $vehicle->transmission,
                 'mileage' => $vehicle->mileage,
                 'primary' => (bool) $vehicle->is_primary,
             ]
@@ -513,6 +535,10 @@ class DashboardController extends Controller
             'year'         => 'required|integer|min:1990|max:2100',
             'color'        => 'nullable|string|max:40',
             'vehicle_type' => 'nullable|in:car,motorcycle',
+            // Nullable for the same reason the column is: a customer who does
+            // not know must still be able to save their vehicle, and NULL
+            // reads as "applies to both" wherever it is compared.
+            'transmission' => 'nullable|in:manual,automatic',
 
             // Optional on purpose. Plenty of customers do not know their
             // odometer reading, and nothing depends on it: maintenance
@@ -549,6 +575,10 @@ class DashboardController extends Controller
             'model'        => $data['model'] ?? '',
             'plate_number' => $plate,
             'vehicle_type' => $data['vehicle_type'] ?? $vehicle->vehicle_type,
+            // Keeps what is stored when the field is absent, same as
+            // vehicle_type above — a form saved without it is someone editing
+            // their colour, not someone retracting their transmission.
+            'transmission' => $data['transmission'] ?? $vehicle->transmission,
             'year'         => $data['year'],
             'color'        => $data['color'] ?? '',
         ]);
@@ -574,6 +604,7 @@ class DashboardController extends Controller
                 'plate'   => $vehicle->display_plate,
                 'color'   => $vehicle->color,
                 'type'    => $vehicle->vehicle_type,
+                'transmission' => $vehicle->transmission,
                 'mileage' => $vehicle->mileage,
                 'primary' => (bool) $vehicle->is_primary,
             ],
