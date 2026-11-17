@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\BookingStatus;
+
 use App\Models\Booking;
 use App\Models\RescheduleRequest;
 use App\Models\Service;
@@ -41,7 +43,7 @@ function slotAdmin(): User
 /**
  * A booking whose stored time has seconds, the way PostgreSQL returns it.
  */
-function slotBooking(string $storedTime = '09:00:00', string $status = 'pending'): Booking
+function slotBooking(string $storedTime = '09:00:00', string $status = 'pending_review'): Booking
 {
     static $n = 1;
 
@@ -77,7 +79,8 @@ function slotSave(User $admin, Booking $booking, array $overrides = [])
         'service_ids'  => $booking->services->pluck('id')->all(),
         'booking_date' => $booking->booking_date,
         'booking_time' => '09:00',            // what the form posts
-        'status'       => $booking->status,
+        // ->value: an HTTP payload carries the stored string, not the enum.
+        'status'       => $booking->status->value,
         'notes'        => $booking->notes,
     ], $overrides));
 }
@@ -118,20 +121,20 @@ it('sends exactly one email when a booking is confirmed', function () {
     $admin   = slotAdmin();
     $booking = slotBooking('09:00:00');
 
-    slotSave($admin, $booking, ['status' => 'confirmed'])->assertSessionHasNoErrors();
+    slotSave($admin, $booking, ['status' => 'booking_confirmed'])->assertSessionHasNoErrors();
 
     $events = $booking->user->fresh()->notifications->pluck('data.event')->all();
 
     expect($events)->toBe([BookingNotification::BOOKING_CONFIRMED])
         ->and(slotMail())->toHaveCount(1)
-        ->and($booking->fresh()->status)->toBe('confirmed');
+        ->and($booking->fresh()->status)->toBe(BookingStatus::BookingConfirmed);
 });
 
 it('writes no reschedule audit row when nothing moved', function () {
     $admin   = slotAdmin();
     $booking = slotBooking('09:00:00');
 
-    slotSave($admin, $booking, ['status' => 'confirmed']);
+    slotSave($admin, $booking, ['status' => 'booking_confirmed']);
 
     expect(App\Models\AuditLog::where('action', 'booking.rescheduled')->count())->toBe(0)
         ->and(App\Models\AuditLog::where('action', 'booking.reschedule_proposed')->count())->toBe(0);
@@ -144,7 +147,7 @@ it('does not raise a reschedule proposal when the admin only changed the status'
     $admin   = slotAdmin();
     $booking = slotBooking('09:00:00');
 
-    slotSave($admin, $booking, ['status' => 'confirmed'])->assertSessionHasNoErrors();
+    slotSave($admin, $booking, ['status' => 'booking_confirmed'])->assertSessionHasNoErrors();
 
     expect(RescheduleRequest::count())->toBe(0);
 });

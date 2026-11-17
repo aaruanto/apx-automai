@@ -2,7 +2,7 @@
     The pre-approval acknowledgment.
 
     No reference number anywhere in here, and nothing telling the customer to
-    bring or quote one — this goes out while the booking is still 'pending',
+    bring or quote one — this goes out while the booking is still Pending Review,
     and the shop has not agreed to the slot yet. The ticket is
     emails/booking-confirmed.blade.php. See App\Mail\BookingReceived.
 

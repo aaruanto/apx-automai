@@ -22,13 +22,17 @@ class CancelNoShowBookings extends Command
     {
         $cutoff = now()->subMinutes(BookingAvailability::GRACE_MINUTES);
 
-        // Active bookings that haven't been marked "in_progress" (arrived) are
+        // Active bookings nobody has marked arrived are
         // no-show candidates once start + GRACE_MINUTES has passed. Comparing
         // in PHP (rather than a raw SQL date-math WHERE) keeps this correct
         // regardless of the DB driver's string date/time handling — this
         // schema has drifted from the code before, so don't rely on the DB
         // to parse "date + time" for us.
-        $candidates = Booking::whereIn('status', ['pending', 'confirmed'])
+        // The two statuses that mean "expected, but not here". Anything from
+        // Arrived onwards is a car on the premises and cannot be a no-show —
+        // the same list the Arrived action itself is allowed to act on, so it
+        // is asked of the enum instead of being written out twice.
+        $candidates = Booking::whereIn('status', \App\Enums\BookingStatus::startableValues())
             ->whereDate('booking_date', '<=', now()->toDateString())
             ->get();
 

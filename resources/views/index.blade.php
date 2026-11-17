@@ -1574,7 +1574,7 @@
                             No reference number on this screen, and nothing telling the
                             customer to bring one. It used to print the reference in a
                             badge under "Bring this number when you arrive" — while the
-                            booking was still 'pending' and the shop had not agreed to
+                            booking was still Pending Review and the shop had not agreed to
                             the slot. Customers turned up on the strength of it.
 
                             The reference is disclosed once, in the confirmation email

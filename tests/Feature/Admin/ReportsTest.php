@@ -60,8 +60,8 @@ it('renders with a completely empty database', function () {
 });
 
 it('renders with bookings present and totals them', function () {
-    seedBooking('completed', today()->toDateString());
-    seedBooking('completed', today()->subDays(2)->toDateString());
+    seedBooking('service_completed', today()->toDateString());
+    seedBooking('service_completed', today()->subDays(2)->toDateString());
     seedBooking('cancelled', today()->subDay()->toDateString());
 
     $response = $this->actingAs(reportAdmin())->get('/admin/reports')->assertOk();
@@ -79,13 +79,13 @@ it('renders with bookings present and totals them', function () {
  */
 
 it('does not erase revenue when a booking is completed', function () {
-    $booking = seedBooking('confirmed', today()->toDateString());
+    $booking = seedBooking('booking_confirmed', today()->toDateString());
     $admin   = reportAdmin();
 
     // Confirmed work is not yet earned, so it should not count.
     expect($this->actingAs($admin)->get('/admin/reports')->viewData('totalRevenue'))->toBe(0.0);
 
-    $booking->update(['status' => 'completed']);
+    $booking->update(['status' => 'service_completed']);
 
     // It used to go the other way: 1500 while confirmed, 0 once finished.
     expect($this->actingAs($admin)->get('/admin/reports')->viewData('totalRevenue'))->toBe(1500.0);
@@ -93,7 +93,7 @@ it('does not erase revenue when a booking is completed', function () {
 
 it('reports what a booking was sold for, not the current price list', function () {
     $service = Service::create(['name' => 'Oil', 'price' => 1500, 'duration' => 45]);
-    seedBooking('completed', today()->toDateString(), 1500, $service);
+    seedBooking('service_completed', today()->toDateString(), 1500, $service);
 
     $service->update(['price' => 9999]);
 
@@ -105,7 +105,7 @@ it('reports what a booking was sold for, not the current price list', function (
 it('counts every service on a booking, not just the first', function () {
     $oil     = Service::create(['name' => 'Oil', 'price' => 1000, 'duration' => 30]);
     $brakes  = Service::create(['name' => 'Brakes', 'price' => 2000, 'duration' => 30]);
-    $booking = seedBooking('completed', today()->toDateString(), 1000, $oil);
+    $booking = seedBooking('service_completed', today()->toDateString(), 1000, $oil);
     $booking->services()->attach($brakes->id, ['price' => 2000, 'duration' => 30]);
 
     // Previously 1000: the query joined the legacy single service_id.
@@ -116,7 +116,7 @@ it('counts every service on a booking, not just the first', function () {
 it('stops counting a deleted booking', function () {
     // A query-builder join bypasses the SoftDeletes scope, so this has to be
     // excluded by hand or a deleted booking keeps earning.
-    $booking = seedBooking('completed', today()->toDateString());
+    $booking = seedBooking('service_completed', today()->toDateString());
     $booking->delete();
 
     expect($this->actingAs(reportAdmin())->get('/admin/reports')->viewData('totalRevenue'))
@@ -124,8 +124,8 @@ it('stops counting a deleted booking', function () {
 });
 
 it('averages over completed bookings rather than all of them', function () {
-    seedBooking('completed', today()->toDateString(), 2000);
-    seedBooking('pending', today()->toDateString(), 2000);
+    seedBooking('service_completed', today()->toDateString(), 2000);
+    seedBooking('pending_review', today()->toDateString(), 2000);
 
     // 2000 / 1 completed, not 2000 / 2 bookings.
     expect($this->actingAs(reportAdmin())->get('/admin/reports')->viewData('avgBookingValue'))
@@ -133,12 +133,17 @@ it('averages over completed bookings rather than all of them', function () {
 });
 
 it('shows completed work in the status breakdown', function () {
-    seedBooking('completed', today()->toDateString());
+    seedBooking('service_completed', today()->toDateString());
 
-    // 'completed' was missing from this chart entirely, so finished work
-    // appeared in no slice of it.
-    expect($this->actingAs(reportAdmin())->get('/admin/reports')->viewData('statusCounts'))
-        ->toHaveKey('completed');
+    // Completed work was missing from this chart entirely, so finished work
+    // appeared in no slice of it. The breakdown is generated from
+    // App\Enums\BookingStatus now, so the stronger assertion is that it has a
+    // key for every status there is — which is what stops this regressing
+    // again the next time the ladder changes.
+    $counts = $this->actingAs(reportAdmin())->get('/admin/reports')->viewData('statusCounts');
+
+    expect($counts)->toHaveKey(\App\Enums\BookingStatus::ServiceCompleted->value);
+    expect(array_keys($counts))->toEqualCanonicalizing(\App\Enums\BookingStatus::values());
 });
 
 it('accepts each period the selector offers', function (int $days) {

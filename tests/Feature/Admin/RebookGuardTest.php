@@ -72,13 +72,13 @@ it('refuses to rebook a live booking', function (string $status) {
     // Refused, and nothing created — the form never rendered to be submitted.
     expect(Booking::count())->toBe(1);
 })->with([
-    'pending'     => ['pending'],
-    'confirmed'   => ['confirmed'],
-    'in progress' => ['in_progress'],
+    'pending_review'     => ['pending_review'],
+    'booking_confirmed'   => ['booking_confirmed'],
+    'in progress' => ['service_in_progress'],
 ]);
 
 it('refuses to rebook a completed booking', function () {
-    $booking = rbBooking('completed');
+    $booking = rbBooking('service_completed');
 
     $this->actingAs(rbAdmin())
         ->get('/admin/bookings/'.$booking->id.'/rebook')
@@ -89,7 +89,7 @@ it('refuses to rebook a completed booking', function () {
 });
 
 it('names the booking and says what state it is actually in', function () {
-    $booking = rbBooking('confirmed');
+    $booking = rbBooking('booking_confirmed');
 
     $this->actingAs(rbAdmin())->get('/admin/bookings/'.$booking->id.'/rebook');
 
@@ -104,7 +104,7 @@ it('names the booking and says what state it is actually in', function () {
 });
 
 it('tells the admin a finished job is a record, not a starting point', function () {
-    $booking = rbBooking('completed');
+    $booking = rbBooking('service_completed');
 
     $this->actingAs(rbAdmin())->get('/admin/bookings/'.$booking->id.'/rebook');
 
@@ -112,7 +112,7 @@ it('tells the admin a finished job is a record, not a starting point', function 
 });
 
 it('shows the refusal on the page it redirects to', function () {
-    $booking = rbBooking('confirmed');
+    $booking = rbBooking('booking_confirmed');
 
     // A message flashed to a page that renders no messages is a silent
     // refusal. Only Settings and the bundle list had the block; this one did

@@ -59,9 +59,18 @@ function statusCardBooking(string $status, string $date): Booking
 it('makes each summary card a link to what it counts', function () {
     $html = $this->actingAs(statusCardAdmin())->get('/admin/bookings')->assertOk()->getContent();
 
-    foreach (['confirmed', 'pending', 'in_progress'] as $status) {
+    // The two cards that are a single status each still filter the list.
+    foreach ([
+        \App\Enums\BookingStatus::PendingReview->value,
+        \App\Enums\BookingStatus::BookingConfirmed->value,
+    ] as $status) {
         expect($html)->toContain('href="'.route('admin.bookings.index', ['status' => $status]).'"');
     }
+
+    // The third card counts three statuses — Arrived, Vehicle Inspection and
+    // Service In Progress, which used to be one — so there is no single
+    // ?status= for it. It goes to the queue board, which breaks them down.
+    expect($html)->toContain('href="'.route('admin.bookings.schedule').'"');
 
     // And they are links, not the divs they used to be.
     expect($html)->toContain('class="stat-mini"');
@@ -76,8 +85,8 @@ it('sends the cancelled card to the page that has more to show', function () {
 
 it('marks the card whose filter the list is showing', function () {
     $dates = nextWeekdays(2);
-    statusCardBooking('pending', $dates[0]);
-    statusCardBooking('completed', $dates[1]);
+    statusCardBooking('pending_review', $dates[0]);
+    statusCardBooking('service_completed', $dates[1]);
 
     $admin = statusCardAdmin();
 
@@ -87,17 +96,17 @@ it('marks the card whose filter the list is showing', function () {
     $plain = $this->actingAs($admin)->get('/admin/bookings')->assertOk()->getContent();
     expect($plain)->not->toContain('class="stat-mini stat-mini-active"');
 
-    $filtered = $this->get('/admin/bookings?status=pending')->assertOk()->getContent();
+    $filtered = $this->get('/admin/bookings?status=pending_review')->assertOk()->getContent();
     expect($filtered)->toContain('class="stat-mini stat-mini-active"');
 });
 
 it('still preselects the dropdown from the same value', function () {
     $html = $this->actingAs(statusCardAdmin())
-        ->get('/admin/bookings?status=in_progress')->assertOk()->getContent();
+        ->get('/admin/bookings?status=service_in_progress')->assertOk()->getContent();
 
     // One read of request('status') now serves both the cards and the filter
     // bar, so they cannot disagree about which filter is on.
-    expect($html)->toMatch('/<option value="in_progress"\s+selected>/');
+    expect($html)->toMatch('/<option value="service_in_progress"\s+selected>/');
 });
 
 it('keeps the card styling in the shared layout', function () {

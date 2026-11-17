@@ -44,7 +44,7 @@ function notifTargetBooking(): Booking
 
     return Booking::create([
         'user_id' => $customer->id, 'vehicle_id' => $vehicle->id, 'service_id' => $service->id,
-        'booking_date' => nextWeekday(), 'booking_time' => '10:00', 'status' => 'pending',
+        'booking_date' => nextWeekday(), 'booking_time' => '10:00', 'status' => 'pending_review',
         'duration' => 45, 'reference_number' => 'NTF-'.$unique,
     ]);
 }

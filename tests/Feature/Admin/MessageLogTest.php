@@ -60,7 +60,7 @@ function logBooking(User $user, Vehicle $vehicle): Booking
         'booking_date'     => nextWeekday(),
         'booking_time'     => '10:00:00',
         'duration'         => 30,
-        'status'           => 'confirmed',
+        'status'           => 'booking_confirmed',
         'reference_number' => 'APX-LOG-'.$n++,
     ]);
 }

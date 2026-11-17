@@ -42,7 +42,7 @@ it('sums duration and price across every attached service', function () {
         'user_id' => $user->id, 'vehicle_id' => $vehicle->id,
         'service_ids' => [$a->id, $b->id],
         'booking_date' => nextWeekday(),
-        'booking_time' => '10:00', 'status' => 'pending',
+        'booking_time' => '10:00', 'status' => 'pending_review',
     ]);
 
     $booking->load('services');
@@ -61,7 +61,7 @@ it('snapshots price and duration so later changes do not rewrite history', funct
         'user_id' => $user->id, 'vehicle_id' => $vehicle->id,
         'service_ids' => [$a->id],
         'booking_date' => nextWeekday(),
-        'booking_time' => '10:00', 'status' => 'pending',
+        'booking_time' => '10:00', 'status' => 'pending_review',
     ]);
 
     $a->update(['price' => 9999, 'duration' => 300]);
@@ -89,7 +89,7 @@ it('holds a bay for the summed duration, not just the first service', function (
         app(BookingAvailability::class)->reserve([
             'user_id' => $filler->id, 'vehicle_id' => $fillerVehicle->id,
             'service_ids' => $long, 'booking_date' => $date,
-            'booking_time' => '09:00', 'status' => 'pending',
+            'booking_time' => '09:00', 'status' => 'pending_review',
         ]);
     }
 
@@ -100,7 +100,7 @@ it('holds a bay for the summed duration, not just the first service', function (
     expect(fn () => app(BookingAvailability::class)->reserve([
         'user_id' => $fourth->id, 'vehicle_id' => $fourthVehicle->id,
         'service_ids' => $long, 'booking_date' => $date,
-        'booking_time' => '10:00', 'status' => 'pending',
+        'booking_time' => '10:00', 'status' => 'pending_review',
     ]))->toThrow(
         App\Exceptions\SlotUnavailableException::class,
         // Named, so this cannot quietly start passing because some other rule
@@ -188,7 +188,7 @@ it('syncs services when an admin edits a booking', function () {
     $booking = app(BookingAvailability::class)->reserve([
         'user_id' => $user->id, 'vehicle_id' => $vehicle->id,
         'service_ids' => [$a->id], 'booking_date' => nextWeekday(),
-        'booking_time' => '09:00', 'status' => 'pending',
+        'booking_time' => '09:00', 'status' => 'pending_review',
     ]);
 
     $this->actingAs(User::factory()->create(['role' => 'admin']))
@@ -196,7 +196,7 @@ it('syncs services when an admin edits a booking', function () {
             'service_ids'  => [$b->id, $c->id],
             'booking_date' => $booking->booking_date,
             'booking_time' => $booking->booking_time,
-            'status'       => 'confirmed',
+            'status'       => 'booking_confirmed',
         ])->assertSessionHasNoErrors();
 
     $booking->refresh()->load('services');
@@ -215,7 +215,7 @@ it('shows every service wherever a booking is listed', function () {
         'user_id' => $user->id, 'vehicle_id' => $vehicle->id,
         'service_ids' => [$a->id, $b->id],
         'booking_date' => nextWeekday(),
-        'booking_time' => '09:00', 'status' => 'confirmed',
+        'booking_time' => '09:00', 'status' => 'booking_confirmed',
     ]);
 
     $admin = User::factory()->create(['role' => 'admin']);

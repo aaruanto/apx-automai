@@ -149,5 +149,5 @@ it('does not count a cancelled booking as the mechanic being busy', function () 
         ->post('/admin/bookings', mdbPayload($service, $mechanic, '10:00', '09170002222', 'MDB 0052'))
         ->assertSessionHasNoErrors();
 
-    expect(Booking::where('status', 'pending')->count())->toBe(1);
+    expect(Booking::where('status', 'pending_review')->count())->toBe(1);
 });

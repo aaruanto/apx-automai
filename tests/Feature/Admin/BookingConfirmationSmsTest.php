@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\BookingStatus;
+
 use App\Models\Booking;
 use App\Models\Service;
 use App\Models\SmsLog;
@@ -47,7 +49,7 @@ function confAdmin(): User
     return User::factory()->create(['role' => 'admin']);
 }
 
-function confBooking(string $status = 'pending', ?string $phone = '09171234567'): Booking
+function confBooking(string $status = 'pending_review', ?string $phone = '09171234567'): Booking
 {
     $unique   = substr(str_replace('.', '', uniqid('', true)), -6);
     $customer = User::factory()->create([
@@ -77,7 +79,7 @@ function confBooking(string $status = 'pending', ?string $phone = '09171234567')
 }
 
 /** PUT the edit form with the status changed. */
-function confirmVia(Booking $booking, string $status = 'confirmed')
+function confirmVia(Booking $booking, string $status = 'booking_confirmed')
 {
     return test()->actingAs(confAdmin())->put("/admin/bookings/{$booking->id}", [
         'service_ids'  => [$booking->service_id],
@@ -91,7 +93,7 @@ function confirmVia(Booking $booking, string $status = 'confirmed')
 }
 
 it('texts the customer when a booking is confirmed', function () {
-    $booking = confBooking('pending');
+    $booking = confBooking('pending_review');
 
     confirmVia($booking)->assertRedirect();
 
@@ -105,7 +107,7 @@ it('texts the customer when a booking is confirmed', function () {
 });
 
 it('still emails as well as texting, so neither replaced the other', function () {
-    $booking = confBooking('pending');
+    $booking = confBooking('pending_review');
 
     confirmVia($booking)->assertRedirect();
 
@@ -118,7 +120,7 @@ it('sends nothing when the confirm_booking trigger is switched off', function ()
     $t['triggers']['confirm_booking'] = false;
     MessageTemplate::save($t);
 
-    confirmVia(confBooking('pending'))->assertRedirect();
+    confirmVia(confBooking('pending_review'))->assertRedirect();
 
     expect(SmsLog::where('trigger', 'confirm_booking')->count())->toBe(0);
 });
@@ -128,7 +130,7 @@ it('sends nothing when the SMS channel is switched off', function () {
     $t['channels']['send_sms'] = false;
     MessageTemplate::save($t);
 
-    confirmVia(confBooking('pending'))->assertRedirect();
+    confirmVia(confBooking('pending_review'))->assertRedirect();
 
     expect(SmsLog::where('trigger', 'confirm_booking')->count())->toBe(0);
 });
@@ -140,20 +142,20 @@ it('sends nothing when the SMS channel is switched off', function () {
  * text again.
  */
 it('does not text again when the booking was already confirmed', function () {
-    $booking = confBooking('confirmed');
+    $booking = confBooking('booking_confirmed');
 
-    confirmVia($booking, 'confirmed')->assertRedirect();
+    confirmVia($booking, 'booking_confirmed')->assertRedirect();
 
     expect(SmsLog::where('trigger', 'confirm_booking')->count())->toBe(0);
 });
 
 it('skips a customer with no number on file rather than failing the save', function () {
-    $booking = confBooking('pending', null);
+    $booking = confBooking('pending_review', null);
 
     confirmVia($booking)->assertRedirect();
 
     expect(SmsLog::where('trigger', 'confirm_booking')->count())->toBe(0)
-        ->and($booking->fresh()->status)->toBe('confirmed');
+        ->and($booking->fresh()->status)->toBe(BookingStatus::BookingConfirmed);
 });
 
 /**
@@ -162,7 +164,7 @@ it('skips a customer with no number on file rather than failing the save', funct
  * the app would reveal it.
  */
 it('fits the confirmation into a single GSM-7 segment', function () {
-    confirmVia(confBooking('pending'))->assertRedirect();
+    confirmVia(confBooking('pending_review'))->assertRedirect();
 
     $log = SmsLog::where('trigger', 'confirm_booking')->first();
     $parts = app(App\Services\SmsService::class)->segments($log->content);

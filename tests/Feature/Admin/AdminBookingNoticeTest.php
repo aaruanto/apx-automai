@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\BookingStatus;
+
 use App\Models\Booking;
 use App\Models\Service;
 use App\Models\User;
@@ -163,7 +165,7 @@ it('sends exactly two distinct emails across booking then confirming', function 
         'service_ids'  => $booking->services->pluck('id')->all(),
         'booking_date' => $booking->booking_date,
         'booking_time' => $booking->booking_time,
-        'status'       => 'confirmed',
+        'status'       => 'booking_confirmed',
     ])->assertRedirect();
 
     $subjects = anSubjects();
@@ -199,7 +201,7 @@ it('still creates the booking when the mail transport throws', function () {
     $booking = Booking::sole();
 
     expect($booking->exists)->toBeTrue();
-    expect($booking->status)->toBe('pending');
+    expect($booking->status)->toBe(BookingStatus::PendingReview);
 
     // The bell entry is written before the mail is attempted, so it survives.
     expect($booking->user->notifications()->count())->toBe(1);

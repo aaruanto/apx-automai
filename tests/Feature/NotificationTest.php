@@ -20,7 +20,7 @@ function notifAdmin(): User
     return User::factory()->create(['role' => 'admin']);
 }
 
-function notifBooking(User $customer, string $status = 'pending'): Booking
+function notifBooking(User $customer, string $status = 'pending_review'): Booking
 {
     $unique = substr(str_replace('.', '', uniqid('', true)), -6);
 
@@ -64,13 +64,13 @@ it('tells admins when a customer books', function () {
 
 it('tells the customer when their booking is confirmed', function () {
     $customer = User::factory()->create(['role' => 'customer']);
-    $booking  = notifBooking($customer, 'pending');
+    $booking  = notifBooking($customer, 'pending_review');
 
     $this->actingAs(notifAdmin())->put("/admin/bookings/{$booking->id}", [
         'service_ids'  => [$booking->service_id],
         'booking_date' => $booking->booking_date,
         'booking_time' => $booking->booking_time,
-        'status'       => 'confirmed',
+        'status'       => 'booking_confirmed',
     ])->assertSessionHasNoErrors();
 
     expect($customer->unreadNotifications()->count())->toBe(1);
@@ -79,7 +79,7 @@ it('tells the customer when their booking is confirmed', function () {
 
 it('tells the customer when their booking is cancelled, with the reason', function () {
     $customer = User::factory()->create(['role' => 'customer']);
-    $booking  = notifBooking($customer, 'confirmed');
+    $booking  = notifBooking($customer, 'booking_confirmed');
 
     $this->actingAs(notifAdmin())
         ->patchJson("/admin/bookings/{$booking->id}/cancel", ['reason' => 'Parts delayed'])
@@ -100,14 +100,14 @@ it('tells the customer when their booking is rescheduled, naming both slots', fu
     // moment the booking actually moves.
     $admin    = notifAdmin();
     $customer = User::factory()->create(['role' => 'customer']);
-    $booking  = notifBooking($customer, 'confirmed');
+    $booking  = notifBooking($customer, 'booking_confirmed');
     $oldDate  = $booking->booking_date;
 
     $this->actingAs($admin)->put("/admin/bookings/{$booking->id}", [
         'service_ids'       => [$booking->service_id],
         'booking_date'      => nextWeekdayAfter(5),
         'booking_time'      => '14:00',
-        'status'            => 'confirmed',
+        'status'            => 'booking_confirmed',
         'reschedule_reason' => 'Mechanic unavailable that morning',
     ])->assertSessionHasNoErrors();
 
@@ -125,13 +125,13 @@ it('tells the customer when their booking is rescheduled, naming both slots', fu
 
 it('tells the customer when the service is completed', function () {
     $customer = User::factory()->create(['role' => 'customer']);
-    $booking  = notifBooking($customer, 'in_progress');
+    $booking  = notifBooking($customer, 'service_in_progress');
 
     $this->actingAs(notifAdmin())->put("/admin/bookings/{$booking->id}", [
         'service_ids'  => [$booking->service_id],
         'booking_date' => $booking->booking_date,
         'booking_time' => $booking->booking_time,
-        'status'       => 'completed',
+        'status'       => 'service_completed',
     ])->assertSessionHasNoErrors();
 
     expect($customer->notifications()->first()->data['title'])->toBe('Service completed');
@@ -139,14 +139,14 @@ it('tells the customer when the service is completed', function () {
 
 it('does not notify when nothing actually changed', function () {
     $customer = User::factory()->create(['role' => 'customer']);
-    $booking  = notifBooking($customer, 'confirmed');
+    $booking  = notifBooking($customer, 'booking_confirmed');
 
     // Saving the form untouched must not spam the customer.
     $this->actingAs(notifAdmin())->put("/admin/bookings/{$booking->id}", [
         'service_ids'  => [$booking->service_id],
         'booking_date' => $booking->booking_date,
         'booking_time' => $booking->booking_time,
-        'status'       => 'confirmed',
+        'status'       => 'booking_confirmed',
     ])->assertSessionHasNoErrors();
 
     expect($customer->notifications()->count())->toBe(0);

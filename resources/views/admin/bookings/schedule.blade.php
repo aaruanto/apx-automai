@@ -17,10 +17,13 @@
 }
 .status-dot { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
 .legend-dot { width:12px;height:12px;border-radius:2px;flex-shrink:0; }
-.dot-in_progress { background: var(--info); }
-.dot-confirmed   { background: var(--success); }
-.dot-pending     { background: var(--warning); }
-.dot-cancelled   { background: var(--red); }
+.dot-pending_review      { background: var(--warning); }
+.dot-booking_confirmed   { background: var(--success); }
+.dot-arrived             { background: var(--warning-dark); }
+.dot-vehicle_inspection  { background: var(--info-dark); }
+.dot-service_in_progress { background: var(--info); }
+.dot-service_completed   { background: var(--success-dark); }
+.dot-cancelled           { background: var(--red); }
 </style>
 @endpush
 
@@ -52,22 +55,15 @@
             <div class="card-body" style="padding:20px;">
                 @forelse($bookings as $booking)
                 @php
-                    $statusBadge = [
-                        'confirmed'   => 'badge-confirmed',
-                        'pending'     => 'badge-pending',
-                        'in_progress' => 'badge-inprogress',
-                        'cancelled'   => 'badge-cancelled',
-                    ];
-                    $statusLabel = [
-                        'confirmed'   => 'Confirmed',
-                        'pending'     => 'Pending',
-                        'in_progress' => 'In Progress',
-                        'cancelled'   => 'Cancelled',
-                    ];
-                    $badge = $statusBadge[$booking->status] ?? 'badge-pending';
-                    $label = $statusLabel[$booking->status] ?? ucfirst($booking->status);
+                    // Off the enum. These were two hand-written maps, neither
+                    // with an entry for a completed booking, and both of them
+                    // indexed by $booking->status — which is a BookingStatus
+                    // now, and an enum cannot be an array key, so this page
+                    // raised "Illegal offset type" the moment the cast landed.
+                    $badge = $booking->status->badgeClass();
+                    $label = $booking->status->label();
                 @endphp
-                <div class="event-block {{ $booking->status }}" style="margin-bottom:12px;">
+                <div class="event-block {{ $booking->status->value }}" style="margin-bottom:12px;">
                     <div>
                         <div class="event-title">{{ $booking->service_list }}</div>
                         <div class="event-meta">
@@ -84,7 +80,7 @@
                             <button class="btn btn-ghost btn-sm btn-icon" title="View"
                                 onclick="openViewModal(this)"
                                 data-id="{{ $booking->reference_number }}"
-                                data-status="{{ $booking->status }}"
+                                data-status="{{ $booking->status->value }}"
                                 data-customer="{{ $booking->customer->name ?? 'N/A' }}"
                                 data-vehicle="{{ $booking->vehicle?->display_plate ?? 'Not provided' }}"
                                 data-model="{{ $booking->vehicle?->display_name ?? '' }}"
@@ -118,12 +114,14 @@
                 </div>
                 <div class="card-body" style="padding:16px;">
                     @php
-                        $summaryItems = [
-                            ['label'=>'In Progress','key'=>'in_progress','dotClass'=>'dot-in_progress'],
-                            ['label'=>'Confirmed',  'key'=>'confirmed',  'dotClass'=>'dot-confirmed'],
-                            ['label'=>'Pending',    'key'=>'pending',    'dotClass'=>'dot-pending'],
-                            ['label'=>'Cancelled',  'key'=>'cancelled',  'dotClass'=>'dot-cancelled'],
-                        ];
+                        // From the enum, in ladder order, with Cancelled last.
+                        $summaryItems = collect(\App\Enums\BookingStatus::cases())
+                            ->map(fn ($case) => [
+                                'label'    => $case->label(),
+                                'key'      => $case->value,
+                                'dotClass' => 'dot-'.$case->value,
+                            ])
+                            ->all();
                     @endphp
                     @foreach($summaryItems as $si)
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
@@ -220,6 +218,8 @@
 
 @push('scripts')
 <script>
+const APX_STATUSES = @json(\App\Enums\BookingStatus::forJs());
+
 function openViewModal(btn) {
     document.getElementById('modal-booking-id').textContent = btn.dataset.id;
     document.getElementById('modal-customer').textContent   = btn.dataset.customer;
@@ -232,15 +232,9 @@ function openViewModal(btn) {
     document.getElementById('modal-vehicle').textContent = vehicle ? vehicle + ' (' + plate + ')' : plate;
 
     const statusEl = document.getElementById('modal-status');
-    const statusMap = {
-        confirmed:   ['Confirmed',   'badge-confirmed'],
-        pending:     ['Pending',     'badge-pending'],
-        in_progress: ['In Progress', 'badge-inprogress'],
-        cancelled:   ['Cancelled',   'badge-cancelled'],
-    };
-    const s = statusMap[btn.dataset.status] ?? [btn.dataset.status, 'badge-pending'];
-    statusEl.textContent = s[0];
-    statusEl.className   = 'badge ' + s[1];
+    const s = APX_STATUSES[btn.dataset.status];
+    statusEl.textContent = s ? s.label : btn.dataset.status;
+    statusEl.className   = 'badge ' + (s ? s.badge : 'badge-pending');
 
     openModal('viewModal');
 }
@@ -252,7 +246,9 @@ function markArrived(id, btn) {
         const actions = btn.parentElement;
         const badge   = actions.parentElement.querySelector('.badge');
         if (badge) {
-            badge.className   = 'badge badge-inprogress';
+            // From the response rather than hardcoded: this action sets
+            // Arrived now, not Service In Progress.
+            badge.className   = 'badge ' + data.badge_class;
             badge.textContent = data.status_label;
         }
         const view = actions.parentElement.querySelector('[data-status]');

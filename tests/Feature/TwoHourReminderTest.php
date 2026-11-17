@@ -98,7 +98,7 @@ function bookingAt(string $time): Booking
         'booking_date'     => Carbon::today()->toDateString(),
         'booking_time'     => $time,
         'duration'         => 30,
-        'status'           => 'confirmed',
+        'status'           => 'booking_confirmed',
         'reference_number' => 'APX-2H-'.$n++,
     ]);
 }
@@ -166,7 +166,7 @@ it('will not remind an unconfirmed booking, whatever the clock says', function (
     onlyTwoHourArmed();
 
     $booking = bookingAt('11:30:00');
-    $booking->update(['status' => 'pending']);
+    $booking->update(['status' => 'pending_review']);
 
     $this->artisan('reminders:send')->assertSuccessful();
 

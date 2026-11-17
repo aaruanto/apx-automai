@@ -119,7 +119,9 @@
             <label class="filter-label">Status</label>
             <select class="filter-select" name="status">
                 <option value="">All statuses</option>
-                @foreach (['pending'=>'Pending','confirmed'=>'Confirmed','in_progress'=>'In Progress','completed'=>'Completed','cancelled'=>'Cancelled'] as $v => $l)
+                {{-- From the enum, so a step added to the ladder is filterable
+                     here without anyone remembering this list exists. --}}
+                @foreach (collect(\App\Enums\BookingStatus::cases())->mapWithKeys(fn ($c) => [$c->value => $c->label()]) as $v => $l)
                 <option value="{{ $v }}" @selected($filters['status'] === $v)>{{ $l }}</option>
                 @endforeach
             </select>
@@ -190,7 +192,7 @@
                     'icon'   => 'fa-circle-check',
                     'colour' => '#22c55e',
                     'tint'   => 'rgba(34,197,94,.12)',
-                    'link'   => route('admin.bookings.index', ['status' => 'completed']),
+                    'link'   => route('admin.bookings.index', ['status' => \App\Enums\BookingStatus::ServiceCompleted->value]),
                     'cta'    => 'View Completed',
                 ],
                 [
@@ -201,7 +203,7 @@
                     'icon'   => 'fa-hourglass-half',
                     'colour' => '#f59e0b',
                     'tint'   => 'rgba(245,158,11,.12)',
-                    'link'   => route('admin.bookings.index', ['status' => 'pending']),
+                    'link'   => route('admin.bookings.index', ['status' => \App\Enums\BookingStatus::PendingReview->value]),
                     'cta'    => 'Review Pending',
                 ],
             ];
@@ -249,7 +251,7 @@
         <div class="card">
             <div class="card-header">
                 <div class="card-header-title"><i class="fas fa-chart-bar"></i> Revenue by Service</div>
-                <span style="font-size:.75rem;color:var(--text-muted);background:var(--surface-2);padding:3px 8px;border-radius:4px;">{{ $filters['status'] ? ucfirst(str_replace('_',' ',$filters['status'])) : 'Completed' }} &middot; {{ $filters['from']->format('M j') }} &ndash; {{ $filters['to']->format('M j, Y') }}</span>
+                <span style="font-size:.75rem;color:var(--text-muted);background:var(--surface-2);padding:3px 8px;border-radius:4px;">{{ $filters['status'] ? (\App\Enums\BookingStatus::tryFrom($filters['status'])?->label() ?? $filters['status']) : 'Completed' }} &middot; {{ $filters['from']->format('M j') }} &ndash; {{ $filters['to']->format('M j, Y') }}</span>
             </div>
             <div class="card-body">
                 <canvas id="myBarChart" width="100%" height="100"></canvas>
@@ -300,16 +302,13 @@
                     <td>{{ $booking->booking_date }}</td>
                     <td>{{ $booking->staff->name ?? 'Unassigned' }}</td>
                     <td>
-                        @php
-                            $map = [
-                                'confirmed'   => 'badge-confirmed',
-                                'pending'     => 'badge-pending',
-                                'in_progress' => 'badge-inprogress',
-                                'cancelled'   => 'badge-cancelled',
-                            ];
-                            $cls = $map[$booking->status] ?? 'badge-pending';
-                        @endphp
-                        <span class="badge {{ $cls }}">{{ ucfirst(str_replace('_',' ',$booking->status)) }}</span>
+                        {{-- Off the enum. The map this replaced had no entry
+                             for a completed booking, so it fell through to the
+                             default and a finished job wore an amber Pending
+                             badge — and the label was the stored value with
+                             the underscores swapped out, which would now read
+                             "Service in progress" with the wrong case. --}}
+                        <span class="badge {{ $booking->status->badgeClass() }}">{{ $booking->status->label() }}</span>
                     </td>
                 </tr>
                 @empty
@@ -434,13 +433,10 @@ new Chart(barCtx, {
 
 // ── Keep the dashboard current without a reload ─────────────────────────
 (function () {
-    const STATUS_CLASS = {
-        confirmed:   'badge-confirmed',
-        pending:     'badge-pending',
-        in_progress: 'badge-inprogress',
-        completed:   'badge-completed',
-        cancelled:   'badge-cancelled',
-    };
+    // Serialised from App\Enums\BookingStatus. This was the fourth hand-typed
+    // copy of the map and the only one that did have a completed entry, which
+    // is how the drift was noticed in the first place.
+    const APX_STATUSES = @json(\App\Enums\BookingStatus::forJs());
 
     function esc(v) {
         return String(v ?? '').replace(/[&<>"']/g, c => (
@@ -483,7 +479,7 @@ new Chart(barCtx, {
                     <td>${esc(b.services)}</td>
                     <td>${esc(b.date)}</td>
                     <td>${esc(b.staff)}</td>
-                    <td><span class="badge ${STATUS_CLASS[b.status] || 'badge-pending'}">${esc(b.label)}</span></td>
+                    <td><span class="badge ${(APX_STATUSES[b.status] || {}).badge || 'badge-pending'}">${esc(b.label)}</span></td>
                 </tr>`).join('');
         }
     });

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\BookingStatus;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -10,41 +11,52 @@ class Booking extends Model
 {
     use SoftDeletes;
 
-    /** Statuses a booking may be moved to in_progress from. */
-    public const STARTABLE_STATUSES = ['pending', 'confirmed'];
-
-    /** Statuses a booking may still be cancelled from. */
-    public const CANCELLABLE_STATUSES = ['pending', 'confirmed', 'in_progress'];
-
     /**
-     * The order work actually happens in.
+     * The ladder, the labels, the badges and the transition rules all live on
+     * App\Enums\BookingStatus now, and `status` is cast to it — so
+     * $booking->status is an enum everywhere and there is one answer to what a
+     * status means.
      *
-     * A booking moves forward through these and never back: a completed job
-     * returning to pending re-enters the active pipeline and quietly leaves
-     * the revenue figures. Cancelling is the one way out, and it has its own
-     * action because it demands a reason. Skipping ahead is allowed — a
-     * walk-in can go straight from pending to completed.
+     * STARTABLE_STATUSES, CANCELLABLE_STATUSES and STATUS_ORDER used to be
+     * here as arrays of strings. They were three of the seven places the
+     * ladder was written down, and the labels and badge classes were in the
+     * other four. The methods below stay, because "can this booking be
+     * cancelled" is a question about a booking rather than about a status, and
+     * the views and controllers that ask it should not have to reach through
+     * to the enum to do so.
      */
-    public const STATUS_ORDER = ['pending', 'confirmed', 'in_progress', 'completed'];
 
     /** Whether this booking is finished and its record should stand. */
     public function isLocked(): bool
     {
-        return $this->status === 'completed';
+        return $this->status?->isLocked() ?? false;
     }
 
-    /** Whether the status may move from where it is now to $target. */
-    public function canMoveTo(string $target): bool
+    /**
+     * Whether the status may move from where it is now to $target.
+     *
+     * Accepts the enum or the stored string, because the thing on the other
+     * side is often a request field. A value that is not a status at all
+     * answers false rather than throwing: a crafted form post is a refusal,
+     * not a 500.
+     */
+    public function canMoveTo(BookingStatus|string|null $target): bool
     {
-        $from = array_search($this->status, self::STATUS_ORDER, true);
-        $to   = array_search($target, self::STATUS_ORDER, true);
+        $target = $target instanceof BookingStatus
+            ? $target
+            : BookingStatus::tryFrom((string) $target);
 
-        // A status outside the ladder (cancelled) is not reachable this way.
-        if ($from === false || $to === false) {
+        if ($target === null || $this->status === null) {
             return false;
         }
 
-        return $to >= $from;
+        return $this->status->canMoveTo($target);
+    }
+
+    /** The next step up the ladder, or null at the end of it. */
+    public function nextStatus(): ?BookingStatus
+    {
+        return $this->status?->next();
     }
 
     protected $fillable = [
@@ -62,6 +74,11 @@ class Booking extends Model
     protected $casts = [
         'cancelled_at' => 'datetime',
         'arrived_at'   => 'datetime',
+        // So $booking->status is a BookingStatus everywhere, and a status
+        // comparison cannot be a string typo. Eloquent converts it back for
+        // the database and accepts an enum in a where() binding, so queries
+        // read the same as they did.
+        'status'       => BookingStatus::class,
     ];
 
     /**
@@ -124,19 +141,19 @@ class Booking extends Model
      */
     public function canStart(): bool
     {
-        return in_array($this->status, self::STARTABLE_STATUSES, true);
+        return $this->status?->isStartable() ?? false;
     }
 
     public function canCancel(): bool
     {
-        return in_array($this->status, self::CANCELLABLE_STATUSES, true);
+        return $this->status?->isCancellable() ?? false;
     }
 
     /**
      * The reference number, but only once it is the customer's to have.
      *
      * A reference is a ticket: it is what the customer quotes at the counter
-     * to claim an appointment. While a booking is 'pending' the shop has not
+     * to claim an appointment. While a booking is Pending Review the shop has not
      * agreed to the slot, so handing the number over then told customers they
      * had an appointment that did not exist yet — and some of them turned up
      * on it. It is disclosed by the confirmation email and not before.
@@ -153,7 +170,7 @@ class Booking extends Model
      */
     public function disclosableReference(): ?string
     {
-        return $this->status === 'pending' ? null : $this->reference_number;
+        return $this->status === BookingStatus::PendingReview ? null : $this->reference_number;
     }
 
     /**
@@ -177,7 +194,7 @@ class Booking extends Model
         // notes and the original date and time are all left untouched, so the
         // record stays complete for history and reporting.
         $this->forceFill([
-            'status'        => 'cancelled',
+            'status'        => BookingStatus::Cancelled,
             'cancel_reason' => $reason,
             'cancelled_by'  => $byUserId,
             'cancelled_at'  => now(),
@@ -348,8 +365,11 @@ class Booking extends Model
      */
     public function rescheduleBlockedReason(): ?string
     {
-        if (in_array($this->status, ['cancelled', 'completed'], true)) {
-            return 'A '.$this->status.' booking cannot be rescheduled.';
+        if ($this->status === BookingStatus::Cancelled || $this->isLocked()) {
+            // "A cancelled booking" / "A Service Completed booking" — the
+            // label, not the stored value, which used to print
+            // "A service_completed booking cannot be rescheduled."
+            return 'A '.strtolower($this->status->label()).' booking cannot be rescheduled.';
         }
 
         if ($this->hasPendingReschedule()) {

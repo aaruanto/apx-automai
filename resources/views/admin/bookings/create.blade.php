@@ -502,20 +502,20 @@
                             // show its own status. Dropping the option outright
                             // would leave the select falling back to Pending and
                             // misreporting the record on screen.
-                            $statusOptions = $isEdit && $booking->status === 'cancelled'
-                                ? ['cancelled' => 'Cancelled']
-                                : ['pending' => 'Pending', 'confirmed' => 'Confirmed', 'in_progress' => 'In Progress', 'completed' => 'Completed'];
+                            $statusOptions = $isEdit && $booking->status === \App\Enums\BookingStatus::Cancelled
+                                ? [\App\Enums\BookingStatus::Cancelled->value => \App\Enums\BookingStatus::Cancelled->label()]
+                                : \App\Enums\BookingStatus::ladderOptions();
                         @endphp
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="form-label required">Booking Status</label>
                             <select class="form-control" name="status" required>
                                 @foreach($statusOptions as $val => $label)
-                                <option value="{{ $val }}" {{ ($booking->status ?? '') === $val ? 'selected' : '' }}>
+                                <option value="{{ $val }}" {{ ($booking->status?->value ?? '') === $val ? 'selected' : '' }}>
                                     {{ $label }}
                                 </option>
                                 @endforeach
                             </select>
-                            @if($isEdit && $booking->status !== 'cancelled')
+                            @if($isEdit && $booking->status !== \App\Enums\BookingStatus::Cancelled)
                             <p style="font-size:.76rem;color:var(--text-muted);margin:6px 0 0;">
                                 Not going ahead? Use <strong>Cancel This Booking</strong> — it records a reason and frees the slot.
                             </p>

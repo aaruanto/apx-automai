@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\BookingStatus;
+
 use App\Models\Booking;
 use App\Models\Service;
 use App\Models\SmsLog;
@@ -40,7 +42,7 @@ function cxAdmin(): User
     return User::factory()->create(['role' => 'admin']);
 }
 
-function cxBooking(?string $phone = '09171234567', string $status = 'confirmed'): Booking
+function cxBooking(?string $phone = '09171234567', string $status = 'booking_confirmed'): Booking
 {
     $unique   = substr(str_replace('.', '', uniqid('', true)), -6);
     $customer = User::factory()->create([
@@ -107,7 +109,7 @@ it('texts the customer when the no-show sweep cancels', function () {
 
     test()->artisan('bookings:cancel-no-shows')->assertSuccessful();
 
-    expect($booking->fresh()->status)->toBe('cancelled')
+    expect($booking->fresh()->status)->toBe(BookingStatus::Cancelled)
         ->and(cxTexts())->toBe(1);
 });
 
@@ -121,7 +123,7 @@ it('stays silent when the caller passed notify false', function () {
 
     app(BookingCancellation::class)->cancel($booking, 'Account deleted', null, false);
 
-    expect($booking->fresh()->status)->toBe('cancelled')
+    expect($booking->fresh()->status)->toBe(BookingStatus::Cancelled)
         ->and(cxTexts())->toBe(0);
 });
 
@@ -150,7 +152,7 @@ it('cancels normally for a customer with no number on file', function () {
 
     app(BookingCancellation::class)->cancel($booking, 'Shop closed');
 
-    expect($booking->fresh()->status)->toBe('cancelled')
+    expect($booking->fresh()->status)->toBe(BookingStatus::Cancelled)
         ->and(cxTexts())->toBe(0);
 });
 

@@ -26,11 +26,40 @@
             // the same value.
             $preStatus = request('status');
 
+            // Four cards for six statuses, and the third one is a sum rather
+            // than a status.
+            //
+            // "In The Shop" is Arrived plus Vehicle Inspection plus Service In
+            // Progress. Those three used to be one status, so a single
+            // Service In Progress card would now count a third of what the
+            // old In Progress card counted, and quietly under-report the
+            // number staff actually care about — how many cars are on the
+            // premises. It links to the queue board, which is the screen that
+            // breaks that number down.
+            //
+            // Service Completed has no card, which is unchanged: it never had
+            // one. It is reachable from the Status filter below, and $counts
+            // now includes it either way — that array is generated from the
+            // enum, where the hand-written version it replaced had no entry
+            // for completed work at all.
+            $inShop = collect([
+                \App\Enums\BookingStatus::Arrived,
+                \App\Enums\BookingStatus::VehicleInspection,
+                \App\Enums\BookingStatus::ServiceInProgress,
+            ])->sum(fn ($s) => $counts[$s->value] ?? 0);
+
             $mini = [
-                ['label'=>'Confirmed',   'key'=>'confirmed',   'icon'=>'fa-circle-check',  'color'=>'var(--success)'],
-                ['label'=>'Pending',     'key'=>'pending',     'icon'=>'fa-hourglass-half','color'=>'var(--warning)'],
-                ['label'=>'In Progress', 'key'=>'in_progress', 'icon'=>'fa-spinner',       'color'=>'var(--info)'],
-                ['label'=>'Cancelled',   'key'=>'cancelled',   'icon'=>'fa-ban',           'color'=>'var(--red)'],
+                ['label'=>\App\Enums\BookingStatus::PendingReview->label(),
+                 'key'=>\App\Enums\BookingStatus::PendingReview->value,
+                 'icon'=>'fa-hourglass-half','color'=>'var(--warning)'],
+                ['label'=>\App\Enums\BookingStatus::BookingConfirmed->label(),
+                 'key'=>\App\Enums\BookingStatus::BookingConfirmed->value,
+                 'icon'=>'fa-circle-check',  'color'=>'var(--success)'],
+                ['label'=>'In The Shop', 'key'=>'__in_shop', 'count'=>$inShop,
+                 'icon'=>'fa-warehouse',     'color'=>'var(--info)'],
+                ['label'=>\App\Enums\BookingStatus::Cancelled->label(),
+                 'key'=>\App\Enums\BookingStatus::Cancelled->value,
+                 'icon'=>'fa-ban',           'color'=>'var(--red)'],
             ];
         @endphp
         {{-- Each card opens the list filtered to its own status. They looked
@@ -48,9 +77,13 @@
         @foreach($mini as $m)
         @php
             $isActive = $preStatus === $m['key'];
-            $target   = $m['key'] === 'cancelled'
-                ? route('admin.bookings.cancelled')
-                : route('admin.bookings.index', ['status' => $m['key']]);
+            $target   = match ($m['key']) {
+                \App\Enums\BookingStatus::Cancelled->value => route('admin.bookings.cancelled'),
+                // Three statuses, so there is no single ?status= for it. The
+                // queue board is the screen that shows them.
+                '__in_shop' => route('admin.bookings.schedule'),
+                default     => route('admin.bookings.index', ['status' => $m['key']]),
+            };
         @endphp
         <a href="{{ $target }}" class="stat-mini{{ $isActive ? ' stat-mini-active' : '' }}"
            title="Show only {{ $m['label'] }} bookings">
@@ -58,7 +91,7 @@
                 <i class="fas {{ $m['icon'] }}"></i>
             </div>
             <div>
-                <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.5rem;font-weight:800;line-height:1;">{{ $counts[$m['key']] ?? 0 }}</div>
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.5rem;font-weight:800;line-height:1;">{{ $m['count'] ?? $counts[$m['key']] ?? 0 }}</div>
                 <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">{{ $m['label'] }}</div>
             </div>
         </a>
@@ -107,8 +140,12 @@
                 <label class="filter-label" for="filterStatus">Status</label>
                 <select class="filter-select" id="filterStatus">
                     <option value="">All Statuses</option>
-                    @foreach (['confirmed'=>'Confirmed', 'pending'=>'Pending', 'in_progress'=>'In Progress', 'completed'=>'Completed', 'cancelled'=>'Cancelled'] as $v => $l)
-                    <option value="{{ $v }}" @selected($preStatus === $v)>{{ $l }}</option>
+                    {{-- Every status, in ladder order, from the enum. The
+                         hand-written list this replaced had to be extended by
+                         hand each time the ladder changed, and had already
+                         fallen out of order. --}}
+                    @foreach (\App\Enums\BookingStatus::cases() as $case)
+                    <option value="{{ $case->value }}" @selected($preStatus === $case->value)>{{ $case->label() }}</option>
                     @endforeach
                 </select>
             </div>
@@ -162,7 +199,7 @@
                 {{-- data-date is the raw YYYY-MM-DD, which is the same shape an
                      <input type="date"> reports, so the filter below compares
                      the two as strings and needs no date parsing at all. --}}
-                <tr data-ref="{{ $b->reference_number }}" data-mechanic="{{ $b->mechanic_id ?? '__unassigned' }}" data-status="{{ $b->status }}" data-service="{{ $b->services->pluck('name')->implode('|') }}" data-date="{{ $b->booking_date }}" data-search="{{ strtolower(($b->customer->name ?? '').' '.$b->reference_number) }}">
+                <tr data-ref="{{ $b->reference_number }}" data-mechanic="{{ $b->mechanic_id ?? '__unassigned' }}" data-status="{{ $b->status->value }}" data-service="{{ $b->services->pluck('name')->implode('|') }}" data-date="{{ $b->booking_date }}" data-search="{{ strtolower(($b->customer->name ?? '').' '.$b->reference_number) }}">
                     <td>
                         <div class="primary-col">{{ $b->customer->name ?? 'N/A' }}</div>
                         <div style="font-size:.76rem;color:var(--text-muted);margin-top:2px;">{{ $b->reference_number }}</div>
@@ -192,23 +229,18 @@
                         </select>
                     </td>
                     <td>
-                        @php
-                            $statusMap = [
-                                'confirmed'   => ['label'=>'Confirmed',  'class'=>'badge-confirmed'],
-                                'pending'     => ['label'=>'Pending',    'class'=>'badge-pending'],
-                                'in_progress' => ['label'=>'In Progress','class'=>'badge-inprogress'],
-                                'cancelled'   => ['label'=>'Cancelled',  'class'=>'badge-cancelled'],
-                            ];
-                            $s = $statusMap[$b->status] ?? ['label'=>ucfirst($b->status),'class'=>'badge-pending'];
-                        @endphp
-                        <span class="badge {{ $s['class'] }}">{{ $s['label'] }}</span>
+                        {{-- Straight off the enum. This was a hand-written map
+                             with no entry for a completed booking, so a
+                             finished job fell through to the default and wore
+                             an amber Pending badge. --}}
+                        <span class="badge {{ $b->status->badgeClass() }}">{{ $b->status->label() }}</span>
                     </td>
                     <td style="text-align:center;">
                         <div style="display:flex;gap:6px;justify-content:center;">
                             <button class="btn btn-ghost btn-sm btn-icon" title="View"
                                 onclick="openViewModal(this)"
                                 data-id="{{ $b->reference_number }}"
-                                data-status="{{ $b->status }}"
+                                data-status="{{ $b->status->value }}"
                                 data-customer="{{ $b->customer->name ?? 'N/A' }}"
                                 data-vehicle="{{ $b->vehicle?->display_plate ?? 'Not provided' }}"
                                 data-model="{{ $b->vehicle?->display_name ?? '' }}"
@@ -217,12 +249,12 @@
                                 data-datetime="{{ $b->booking_date }} {{ $b->booking_time }}"
                                 data-notes="{{ $b->notes ?? '—' }}"
                                 data-cancel-reason="{{ $b->cancel_reason }}"
-                                data-cancel-by="{{ $b->cancelledBy->name ?? ($b->status === 'cancelled' ? 'System' : '') }}"
+                                data-cancel-by="{{ $b->cancelledBy->name ?? ($b->status === \App\Enums\BookingStatus::Cancelled ? 'System' : '') }}"
                                 data-cancel-at="{{ $b->cancelled_at?->format('M j, Y g:i A') }}"
                             ><i class="fas fa-eye"></i></button>
                             <a href="{{ route('admin.bookings.edit', ['id' => $b->id]) }}" class="btn btn-ghost btn-sm btn-icon" title="Edit"><i class="fas fa-pen"></i></a>
                             @if($b->canStart())
-                            <button class="btn btn-ghost btn-sm btn-icon" title="Arrived / Start Service" onclick="markArrived({{ $b->id }}, this)"><i class="fas fa-person-walking-arrow-right"></i></button>
+                            <button class="btn btn-ghost btn-sm btn-icon" title="Mark as arrived" onclick="markArrived({{ $b->id }}, this)"><i class="fas fa-person-walking-arrow-right"></i></button>
                             @endif
                             @if($b->canCancel())
                             <button class="btn btn-danger btn-sm btn-icon" title="Cancel" onclick="cancelBooking({{ $b->id }}, this)"><i class="fas fa-ban"></i></button>
@@ -310,6 +342,8 @@
  
 @push('scripts')
 <script>
+const APX_STATUSES = @json(\App\Enums\BookingStatus::forJs());
+
 function openViewModal(btn) {
     document.getElementById('modal-booking-id').textContent = btn.dataset.id;
     document.getElementById('modal-customer').textContent   = btn.dataset.customer;
@@ -338,15 +372,12 @@ function openViewModal(btn) {
     }
 
     const statusEl = document.getElementById('modal-status');
-    const statusMap = {
-        confirmed:   ['Confirmed',   'badge-confirmed'],
-        pending:     ['Pending',     'badge-pending'],
-        in_progress: ['In Progress', 'badge-inprogress'],
-        cancelled:   ['Cancelled',   'badge-cancelled'],
-    };
-    const s = statusMap[btn.dataset.status] ?? [btn.dataset.status, 'badge-pending'];
-    statusEl.textContent = s[0];
-    statusEl.className   = 'badge ' + s[1];
+    // Serialised from App\Enums\BookingStatus rather than retyped here. This
+    // was the second of two hand-written maps in this one file, and the two
+    // had already drifted from each other and from the server.
+    const s = APX_STATUSES[btn.dataset.status];
+    statusEl.textContent = s ? s.label : btn.dataset.status;
+    statusEl.className   = 'badge ' + (s ? s.badge : 'badge-pending');
 
     openModal('viewModal');
 }
@@ -496,8 +527,16 @@ function markArrived(id, btn) {
         const row   = btn.closest('tr');
         const badge = row.querySelector('.badge');
         row.dataset.status = data.status;
-        badge.className    = 'badge badge-inprogress';
+        // From the response, not hardcoded: this said badge-inprogress, which
+        // was the status arriving used to set. It sets Arrived now, and a
+        // hardcoded class would have drawn the wrong badge for the right
+        // label. The server sends both.
+        badge.className    = 'badge ' + data.badge_class;
         badge.textContent  = data.status_label;
+        // The View button's own copy of the status, which the detail modal
+        // reads. Left stale, the modal would still say Booking Confirmed.
+        const view = row.querySelector('[data-status]');
+        if (view) view.dataset.status = data.status;
         btn.remove();
         applyFilters();
     });

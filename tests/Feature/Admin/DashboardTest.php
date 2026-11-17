@@ -47,8 +47,8 @@ it('no longer offers an Activity Log anywhere', function () {
 // ── 7b: three cards, each filtering the list ────────────────────────────
 
 it('totals completed plus pending, not every booking', function () {
-    dashBooking('completed', today()->toDateString());
-    dashBooking('pending', today()->toDateString());
+    dashBooking('service_completed', today()->toDateString());
+    dashBooking('pending_review', today()->toDateString());
     // Neither completed nor pending, so it must not inflate the total.
     dashBooking('cancelled', today()->toDateString());
 
@@ -63,20 +63,20 @@ it('links each card to the bookings list filtered by that status', function () {
     $r = $this->actingAs(dashAdmin())->get('/admin/dashboard')->assertOk();
 
     // The Completed card used to point at status=confirmed, a different status.
-    $r->assertSee(route('admin.bookings.index', ['status' => 'completed']), false);
-    $r->assertSee(route('admin.bookings.index', ['status' => 'pending']), false);
+    $r->assertSee(route('admin.bookings.index', ['status' => 'service_completed']), false);
+    $r->assertSee(route('admin.bookings.index', ['status' => 'pending_review']), false);
 });
 
 it('preselects that status on the bookings list', function () {
-    $this->actingAs(dashAdmin())->get('/admin/bookings?status=pending')->assertOk()
-        ->assertSee('value="pending" selected', false);
+    $this->actingAs(dashAdmin())->get('/admin/bookings?status=pending_review')->assertOk()
+        ->assertSee('value="pending_review" selected', false);
 });
 
 // ── 7e: filters drive the whole page ────────────────────────────────────
 
 it('filters the figures by date range', function () {
-    dashBooking('completed', today()->toDateString());
-    dashBooking('completed', today()->subMonths(6)->toDateString());
+    dashBooking('service_completed', today()->toDateString());
+    dashBooking('service_completed', today()->subMonths(6)->toDateString());
 
     $r = $this->actingAs(dashAdmin())->get('/admin/dashboard?'.http_build_query([
         'from' => today()->subDays(7)->toDateString(),
@@ -87,10 +87,10 @@ it('filters the figures by date range', function () {
 });
 
 it('filters by status', function () {
-    dashBooking('completed', today()->toDateString());
-    dashBooking('pending', today()->toDateString());
+    dashBooking('service_completed', today()->toDateString());
+    dashBooking('pending_review', today()->toDateString());
 
-    $r = $this->actingAs(dashAdmin())->get('/admin/dashboard?status=completed')->assertOk();
+    $r = $this->actingAs(dashAdmin())->get('/admin/dashboard?status=service_completed')->assertOk();
 
     expect($r->viewData('completed'))->toBe(1);
     expect($r->viewData('pending'))->toBe(0);
@@ -99,8 +99,8 @@ it('filters by status', function () {
 it('filters by customer', function () {
     $mine   = User::factory()->create(['role' => 'customer']);
     $theirs = User::factory()->create(['role' => 'customer']);
-    dashBooking('completed', today()->toDateString(), $mine);
-    dashBooking('completed', today()->toDateString(), $theirs);
+    dashBooking('service_completed', today()->toDateString(), $mine);
+    dashBooking('service_completed', today()->toDateString(), $theirs);
 
     $r = $this->actingAs(dashAdmin())->get('/admin/dashboard?customer='.$mine->id)->assertOk();
 
@@ -110,8 +110,8 @@ it('filters by customer', function () {
 it('filters by service', function () {
     $oil   = Service::create(['name' => 'Oil', 'price' => 1500, 'duration' => 30]);
     $brake = Service::create(['name' => 'Brakes', 'price' => 2500, 'duration' => 30]);
-    dashBooking('completed', today()->toDateString(), null, $oil);
-    dashBooking('completed', today()->toDateString(), null, $brake);
+    dashBooking('service_completed', today()->toDateString(), null, $oil);
+    dashBooking('service_completed', today()->toDateString(), null, $brake);
 
     $r = $this->actingAs(dashAdmin())->get('/admin/dashboard?service='.$oil->id)->assertOk();
 
@@ -119,13 +119,13 @@ it('filters by service', function () {
 });
 
 it('applies the same filters to the live poll', function () {
-    dashBooking('completed', today()->toDateString());
-    dashBooking('pending', today()->toDateString());
+    dashBooking('service_completed', today()->toDateString());
+    dashBooking('pending_review', today()->toDateString());
 
     // Otherwise a refresh would quietly replace a filtered view with
     // unfiltered numbers.
     $json = $this->actingAs(dashAdmin())
-        ->getJson('/admin/dashboard/live?status=completed')->assertOk();
+        ->getJson('/admin/dashboard/live?status=service_completed')->assertOk();
 
     expect($json->json('stats.completed'))->toBe(1);
     expect($json->json('stats.pending'))->toBe(0);
@@ -145,7 +145,7 @@ it('ignores a nonsense filter rather than breaking', function (string $query) {
 // ── 7c: the grouping toggle ─────────────────────────────────────────────
 
 it('groups the chart by each interval offered', function (string $range) {
-    dashBooking('completed', today()->toDateString());
+    dashBooking('service_completed', today()->toDateString());
 
     $r = $this->actingAs(dashAdmin())->get('/admin/dashboard?range='.$range)->assertOk();
 
@@ -154,8 +154,8 @@ it('groups the chart by each interval offered', function (string $range) {
 })->with(['daily', 'weekly', 'monthly', 'quarterly', 'yearly']);
 
 it('counts bookings into the right bucket', function () {
-    dashBooking('completed', today()->toDateString());
-    dashBooking('completed', today()->toDateString());
+    dashBooking('service_completed', today()->toDateString());
+    dashBooking('service_completed', today()->toDateString());
 
     $r = $this->actingAs(dashAdmin())->get('/admin/dashboard?range=daily')->assertOk();
 
@@ -173,8 +173,8 @@ it('charts money actually taken, not the price list', function () {
     // Never booked, so it should contribute nothing.
     Service::create(['name' => 'Never Booked', 'price' => 9999, 'duration' => 30]);
 
-    dashBooking('completed', today()->toDateString(), null, $oil, 1500);
-    dashBooking('completed', today()->toDateString(), null, $oil, 1500);
+    dashBooking('service_completed', today()->toDateString(), null, $oil, 1500);
+    dashBooking('service_completed', today()->toDateString(), null, $oil, 1500);
 
     $r = $this->actingAs(dashAdmin())->get('/admin/dashboard')->assertOk();
 
@@ -186,7 +186,7 @@ it('charts money actually taken, not the price list', function () {
 // ── 7f: a row opens its own booking ─────────────────────────────────────
 
 it('opens one booking from the recent list', function () {
-    $booking = dashBooking('pending', today()->toDateString());
+    $booking = dashBooking('pending_review', today()->toDateString());
 
     $this->actingAs(dashAdmin())->get('/admin/dashboard')->assertOk()
         ->assertSee(route('admin.bookings.edit', $booking->id), false);

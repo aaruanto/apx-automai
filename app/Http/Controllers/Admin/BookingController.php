@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\BookingStatus;
+use App\Services\BookingProgress;
 use App\Support\EmailRule;
 use App\Support\PlateNumber;
 use App\Http\Controllers\Controller;
@@ -36,12 +38,14 @@ class BookingController extends Controller
                         ->latest()
                         ->get();
 
-        $counts = [
-            'confirmed'   => $bookings->where('status', 'confirmed')->count(),
-            'pending'     => $bookings->where('status', 'pending')->count(),
-            'in_progress' => $bookings->where('status', 'in_progress')->count(),
-            'cancelled'   => $bookings->where('status', 'cancelled')->count(),
-        ];
+        // One count per status, generated from the enum rather than listed by
+        // hand. The hand-written version had no entry for 'completed', so the
+        // status cards above the table simply did not count finished work.
+        $counts = collect(BookingStatus::cases())
+            ->mapWithKeys(fn (BookingStatus $s) => [
+                $s->value => $bookings->where('status', $s)->count(),
+            ])
+            ->all();
 
         $services = Service::orderBy('name')->get();
 
@@ -318,7 +322,7 @@ class BookingController extends Controller
                 'mechanic_id'     => $request->mechanic_id ?? null,
                 'booking_date' => $request->booking_date,
                 'booking_time' => $request->booking_time,
-                'status'       => 'pending',
+                'status'       => BookingStatus::PendingReview,
                 'notes'        => $request->notes,
             ]);
         } catch (SlotUnavailableException $e) {
@@ -357,7 +361,7 @@ class BookingController extends Controller
         ));
     }
 
-    public function update(Request $request, $id, SmsService $sms)
+    public function update(Request $request, $id)
     {
         $booking   = Booking::findOrFail($id);
         $oldStatus = $booking->status;
@@ -380,13 +384,15 @@ class BookingController extends Controller
             // A booking that is already cancelled is the exception, and keeps
             // its own status as the only value it may post. It cannot move
             // anywhere — canMoveTo() refuses, because cancelled is not on
-            // STATUS_ORDER — but the form still has to submit. Refusing it
+            // the ladder — but the form still has to submit. Refusing it
             // outright meant the edit screen for a cancelled booking could not
             // be saved at all: the select correctly showed "Cancelled", and
             // submitting it unchanged, even just to correct a note, failed with
             // "The selected status is invalid".
             'status'       => ['required', Rule::in(
-                $booking->status === 'cancelled' ? ['cancelled'] : Booking::STATUS_ORDER
+                $booking->status === BookingStatus::Cancelled
+                    ? [BookingStatus::Cancelled->value]
+                    : BookingStatus::ladderValues()
             )],
             'mechanic_id'     => ['nullable', 'integer', Rule::exists('mechanics', 'id')->where('status', 'active')],
             'notes'        => 'nullable|string|max:2000',
@@ -412,7 +418,7 @@ class BookingController extends Controller
         // can still write down what was agreed, and everything else stands.
         // Falling through to the rest of this method would re-run the capacity
         // check and hand the booking back the slot that cancelling just freed.
-        if ($booking->status === 'cancelled') {
+        if ($booking->status === BookingStatus::Cancelled) {
             $booking->update(['notes' => $request->notes]);
 
             return redirect()->route('admin.bookings.cancelled')->with(
@@ -424,10 +430,16 @@ class BookingController extends Controller
 
         // Forward only. Cancelling is the one way out and has its own action,
         // because it requires a reason.
-        if ($request->status !== $oldStatus && ! $booking->canMoveTo($request->status)) {
+        //
+        // Compared by value on both sides. $request->status is the string a
+        // form posted and $oldStatus is now an enum, so `!==` between them was
+        // true even when the status had not changed at all — which turned
+        // "save a note on a cancelled booking" into "a booking cannot move
+        // from Cancelled back to Cancelled".
+        if ($request->status !== $oldStatus->value && ! $booking->canMoveTo($request->status)) {
             return back()->withInput()->withErrors([
-                'status' => 'A booking cannot move from '.(self::STATUS_LABELS[$oldStatus] ?? $oldStatus)
-                            .' back to '.(self::STATUS_LABELS[$request->status] ?? $request->status)
+                'status' => 'A booking cannot move from '.$oldStatus->label()
+                            .' back to '.(BookingStatus::tryFrom($request->status)?->label() ?? $request->status)
                             .'. Cancel it instead if the work is not going ahead.',
             ]);
         }
@@ -562,13 +574,17 @@ class BookingController extends Controller
         $availability->attachServices($booking, $serviceIds, preserveExisting: true);
 
         // ── Audit: the changes that move money ─────────────────────────────
-        if ($request->status !== $oldStatus) {
-            AuditLog::record(
-                'booking.status_changed', $booking,
-                ['status' => $oldStatus], ['status' => $request->status],
-                label: $booking->reference_number,
-            );
-        }
+        //
+        // The status audit row, the loyalty award, the service-history stamp,
+        // the bell entries, the confirmation email and both texts all moved
+        // into BookingProgress, which the queue board's Advance control calls
+        // too. They were inline here while this form was the only way a status
+        // could move; a second way meant either sharing them or copying them,
+        // and a copy is how a car advanced on the board would have earned no
+        // points and never told its owner it was ready.
+        $newStatus = BookingStatus::from($request->status);
+
+        app(BookingProgress::class)->statusChanged($booking, $oldStatus, $newStatus);
 
         if ($servicesMoved) {
             AuditLog::record(
@@ -576,19 +592,6 @@ class BookingController extends Controller
                 ['service_ids' => $sortedOld], ['service_ids' => $sortedNew],
                 label: $booking->reference_number,
             );
-        }
-
-        // Points are earned when the work is done, never when it is booked,
-        // and on the amount actually paid so a discount is not rewarded
-        // twice. earnFor is idempotent, so this cannot mint on a re-save.
-        if ($oldStatus !== 'completed' && $request->status === 'completed') {
-            app(LoyaltyService::class)->earnFor($booking->fresh());
-
-            // Stamp the vehicle's service history. Maintenance reminders count
-            // forward from this date, so if it is never written the vehicle
-            // looks as though it has not been in since the day it was
-            // registered — and the customer is told so, repeatedly.
-            app(\App\Services\ServiceHistory::class)->recordCompletion($booking->fresh()->load('vehicle'));
         }
 
         if (! $booking->slotMatches($oldDate, $oldTime)) {
@@ -600,24 +603,13 @@ class BookingController extends Controller
             );
         }
 
-        // Tell the customer what changed. Only on a real transition: saving
-        // the form without touching the status or the slot should not notify.
-        if ($booking->user) {
-            if ($oldStatus !== 'confirmed' && $request->status === 'confirmed') {
-                $booking->user->notify(BookingNotification::confirmed($booking->fresh()));
-            }
-
-            if ($oldStatus !== 'completed' && $request->status === 'completed') {
-                $booking->user->notify(BookingNotification::completed($booking->fresh()));
-            }
-
-            // Only a real move. This fired on every save on PostgreSQL,
-            // announcing "moved from 09:00:00 to 09:00:00".
-            if (! $booking->slotMatches($oldDate, $oldTime)) {
-                $booking->user->notify(
-                    BookingNotification::rescheduled($booking->fresh(), $oldDate, $oldTime)
-                );
-            }
+        // Tell the customer the slot moved. Only on a real move — this fired
+        // on every save on PostgreSQL, announcing "moved from 09:00:00 to
+        // 09:00:00". The status notices live in BookingProgress now.
+        if ($booking->user && ! $booking->slotMatches($oldDate, $oldTime)) {
+            $booking->user->notify(
+                BookingNotification::rescheduled($booking->fresh(), $oldDate, $oldTime)
+            );
         }
 
         // The plate is deliberately not editable here. This form used to write
@@ -626,94 +618,6 @@ class BookingController extends Controller
         // uniqueness — so "nonsense!!!" was accepted. It also wrote to the
         // shared Vehicle row, changing the plate on every other booking for
         // that car. A plate belongs to the vehicle, not to one booking.
-
-        // Tell the customer, by email and by text, when the status
-        // changes to 'confirmed'.
-        if ($oldStatus !== 'confirmed' && $request->status === 'confirmed') {
-            $booking->load(['user', 'service', 'vehicle']);
-            $template = MessageTemplate::load();
-            if (
-                $booking->user &&
-                $booking->user->email &&
-                !str_ends_with($booking->user->email, '@apxautomai.local')
-            ) {
-                try {
-                    Mail::to($booking->user->email)->send(new BookingConfirmed($booking));
-                } catch (\Exception $e) {
-                    \Log::error('Booking confirmation email failed: ' . $e->getMessage());
-                }
-            }
-
-            // The same news by text. Email and SMS are deliberately not
-            // all-or-nothing here: a customer with a bad address should still
-            // get the text, and a failed send must never roll back a
-            // confirmation the admin has already made. SmsService does not
-            // throw and writes its own sms_logs row either way.
-            //
-            // No ReminderLedger claim. A reminder matches a date window that
-            // stays true all day, so without a claim it re-sends on every
-            // tick; a confirmation fires on a status transition that happens
-            // once. The `$oldStatus !== 'confirmed'` guard above is what makes
-            // it exactly-once, and re-confirming a booking that was moved back
-            // to pending is a real event worth a second text.
-            if (
-                ! empty($template['channels']['send_sms'])
-                && ! empty($template['triggers']['confirm_booking'])
-                && $sms->configured()
-            ) {
-                $phone = $booking->user?->phone ?: $booking->user?->customer?->phone;
-
-                if ($phone) {
-                    $sms->send(
-                        $phone,
-                        MessageTemplate::fill($template['confirmation_sms'], $booking),
-                        ['booking_id' => $booking->id, 'trigger' => 'confirm_booking'],
-                    );
-                }
-            }
-        }
-
-        // The same news when the work is finished. The email for this goes
-        // out above, through BookingNotification — completed is in its MAILED
-        // list now — so this is only the text.
-        //
-        // Why it exists at all: a customer who waited at the counter was told
-        // in person, but one who dropped the vehicle off and left has no way
-        // to know it is ready. The bell entry reaches them only if they
-        // happen to open the app, which is the person this is for.
-        //
-        // Gated on the SMS channel but not on a trigger of its own. There is
-        // no completion toggle on the Message Templates screen yet, and a key
-        // the UI cannot set is a switch nobody can find — switching SMS off
-        // switches this off with everything else until the screen catches up.
-        //
-        // Exactly-once comes from the $oldStatus guard, as with the
-        // confirmation above, and not from a ReminderLedger claim: a status
-        // transition happens once, where a reminder window stays true all day.
-        //
-        // Its own try. The booking is already saved, the points already
-        // earned and the service history already stamped — a dead SMS gateway
-        // must not turn all of that into a 500 on the admin's screen.
-        if ($oldStatus !== 'completed' && $request->status === 'completed') {
-            try {
-                $completion = MessageTemplate::load();
-                $phone      = $booking->user?->phone ?: $booking->user?->customer?->phone;
-
-                if (
-                    $phone
-                    && ! empty($completion['channels']['send_sms'])
-                    && $sms->configured()
-                ) {
-                    $sms->send(
-                        $phone,
-                        MessageTemplate::fill($completion['completion_sms'], $booking->fresh()),
-                        ['booking_id' => $booking->id, 'trigger' => 'complete_booking'],
-                    );
-                }
-            } catch (\Throwable $e) {
-                \Log::error('Completion text failed for '.$booking->reference_number.': '.$e->getMessage());
-            }
-        }
 
         return redirect()->route('admin.bookings.index')
             ->with('success', 'Booking updated successfully.');
@@ -728,12 +632,11 @@ class BookingController extends Controller
 
         $totalToday = $bookings->count();
 
-        $statuses = [
-            'in_progress' => $bookings->where('status', 'in_progress')->count(),
-            'confirmed'   => $bookings->where('status', 'confirmed')->count(),
-            'pending'     => $bookings->where('status', 'pending')->count(),
-            'cancelled'   => $bookings->where('status', 'cancelled')->count(),
-        ];
+        $statuses = collect(BookingStatus::cases())
+            ->mapWithKeys(fn (BookingStatus $s) => [
+                $s->value => $bookings->where('status', $s)->count(),
+            ])
+            ->all();
 
         return view('admin.bookings.schedule', compact('bookings', 'totalToday', 'statuses'));
     }
@@ -764,8 +667,8 @@ class BookingController extends Controller
         // nothing downstream objects, and the customer ends up with two. A
         // completed booking is a record of work already done and should not be
         // a starting point for anything.
-        if ($original->status !== 'cancelled') {
-            $label = self::STATUS_LABELS[$original->status] ?? $original->status;
+        if ($original->status !== BookingStatus::Cancelled) {
+            $label = $original->status->label();
 
             return redirect()->route('admin.bookings.cancelled')->with('error',
                 $original->reference_number.' is '.$label.', not cancelled, so there is nothing to rebook. '
@@ -1004,7 +907,7 @@ class BookingController extends Controller
         if (! $cancelled) {
             return response()->json([
                 'success' => false,
-                'message' => 'This booking is '.(self::STATUS_LABELS[$booking->status] ?? $booking->status)
+                'message' => 'This booking is '.$booking->status->label()
                              .' and can no longer be cancelled.',
             ], 422);
         }
@@ -1020,13 +923,6 @@ class BookingController extends Controller
         ]);
     }
 
-    private const STATUS_LABELS = [
-        'pending'     => 'Pending',
-        'confirmed'   => 'Confirmed',
-        'in_progress' => 'already in progress',
-        'completed'   => 'already completed',
-        'cancelled'   => 'cancelled',
-    ];
 
     /**
      * Mark a booking "Arrived" and start the service — in_progress protects it
@@ -1037,27 +933,43 @@ class BookingController extends Controller
      * The caller's r.json() then threw on that HTML and the rejection was only
      * console.error'd, so nothing appeared at all and the button looked dead.
      * Refused transitions now return 422 with a message the UI can display.
+     *
+     * Arrival is a status as well as a timestamp now.
+     *
+     * It used to be only a timestamp: this action stamped arrived_at and set
+     * the status straight to in_progress, so a car checked in at the counter
+     * was reported as being worked on before anybody had looked at it. The
+     * ladder has Arrived and Vehicle Inspection between those two, and this
+     * action is the step onto the first of them.
+     *
+     * The column stays, and both are written here. arrived_at is what the
+     * queue board orders by — it is the one piece of information that says
+     * who was here first, which a status cannot — so there is still exactly
+     * one way to mark a car as arrived.
      */
     public function arrive($id)
     {
         $booking = Booking::findOrFail($id);
 
-        if (! in_array($booking->status, Booking::STARTABLE_STATUSES, true)) {
+        if (! $booking->canStart()) {
             return response()->json([
                 'success' => false,
-                'message' => 'This booking is '.(self::STATUS_LABELS[$booking->status] ?? $booking->status)
-                             .'. Only pending or confirmed bookings can be started.',
+                'message' => 'This booking is '.$booking->status->label()
+                             .'. Only a booking that is '
+                             .collect(BookingStatus::startableValues())
+                                ->map(fn (string $v) => BookingStatus::from($v)->label())
+                                ->join(' or ')
+                             .' can be marked arrived.',
             ], 422);
         }
-
 
         // Re-check the status inside the write so two quick clicks (or two tabs
         // on the same booking) can't both pass the guard above and double-stamp
         // arrived_at. 0 rows means someone else got there first.
         $started = Booking::where('id', $booking->id)
-            ->whereIn('status', Booking::STARTABLE_STATUSES)
+            ->whereIn('status', BookingStatus::startableValues())
             ->update([
-                'status'     => 'in_progress',
+                'status'     => BookingStatus::Arrived->value,
                 'arrived_at' => now(),
             ]);
 
@@ -1068,11 +980,19 @@ class BookingController extends Controller
             ], 409);
         }
 
+        // Arriving has no side effects of its own — no points, no mail, no
+        // text — so BookingProgress is still called, for the audit row and so
+        // that a future consequence of arriving has one place to be added.
+        app(BookingProgress::class)->statusChanged(
+            $booking->fresh(), $booking->status, BookingStatus::Arrived
+        );
+
         return response()->json([
             'success'      => true,
-            'status'       => 'in_progress',
-            'status_label' => 'In Progress',
-            'message'      => 'Service started for '.$booking->reference_number.'.',
+            'status'       => BookingStatus::Arrived->value,
+            'status_label' => BookingStatus::Arrived->label(),
+            'badge_class'  => BookingStatus::Arrived->badgeClass(),
+            'message'      => $booking->reference_number.' is marked arrived.',
         ]);
     }
     /**
@@ -1128,7 +1048,11 @@ class BookingController extends Controller
                 $b->service_list,
                 $b->booking_date,
                 $b->booking_time,
-                ucfirst(str_replace('_', ' ', $b->status)),
+                // The enum's label. This was the stored value with its
+                // underscores swapped out and the first letter raised, which
+                // spelled "In progress" where every screen said "In Progress"
+                // — and would now spell "Service in progress".
+                $b->status->label(),
                 optional($b->created_at)->format('Y-m-d H:i'),
             ];
         }

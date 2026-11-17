@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\BookingStatus;
+
 use App\Models\Booking;
 use App\Models\Service;
 use App\Models\User;
@@ -74,7 +76,7 @@ function noticeBooking(array $userAttributes = []): Booking
         'booking_date'     => nextWeekday(),
         'booking_time'     => '10:00:00',
         'duration'         => 60,
-        'status'           => 'confirmed',
+        'status'           => 'booking_confirmed',
         'reference_number' => 'APX-CNL-'.$n++,
     ]);
 }
@@ -150,7 +152,7 @@ it('leaves the booking cancelled when the mailer throws', function () {
 
     noticeCancel(noticeAdmin(), $booking)->assertOk();
 
-    expect($booking->fresh()->status)->toBe('cancelled');
+    expect($booking->fresh()->status)->toBe(BookingStatus::Cancelled);
 });
 
 // ── Which events mail, and which deliberately do not ──────────────────────
@@ -180,7 +182,7 @@ it('emails a completion, because a drop-off customer has no other way to know', 
     // counter". True of someone who waited; false of someone who left the
     // vehicle, which is the whole reason the message exists.
     $booking = noticeBooking();
-    $booking->update(['status' => 'completed']);
+    $booking->update(['status' => 'service_completed']);
 
     $booking->user->notify(BookingNotification::completed($booking->fresh()));
 
@@ -229,7 +231,7 @@ it('cancels from the edit screen through the same path as the list', function ()
 
     noticeCancel(noticeAdmin(), $booking, 'Customer rang to cancel')->assertOk();
 
-    expect($booking->fresh()->status)->toBe('cancelled')
+    expect($booking->fresh()->status)->toBe(BookingStatus::Cancelled)
         ->and($booking->fresh()->cancel_reason)->toBe('Customer rang to cancel')
         ->and(noticeMail())->toHaveCount(1);
 });
@@ -242,7 +244,7 @@ it('refuses a cancellation with no reason, rather than quietly doing nothing', f
         ->assertStatus(422)
         ->assertJsonPath('errors.reason.0', 'Please give a reason for cancelling this booking.');
 
-    expect($booking->fresh()->status)->not->toBe('cancelled');
+    expect($booking->fresh()->status)->not->toBe(BookingStatus::Cancelled);
 });
 
 it('leaves no cancel dialog on the edit screen that posts without a reason', function () {

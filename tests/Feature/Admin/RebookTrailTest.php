@@ -74,7 +74,7 @@ it('records which cancelled booking a rebook replaced', function () {
 
     rtSubmit(rtAdmin(), $original)->assertRedirect();
 
-    $new = Booking::where('status', 'pending')->sole();
+    $new = Booking::where('status', 'pending_review')->sole();
 
     $entry = AuditLog::where('auditable_type', Booking::class)
         ->where('auditable_id', $new->id)
@@ -95,7 +95,7 @@ it('reads as a sentence in the change history', function () {
 
     rtSubmit($admin, $original)->assertRedirect();
 
-    $new = Booking::where('status', 'pending')->sole();
+    $new = Booking::where('status', 'pending_review')->sole();
 
     $html = $this->actingAs($admin)
         ->get('/admin/bookings/'.$new->id.'/edit')
@@ -132,7 +132,7 @@ it('ignores a reference that names nothing and still books it', function () {
 
     rtSubmit(rtAdmin(), $original, ['rebooked_from' => 'APX-NOPE-9999'])->assertRedirect();
 
-    $new = Booking::where('status', 'pending')->sole();
+    $new = Booking::where('status', 'pending_review')->sole();
 
     expect($new->exists)->toBeTrue();
     expect(AuditLog::where('auditable_id', $new->id)->sole()->action)->toBe('booking.created');
@@ -144,11 +144,11 @@ it('ignores a reference naming a booking that is not cancelled', function () {
     // A live booking's reference, posted as the one being replaced. Nothing
     // was replaced, so nothing claims it was.
     $live = rtCancelled();
-    $live->update(['status' => 'confirmed']);
+    $live->update(['status' => 'booking_confirmed']);
 
     rtSubmit(rtAdmin(), $original, ['rebooked_from' => $live->reference_number])->assertRedirect();
 
-    $new = Booking::where('status', 'pending')->sole();
+    $new = Booking::where('status', 'pending_review')->sole();
 
     expect(AuditLog::where('auditable_id', $new->id)->sole()->action)->toBe('booking.created');
 });
@@ -162,7 +162,7 @@ it('never lets the audit row cost the booking', function () {
     rtSubmit(rtAdmin(), $original, ['rebooked_from' => str_repeat('X', 5000)])
         ->assertRedirect();
 
-    expect(Booking::where('status', 'pending')->count())->toBe(1);
+    expect(Booking::where('status', 'pending_review')->count())->toBe(1);
 });
 
 // ── the banner names the button that is there ────────────────────────────

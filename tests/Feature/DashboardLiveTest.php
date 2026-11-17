@@ -15,7 +15,7 @@ uses(RefreshDatabase::class);
  * bookings to another.
  */
 
-function liveBooking(User $customer, string $status = 'pending', int $price = 1500): Booking
+function liveBooking(User $customer, string $status = 'pending_review', int $price = 1500): Booking
 {
     $unique = substr(str_replace('.', '', uniqid('', true)), -6);
 
@@ -41,9 +41,9 @@ function liveBooking(User $customer, string $status = 'pending', int $price = 15
 
 it('returns the same stats the admin dashboard renders', function () {
     $customer = User::factory()->create(['role' => 'customer']);
-    liveBooking($customer, 'pending');
-    liveBooking($customer, 'pending');
-    liveBooking($customer, 'completed');
+    liveBooking($customer, 'pending_review');
+    liveBooking($customer, 'pending_review');
+    liveBooking($customer, 'service_completed');
 
     $admin = User::factory()->create(['role' => 'admin']);
 
@@ -69,7 +69,10 @@ it('returns recent bookings with every service named', function () {
 
     expect($row['customer'])->toBe('Poll Customer');
     expect($row['services'])->toContain('Second Service');
-    expect($row['label'])->toBe('Pending');
+    // The enum's label. This read 'Pending', which was the stored value with
+    // its first letter raised — the payload sends BookingStatus::label() now,
+    // so the poll and the rendered table say the same words.
+    expect($row['label'])->toBe(\App\Enums\BookingStatus::PendingReview->label());
 });
 
 it('does not run a query per row', function () {
@@ -102,9 +105,9 @@ it('keeps the admin feed to admins', function () {
 
 it('returns the customer their own figures', function () {
     $customer = User::factory()->create(['role' => 'customer']);
-    liveBooking($customer, 'pending');
-    liveBooking($customer, 'confirmed');
-    liveBooking($customer, 'completed', 2000);
+    liveBooking($customer, 'pending_review');
+    liveBooking($customer, 'booking_confirmed');
+    liveBooking($customer, 'service_completed', 2000);
 
     $live = $this->actingAs($customer)->getJson('/customer/dashboard/live')->assertOk();
 

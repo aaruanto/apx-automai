@@ -37,7 +37,7 @@ function recBooking(Customer $customer): Booking
     return Booking::create([
         'user_id' => $customer->user_id, 'vehicle_id' => $vehicle->id, 'service_id' => $service->id,
         'booking_date' => today()->toDateString(), 'booking_time' => '10:00',
-        'status' => 'confirmed', 'reference_number' => 'APX-'.$unique,
+        'status' => 'booking_confirmed', 'reference_number' => 'APX-'.$unique,
     ]);
 }
 

@@ -30,10 +30,18 @@ class AccountAnonymizer
     public const GRACE_DAYS = 30;
 
     /** The shop is physically holding the customer's vehicle. */
-    public const IN_PROGRESS_STATUSES = ['in_progress'];
+    /**
+     * Work actually underway, which blocks an account deletion.
+     *
+     * Three steps now rather than one: a car that has arrived, or that is
+     * being inspected, is as physically present as one on the ramp. Deleting
+     * the account under it would cancel a booking for a vehicle standing in
+     * the shop.
+     */
+    public const IN_PROGRESS_STATUSES = ['arrived', 'vehicle_inspection', 'service_in_progress'];
 
     /** Reserved future slots. */
-    public const UPCOMING_STATUSES = ['pending', 'confirmed'];
+    public const UPCOMING_STATUSES = ['pending_review', 'booking_confirmed'];
 
     public function inProgressBookings(User $user)
     {

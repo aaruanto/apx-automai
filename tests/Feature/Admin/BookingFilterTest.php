@@ -55,7 +55,7 @@ function filterBooking(string $date, array $attributes = []): Booking
         'booking_date'     => $date,
         'booking_time'     => '10:00:00',
         'duration'         => 45,
-        'status'           => 'confirmed',
+        'status'           => 'booking_confirmed',
         'reference_number' => 'APX-FIL-'.$unique,
     ], $attributes));
 

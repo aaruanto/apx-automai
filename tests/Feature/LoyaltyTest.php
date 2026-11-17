@@ -44,7 +44,7 @@ function loyaltyCustomer(): User
     return User::factory()->create(['role' => 'customer', 'is_guest' => false]);
 }
 
-function loyaltyBooking(User $user, float $price, string $status = 'confirmed', string $plate = 'LYL 1111'): Booking
+function loyaltyBooking(User $user, float $price, string $status = 'booking_confirmed', string $plate = 'LYL 1111'): Booking
 {
     $unique  = substr(str_replace('.', '', uniqid('', true)), -6);
     $service = Service::create(['name' => 'Svc '.$unique, 'price' => $price, 'duration' => 30]);
@@ -86,7 +86,7 @@ it('earns only when the work is completed', function () {
 
     expect(loyalty()->balanceFor($user))->toBe(0);
 
-    $booking->update(['status' => 'completed']);
+    $booking->update(['status' => 'service_completed']);
     loyalty()->earnFor($booking->fresh());
 
     // 1000 / 50 = 20 points.
@@ -96,7 +96,7 @@ it('earns only when the work is completed', function () {
 
 it('does not mint points when a completed booking is saved again', function () {
     $user    = loyaltyCustomer();
-    $booking = loyaltyBooking($user, 1000, 'completed');
+    $booking = loyaltyBooking($user, 1000, 'service_completed');
 
     loyalty()->earnFor($booking);
     loyalty()->earnFor($booking->fresh());
@@ -124,7 +124,7 @@ it('earns on what was actually paid, not the list price', function () {
     $booking = Booking::sole();
     expect($booking->total_price)->toBe(1000.0);
 
-    $booking->update(['status' => 'completed']);
+    $booking->update(['status' => 'service_completed']);
     loyalty()->earnFor($booking->fresh());
 
     // 1000 paid / 50 = 20, not 2000 / 50 = 40.
@@ -135,7 +135,7 @@ it('earns nothing while loyalty is switched off', function () {
     Setting::setMany(['loyalty_enabled' => false]);
     $user = loyaltyCustomer();
 
-    loyalty()->earnFor(loyaltyBooking($user, 1000, 'completed'));
+    loyalty()->earnFor(loyaltyBooking($user, 1000, 'service_completed'));
 
     expect(loyalty()->balanceFor($user))->toBe(0);
 });
@@ -208,8 +208,8 @@ it('cannot be driven negative by spending twice', function () {
     $user = loyaltyCustomer();
     loyalty()->adjust($user, 300, 'test seed');
 
-    $first  = loyaltyBooking($user, 2000, 'confirmed', 'LYL 4444');
-    $second = loyaltyBooking($user, 2000, 'confirmed', 'LYL 5555');
+    $first  = loyaltyBooking($user, 2000, 'booking_confirmed', 'LYL 4444');
+    $second = loyaltyBooking($user, 2000, 'booking_confirmed', 'LYL 5555');
 
     expect(loyalty()->redeemFor($first, $user, 300))->toBe(150.0);
     // The second spend finds nothing left and takes nothing.
@@ -223,7 +223,7 @@ it('cannot be driven negative by spending twice', function () {
 
 it('takes back points when a completed booking is cancelled', function () {
     $user    = loyaltyCustomer();
-    $booking = loyaltyBooking($user, 1000, 'completed');
+    $booking = loyaltyBooking($user, 1000, 'service_completed');
     loyalty()->earnFor($booking);
 
     expect(loyalty()->balanceFor($user))->toBe(20);
@@ -237,10 +237,10 @@ it('takes back points when a completed booking is cancelled', function () {
 
 it('does not claw a customer into debt for points already spent', function () {
     $user    = loyaltyCustomer();
-    $earner  = loyaltyBooking($user, 1000, 'completed', 'LYL 6666');
+    $earner  = loyaltyBooking($user, 1000, 'service_completed', 'LYL 6666');
     loyalty()->earnFor($earner);                                  // +20
 
-    $spender = loyaltyBooking($user, 2000, 'confirmed', 'LYL 7777');
+    $spender = loyaltyBooking($user, 2000, 'booking_confirmed', 'LYL 7777');
     loyalty()->redeemFor($spender, $user->fresh(), 20);           // -20, balance 0
 
     // The shop then cancels the completed job. There is nothing to take.
@@ -254,7 +254,7 @@ it('gives back points spent on a booking that gets cancelled', function () {
     $user = loyaltyCustomer();
     loyalty()->adjust($user, 400, 'test seed');
 
-    $booking = loyaltyBooking($user, 2000, 'confirmed', 'LYL 8888');
+    $booking = loyaltyBooking($user, 2000, 'booking_confirmed', 'LYL 8888');
     loyalty()->redeemFor($booking, $user->fresh(), 400);
     expect(loyalty()->balanceFor($user))->toBe(0);
 
@@ -268,7 +268,7 @@ it('gives back points spent on a booking that gets cancelled', function () {
 it('does not refund the same cancelled booking twice', function () {
     $user = loyaltyCustomer();
     loyalty()->adjust($user, 400, 'test seed');
-    $booking = loyaltyBooking($user, 2000, 'confirmed', 'LYL 1212');
+    $booking = loyaltyBooking($user, 2000, 'booking_confirmed', 'LYL 1212');
     loyalty()->redeemFor($booking, $user->fresh(), 400);
 
     loyalty()->refundSpentFor($booking->fresh());
@@ -300,7 +300,7 @@ it('spends the oldest points first so they expire in order', function () {
     loyalty()->adjust($user, 100, 'first');
     loyalty()->adjust($user, 100, 'second');
 
-    $booking = loyaltyBooking($user, 2000, 'confirmed', 'LYL 1313');
+    $booking = loyaltyBooking($user, 2000, 'booking_confirmed', 'LYL 1313');
     loyalty()->redeemFor($booking, $user->fresh(), 100);
 
     $lots = LoyaltyLedger::where('user_id', $user->id)
@@ -357,14 +357,14 @@ it('cannot adjust a balance below zero', function () {
 
 it('earns on completion through the admin booking form', function () {
     $user    = loyaltyCustomer();
-    $booking = loyaltyBooking($user, 1500, 'confirmed', 'LYL 1414');
+    $booking = loyaltyBooking($user, 1500, 'booking_confirmed', 'LYL 1414');
     $admin   = User::factory()->create(['role' => 'admin']);
 
     $this->actingAs($admin)->put("/admin/bookings/{$booking->id}", [
         'service_ids'  => $booking->services()->pluck('services.id')->all(),
         'booking_date' => $booking->booking_date,
         'booking_time' => $booking->booking_time,
-        'status'       => 'completed',
+        'status'       => 'service_completed',
     ]);
 
     expect(loyalty()->balanceFor($user))->toBe(30);   // 1500 / 50
@@ -478,7 +478,7 @@ it('still has a switch to stop it in an emergency', function () {
     Setting::flushCache();
 
     $user = loyaltyCustomer();
-    loyalty()->earnFor(loyaltyBooking($user, 1000, 'completed', 'KIL 1111'));
+    loyalty()->earnFor(loyaltyBooking($user, 1000, 'service_completed', 'KIL 1111'));
 
     expect(loyalty()->balanceFor($user))->toBe(0);
 });
@@ -487,7 +487,7 @@ it('still has a switch to stop it in an emergency', function () {
 
 it('refuses a second earn row for the same booking at the database', function () {
     $user    = loyaltyCustomer();
-    $booking = loyaltyBooking($user, 1000, 'completed', 'IDM 1111');
+    $booking = loyaltyBooking($user, 1000, 'service_completed', 'IDM 1111');
     loyalty()->earnFor($booking);
 
     // Bypassing the service entirely — the constraint is the last line of
@@ -504,7 +504,7 @@ it('refuses a second earn row for the same booking at the database', function ()
 it('still allows each different kind of entry on one booking', function () {
     $user    = loyaltyCustomer();
     loyalty()->adjust($user, 500, 'seed');
-    $booking = loyaltyBooking($user, 2000, 'confirmed', 'IDM 2222');
+    $booking = loyaltyBooking($user, 2000, 'booking_confirmed', 'IDM 2222');
 
     // redeemed, then refunded, then the booking earns later — three
     // different reasons against one booking, all legitimate.
@@ -547,7 +547,7 @@ it('catches points that are in the balance but in no lot', function () {
 
 it('reports what discounts cost and what loyalty owes', function () {
     $user    = loyaltyCustomer();
-    $booking = loyaltyBooking($user, 1000, 'completed', 'RPT 1111');
+    $booking = loyaltyBooking($user, 1000, 'service_completed', 'RPT 1111');
     // Dated inside the report window: the page filters on booking_date and
     // the helper books into the future.
     $booking->update(['booking_date' => today()->toDateString()]);

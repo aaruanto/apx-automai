@@ -16,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
     <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-17" rel="stylesheet" />
-    <link href="{{ asset('assets/css/customer-dashboard.css') }}?v=2026-11-04" rel="stylesheet" />
+    <link href="{{ asset('assets/css/customer-dashboard.css') }}?v=2026-11-17" rel="stylesheet" />
     <link href="{{ asset('assets/css/availability-picker.css') }}" rel="stylesheet" />
     {{-- Before first paint. The theme used to be applied by the script at the
          bottom of this file, which was invisible only because the stylesheet's
@@ -475,7 +475,13 @@
                             <a href="#" onclick="switchSection(event,'bookings'); filterBookings('upcoming')" style="font-size:0.8rem;color:var(--red);text-decoration:none;">View All <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></a>
                         </div>
                         <div class="card-body">
-                            @forelse($bookings->whereIn('status', ['confirmed', 'pending'])->take(3) as $b)
+                            {{-- Grouped through the enum, so the six-step
+                                 ladder reaches this panel without it having to
+                                 list which steps count as upcoming. A car that
+                                 has arrived is no longer "upcoming" — it is in
+                                 the shop — and a hardcoded pair of statuses
+                                 would have kept showing it here. --}}
+                            @forelse($bookings->filter(fn ($b) => $b->status->customerGroup() === 'upcoming')->take(3) as $b)
                             <div class="booking-item">
                                 <div class="booking-date-box">
                                     <span class="day">{{ date('d', strtotime($b->booking_date)) }}</span>
@@ -489,7 +495,11 @@
                                         <span><i class="fas fa-car"></i>{{ trim(($b->vehicle?->make_model ?? '') . ' (' . ($b->vehicle?->display_plate ?? 'Not provided') . ')') }}</span>
                                     </div>
                                 </div>
-                                <span class="badge badge-{{ $b->status === 'confirmed' ? 'confirmed' : 'pending' }}">{{ ucfirst($b->status) }}</span>
+                                {{-- The real label, not the group: a customer
+                                     should read "Booking Confirmed", and
+                                     ucfirst() on the stored value would have
+                                     printed "Pending_review". --}}
+                                <span class="badge {{ $b->status->badgeClass() }}">{{ $b->status->label() }}</span>
                             </div>
                             @empty
                             <p style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:20px 0;">No upcoming bookings.</p>
@@ -528,7 +538,7 @@
                         </button>
                         <button class="filter-tab" data-filter="in_progress" onclick="filterBookings('in_progress')">
                             <span class="dot dot-inprogress"></span> In Progress
-                            <span class="tab-count" id="cnt-inprogress">{{ $bookings->where('status','in_progress')->count() }}</span>
+                            <span class="tab-count" id="cnt-inprogress">{{ $bookings->filter(fn ($b) => $b->status->customerGroup() === 'in_progress')->count() }}</span>
                         </button>
                         <button class="filter-tab" data-filter="completed" onclick="filterBookings('completed')">
                             <span class="dot dot-completed"></span> Completed
@@ -536,7 +546,7 @@
                         </button>
                         <button class="filter-tab" data-filter="cancelled" onclick="filterBookings('cancelled')">
                             <span class="dot dot-cancelled"></span> Cancelled
-                            <span class="tab-count" id="cnt-cancelled">{{ $bookings->where('status','cancelled')->count() }}</span>
+                            <span class="tab-count" id="cnt-cancelled">{{ $bookings->filter(fn ($b) => $b->status->customerGroup() === 'cancelled')->count() }}</span>
                         </button>
                     </div>
                     <div class="filter-search">
@@ -1420,6 +1430,12 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         });
     })();
 
+    /* The four tabs a customer filters by, and the icon each group wears.
+       Deliberately NOT the labels any more: a booking carries its own
+       statusLabel and statusBadge from App\Enums\BookingStatus, so a card for
+       a car being inspected reads "Vehicle Inspection" rather than the group
+       it happens to be filed under. The group is for the filters; the label is
+       what the customer is told. */
     const STATUS_META = {
         upcoming:    { label:'Upcoming',    cls:'badge-confirmed',  icon:'fa-clock' },
         in_progress: { label:'In Progress', cls:'badge-inprogress', icon:'fa-rotate' },
@@ -1497,7 +1513,12 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         empty.style.display = 'none';
         // Fix 2: Show Cancel Booking button for upcoming/in-progress bookings
         list.innerHTML = filtered.map(b => {
-            const meta = STATUS_META[b.status] || STATUS_META['upcoming'];
+            // The group supplies the icon; the booking supplies the words. A
+            // card for a car being inspected reads "Vehicle Inspection" and
+            // still sits under the In Progress tab.
+            const meta  = STATUS_META[b.status] || STATUS_META['upcoming'];
+            const label = b.statusLabel || meta.label;
+            const badge = b.statusBadge || meta.cls;
             const canCancel = b.status === 'upcoming' || b.status === 'in_progress';
             const cancelBtn = canCancel
                 ? `<div style="margin-top:8px;"><button onclick="cancelBooking(${b.dbId})" style="background:none;border:1px solid rgba(232,25,44,0.4);color:var(--red);padding:5px 14px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:background 0.2s;" onmouseover="this.style.background='var(--red-glow)'" onmouseout="this.style.background='none'"><i class="fas fa-ban"></i> Cancel Booking</button></div>`
@@ -1534,7 +1555,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                         ${cancelNote}
                     </div>
                     <div class="bk-status-col">
-                        <span class="badge ${meta.cls}"><i class="fas ${meta.icon}"></i>${meta.label}</span>
+                        <span class="badge ${badge}"><i class="fas ${meta.icon}"></i>${label}</span>
                         <span class="bk-amount">${b.amount}</span>
                     </div>
                 </div>
@@ -2094,7 +2115,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
     // Add new booking to array instantly
     const d = new Date(date);
     BOOKINGS.unshift({
-        // A booking is created 'pending', so it has no reference to show
+        // A booking is created Pending Review, so it has no reference to show
         // yet — the same label the server sends for pending rows in
         // bookingsJs, so the optimistic row and a reload agree.
         id:        'Pending review',
@@ -2109,7 +2130,13 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         staff:     'TBA',
         vehicle:   (() => { const v = MY_VEHICLES.find(v => v.id == vehicleId); return v ? v.name + ' (' + v.plate + ')' : 'N/A'; })(),
         amount:    'TBA',
-        status:    'upcoming',
+        // A booking is created Pending Review, which groups as upcoming. The
+        // label and badge are given explicitly so this optimistic row looks
+        // like the ones the server sends, rather than falling back to the
+        // group's own wording.
+        status:      'upcoming',
+        statusLabel: 'Pending Review',
+        statusBadge: 'badge-pending',
     });
 
     // Update counts
@@ -2923,17 +2950,27 @@ document.addEventListener('click', function(e) {
                     BOOKINGS.forEach(b => {
                         const fresh = byId.get(String(b.dbId));
                         if (!fresh) return;
-                        const status = ['confirmed', 'pending'].includes(fresh.status) ? 'upcoming' : fresh.status;
+                        // The server already groups it — /customer/dashboard/live
+                        // sends the tab group as `status` and the real wording
+                        // as statusLabel — so this no longer has to know which
+                        // statuses mean "upcoming". It did, and with two steps
+                        // added to the ladder that list would have been wrong.
+                        const status = fresh.status;
                         // The reference appears here the moment the shop
                         // confirms, so a customer watching the page gets
                         // their number without reloading. It stays
                         // "Pending review" until the server discloses one.
                         const label  = fresh.reference ? '#' + fresh.reference : 'Pending review';
-                        if (b.status !== status || b.staff !== fresh.staff || b.id !== label) {
-                            b.status = status;
-                            b.staff  = fresh.staff;
-                            b.id     = label;
-                            changed  = true;
+                        if (b.status !== status
+                            || b.statusLabel !== fresh.statusLabel
+                            || b.staff !== fresh.staff
+                            || b.id !== label) {
+                            b.status      = status;
+                            b.statusLabel = fresh.statusLabel;
+                            b.statusBadge = fresh.statusBadge;
+                            b.staff       = fresh.staff;
+                            b.id          = label;
+                            changed       = true;
                         }
                     });
 

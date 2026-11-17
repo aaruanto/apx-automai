@@ -44,7 +44,7 @@ function jobAt(string $time, int $minutes = 60, ?int $mechanicId = null, ?string
         'user_id' => $customer->id, 'vehicle_id' => $vehicle->id, 'service_id' => $service->id,
         'mechanic_id' => $mechanicId,
         'booking_date' => $date ?? today()->addDay()->toDateString(),
-        'booking_time' => $time, 'duration' => $minutes, 'status' => 'confirmed',
+        'booking_time' => $time, 'duration' => $minutes, 'status' => 'booking_confirmed',
         'reference_number' => 'APX-'.$unique,
     ]);
 }
@@ -195,7 +195,7 @@ it('blocks an overlapping assignment made through the edit form', function () {
             'service_ids'  => [$second->service_id],
             'booking_date' => $date,
             'booking_time' => '10:00',
-            'status'       => 'confirmed',
+            'status'       => 'booking_confirmed',
             'mechanic_id'     => $mech->id,
         ])
         ->assertSessionHasErrors('mechanic_id');

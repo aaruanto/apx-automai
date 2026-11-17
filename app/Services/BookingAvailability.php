@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\BookingStatus;
 use App\Exceptions\SlotUnavailableException;
 use App\Models\Booking;
 use App\Models\Setting;
@@ -27,8 +28,17 @@ class BookingAvailability
     /** Minutes after a booking's start before a no-show auto-cancels it. */
     public const GRACE_MINUTES = 15;
 
-    /** Statuses that occupy a mechanic slot. */
-    private const ACTIVE_STATUSES = ['pending', 'confirmed', 'in_progress'];
+    /**
+     * Statuses that occupy a mechanic slot.
+     *
+     * Asked of the enum rather than listed here. Two steps joined the ladder
+     * — Arrived and Vehicle Inspection — and a hardcoded list would have let
+     * a car physically in the shop count as free capacity.
+     */
+    private function activeStatuses(): array
+    {
+        return BookingStatus::occupyingValues();
+    }
 
     /**
      * Operating hours by ISO weekday (1 = Monday ... 7 = Sunday), as [open, close].
@@ -131,7 +141,7 @@ class BookingAvailability
     public function bookingsOnDate(string $date, ?int $excludeBookingId = null): int
     {
         return Booking::whereDate('booking_date', $date)
-            ->whereIn('status', self::ACTIVE_STATUSES)
+            ->whereIn('status', $this->activeStatuses())
             ->when($excludeBookingId, fn ($q) => $q->where('id', '!=', $excludeBookingId))
             ->count();
     }
@@ -700,7 +710,7 @@ class BookingAvailability
         return Booking::with('service:id,duration')
             ->where('booking_date', $date)
             ->where($column, $value)
-            ->whereIn('status', self::ACTIVE_STATUSES)
+            ->whereIn('status', $this->activeStatuses())
             ->when($excludeBookingId, fn ($q) => $q->where('id', '!=', $excludeBookingId))
             ->orderBy('booking_time')
             ->get();
@@ -763,7 +773,7 @@ class BookingAvailability
     {
         $query = Booking::with('service:id,duration')
             ->where('booking_date', $date)
-            ->whereIn('status', self::ACTIVE_STATUSES);
+            ->whereIn('status', $this->activeStatuses());
 
         if ($excludeId) {
             $query->where('id', '!=', $excludeId);
@@ -789,7 +799,7 @@ class BookingAvailability
     {
         return Booking::with('service:id,duration')
             ->whereBetween('booking_date', [$from, $to])
-            ->whereIn('status', self::ACTIVE_STATUSES)
+            ->whereIn('status', $this->activeStatuses())
             ->get(['id', 'service_id', 'booking_date', 'booking_time', 'duration'])
             ->groupBy(fn (Booking $booking) => Carbon::parse($booking->booking_date)->toDateString())
             ->map(fn (Collection $forDay, string $date) => $forDay

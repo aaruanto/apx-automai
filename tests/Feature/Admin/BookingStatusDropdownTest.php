@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\BookingStatus;
+
 use App\Models\Booking;
 use App\Models\Service;
 use App\Models\User;
@@ -37,7 +39,7 @@ function statusAdmin(): User
     return User::factory()->create(['role' => 'admin']);
 }
 
-function statusBooking(string $status = 'pending'): Booking
+function statusBooking(string $status = 'pending_review'): Booking
 {
     $unique   = substr(str_replace('.', '', uniqid('', true)), -6);
     $customer = User::factory()->create(['role' => 'customer']);
@@ -62,13 +64,16 @@ function statusBooking(string $status = 'pending'): Booking
 }
 
 it('does not offer cancelled on a live booking', function () {
-    $booking = statusBooking('pending');
+    $booking = statusBooking('pending_review');
 
     $html = $this->actingAs(statusAdmin())
         ->get("/admin/bookings/{$booking->id}/edit")->assertOk()->getContent();
 
-    // The four rungs of the ladder are offered; the fifth option is not.
-    foreach (['pending', 'confirmed', 'in_progress', 'completed'] as $rung) {
+    // Every rung of the ladder is offered, and Cancelled is not. Read off the
+    // enum rather than listed here: the ladder grew from four steps to six,
+    // and a hardcoded list would have kept passing while silently checking
+    // only the old four.
+    foreach (\App\Enums\BookingStatus::ladderValues() as $rung) {
         expect($html)->toContain('<option value="'.$rung.'"');
     }
     expect($html)->not->toContain('<option value="cancelled"');
@@ -87,11 +92,11 @@ it('still shows a cancelled booking its own status', function () {
     // Without this the select falls back to its first option and the screen
     // reports a cancelled booking as Pending.
     expect($html)->toContain('<option value="cancelled"');
-    expect($html)->not->toContain('<option value="pending"');
+    expect($html)->not->toContain('<option value="pending_review"');
 });
 
 it('refuses to cancel a live booking through the dropdown', function () {
-    $booking = statusBooking('confirmed');
+    $booking = statusBooking('booking_confirmed');
 
     $this->actingAs(statusAdmin())
         ->put("/admin/bookings/{$booking->id}", [
@@ -104,7 +109,7 @@ it('refuses to cancel a live booking through the dropdown', function () {
         ->assertSessionHasErrors('status');
 
     // The reason-capturing action is the only way out, so the booking stands.
-    expect($booking->refresh()->status)->toBe('confirmed');
+    expect($booking->refresh()->status)->toBe(BookingStatus::BookingConfirmed);
     expect($booking->cancel_reason)->toBeNull();
 });
 
@@ -127,7 +132,7 @@ it('saves the notes on a cancelled booking instead of refusing the form', functi
 
     // Everything else about a cancelled booking stands: it keeps its status,
     // and it does not take its slot back.
-    expect($booking->status)->toBe('cancelled');
+    expect($booking->status)->toBe(BookingStatus::Cancelled);
 });
 
 it('does not let a cancelled booking be revived through the form', function () {
@@ -138,10 +143,10 @@ it('does not let a cancelled booking be revived through the form', function () {
             'service_ids'  => [$booking->service_id],
             'booking_date' => $booking->booking_date,
             'booking_time' => $booking->booking_time,
-            'status'       => 'pending',
+            'status'       => 'pending_review',
             'notes'        => 'Putting it back.',
         ])
         ->assertSessionHasErrors('status');
 
-    expect($booking->refresh()->status)->toBe('cancelled');
+    expect($booking->refresh()->status)->toBe(BookingStatus::Cancelled);
 });

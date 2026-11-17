@@ -233,7 +233,7 @@ it('shows the make, model, year and type on the booking edit screen', function (
         'service_id'   => viService()->id,
         'booking_date' => nextWeekday(),
         'booking_time' => '10:00',
-        'status'       => 'pending',
+        'status'       => 'pending_review',
         'duration'     => 60,
         'reference_number' => 'APX-VID-'.uniqid(),
     ]);
@@ -267,7 +267,7 @@ it('names a motorcycle as one on the booking edit screen', function () {
         'service_id'   => viService()->id,
         'booking_date' => nextWeekday(),
         'booking_time' => '10:00',
-        'status'       => 'pending',
+        'status'       => 'pending_review',
         'duration'     => 60,
         'reference_number' => 'APX-VID-'.uniqid(),
     ]);

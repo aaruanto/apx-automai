@@ -88,7 +88,7 @@ class SendBookingReminders extends Command
     {
         return Booking::with(['user', 'user.customer', 'service', 'vehicle'])
             ->whereDate('booking_date', $date->toDateString())
-            ->where('status', 'confirmed')
+            ->where('status', \App\Enums\BookingStatus::BookingConfirmed)
             ->get();
     }
 
@@ -111,7 +111,7 @@ class SendBookingReminders extends Command
             ->whereDate('booking_date', Carbon::today()->toDateString())
             ->whereTime('booking_time', '>=', $from->format('H:i:00'))
             ->whereTime('booking_time', '<=', $to->format('H:i:00'))
-            ->where('status', 'confirmed')
+            ->where('status', \App\Enums\BookingStatus::BookingConfirmed)
             ->get();
     }
 

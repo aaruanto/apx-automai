@@ -105,7 +105,7 @@ class MaintenanceDue
     public function hasUpcomingBooking(Vehicle $vehicle): bool
     {
         return Booking::where('vehicle_id', $vehicle->id)
-            ->whereIn('status', ['pending', 'confirmed', 'in_progress'])
+            ->whereIn('status', \App\Enums\BookingStatus::occupyingValues())
             ->whereDate('booking_date', '>=', Carbon::today())
             ->exists();
     }

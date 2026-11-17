@@ -309,7 +309,7 @@ it('reads the snapshot back as one phrase, dropping whichever half is missing', 
         'vehicle_id' => trVehicle($customer, 'automatic', 'TRS 3333')->id,
         'service_id' => trService(null)->id,
         'booking_date' => nextWeekday(), 'booking_time' => '10:00',
-        'status' => 'pending', 'reference_number' => 'TRS-0001',
+        'status' => 'pending_review', 'reference_number' => 'TRS-0001',
         'vehicle_type' => 'car', 'transmission' => 'automatic',
     ]);
 
@@ -318,7 +318,7 @@ it('reads the snapshot back as one phrase, dropping whichever half is missing', 
         'vehicle_id' => trVehicle($customer, null, 'TRS 4444')->id,
         'service_id' => trService(null)->id,
         'booking_date' => nextWeekday(), 'booking_time' => '11:00',
-        'status' => 'pending', 'reference_number' => 'TRS-0002',
+        'status' => 'pending_review', 'reference_number' => 'TRS-0002',
         'vehicle_type' => 'motorcycle', 'transmission' => null,
     ]);
 

@@ -20,7 +20,7 @@ function exportAdmin(): User
     return User::factory()->create(['role' => 'admin']);
 }
 
-function exportBooking(string $status = 'confirmed'): Booking
+function exportBooking(string $status = 'booking_confirmed'): Booking
 {
     $unique   = substr(str_replace('.', '', uniqid('', true)), -6);
     $customer = User::factory()->create(['role' => 'customer', 'name' => 'Export Tester']);
@@ -49,7 +49,7 @@ function csvBody($response): string
 }
 
 it('exports bookings as csv', function () {
-    exportBooking('confirmed');
+    exportBooking('booking_confirmed');
 
     $response = $this->actingAs(exportAdmin())->get('/admin/bookings/export')->assertOk();
     $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
@@ -71,7 +71,7 @@ it('exports bookings as csv', function () {
 });
 
 it('exports only cancelled bookings on the cancelled export', function () {
-    exportBooking('confirmed');
+    exportBooking('booking_confirmed');
     $cancelled = exportBooking('cancelled');
 
     $body = csvBody($this->actingAs(exportAdmin())->get('/admin/bookings/cancelled/export')->assertOk());
@@ -92,7 +92,7 @@ it('exports customers as csv', function () {
 });
 
 it('exports the report summary for the selected period', function () {
-    exportBooking('confirmed');
+    exportBooking('booking_confirmed');
 
     $response = $this->actingAs(exportAdmin())->get('/admin/reports/export?period=90')->assertOk();
     $body = csvBody($response);

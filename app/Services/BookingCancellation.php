@@ -56,7 +56,7 @@ class BookingCancellation
         // money, rather than this one living somewhere of its own.
         AuditLog::record(
             'booking.cancelled', $booking,
-            ['status' => 'cancelled'], [], $reason,
+            ['status' => \App\Enums\BookingStatus::Cancelled->value], [], $reason,
             label: $booking->reference_number,
         );
 

@@ -17,7 +17,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" rel="stylesheet" />
     <link href="{{ asset('assets/css/design-tokens.css') }}?v=2026-11-17" rel="stylesheet" />
-    <link href="{{ asset('assets/css/dashboard.css') }}?v=2026-11-02" rel="stylesheet" />
+    <link href="{{ asset('assets/css/dashboard.css') }}?v=2026-11-17" rel="stylesheet" />
 
     {{-- Theme before first paint.
 
@@ -903,6 +903,35 @@
         .badge-cancelled {
             background: rgba(232, 25, 44, .10);
             color: var(--red);
+        }
+
+        /* The three steps the six-status ladder added. No new hex: every one
+           of these is a token from design-tokens.css, which is also why the
+           two blues are a shade apart rather than two different hues — there
+           is no fifth token to reach for, and inventing one to separate
+           Vehicle Inspection from Service In Progress would break the rule
+           that file exists to keep. The column headings on the queue board
+           carry the distinction; the badges only have to not look identical.
+
+           Arrived uses --warning-dark against Pending Review's --warning, and
+           Service Completed uses --success-dark against Booking Confirmed's
+           --success, so each pair reads as the same colour further along. */
+        .badge-arrived {
+            background: rgba(180, 83, 9, .12);
+            color: var(--warning-dark);
+        }
+
+        .badge-inspection {
+            background: rgba(37, 99, 235, .12);
+            color: var(--info-dark);
+        }
+
+        /* Was missing entirely. None of the admin status maps had an entry for
+           a completed booking, so `$map[$status] ?? ...` fell through to the
+           default and a finished job wore an amber Pending badge. */
+        .badge-completed {
+            background: rgba(22, 163, 74, .12);
+            color: var(--success-dark);
         }
 
 

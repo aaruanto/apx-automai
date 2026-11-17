@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\BookingStatus;
+
 use App\Models\Booking;
 use App\Models\Service;
 use App\Models\SmsLog;
@@ -43,7 +45,7 @@ function completionBody(\Symfony\Component\Mailer\SentMessage $message): string
     return quoted_printable_decode($message->getOriginalMessage()->toString());
 }
 
-function completionBooking(array $userAttributes = [], string $status = 'confirmed'): Booking
+function completionBooking(array $userAttributes = [], string $status = 'booking_confirmed'): Booking
 {
     static $n = 1;
 
@@ -77,7 +79,7 @@ function completionBooking(array $userAttributes = [], string $status = 'confirm
     return $booking;
 }
 
-function completeViaAdmin(Booking $booking, string $status = 'completed')
+function completeViaAdmin(Booking $booking, string $status = 'service_completed')
 {
     $admin = User::factory()->create(['role' => 'admin']);
 
@@ -96,7 +98,7 @@ it('emails the customer when the admin marks the work complete', function () {
 
     completeViaAdmin($booking);
 
-    expect($booking->fresh()->status)->toBe('completed')
+    expect($booking->fresh()->status)->toBe(BookingStatus::ServiceCompleted)
         ->and(completionMail())->toHaveCount(1);
 
     $body = completionBody(completionMail()->first());
@@ -126,7 +128,7 @@ it('says nothing when a booking that is already complete is saved again', functi
     // The prior state is created, not produced by a first request. Two
     // requests in one test re-run the first one's afterResponse callbacks,
     // which makes any mail count spanning them meaningless.
-    $booking = completionBooking(status: 'completed');
+    $booking = completionBooking(status: 'service_completed');
 
     completeViaAdmin($booking);
 
@@ -137,7 +139,7 @@ it('says nothing when a booking that is already complete is saved again', functi
 it('says nothing when the status does not reach completed', function () {
     $booking = completionBooking();
 
-    completeViaAdmin($booking, 'in_progress');
+    completeViaAdmin($booking, 'service_in_progress');
 
     expect(completionMail())->toHaveCount(0)
         ->and(SmsLog::where('trigger', 'complete_booking')->count())->toBe(0);

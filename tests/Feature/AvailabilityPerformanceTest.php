@@ -32,7 +32,7 @@ function availCustomer(): User
 }
 
 /** A booking that occupies [time, time+minutes) on $date. */
-function availBooking(string $date, string $time, int $minutes = 60, string $status = 'pending'): void
+function availBooking(string $date, string $time, int $minutes = 60, string $status = 'pending_review'): void
 {
     $unique   = substr(str_replace('.', '', uniqid('', true)), -6);
     $customer = availCustomer();
@@ -121,8 +121,12 @@ it('ignores cancelled and completed bookings', function () {
     $date = nextWeekday();
 
     availBooking($date, '10:00', 60, 'cancelled');
-    availBooking($date, '10:00', 60, 'completed');
-    availBooking($date, '10:00', 60, 'no_show');
+    availBooking($date, '10:00', 60, 'service_completed');
+    // A third row was written here with status 'no_show', which has never
+    // been a status this application sets — the no-show sweep cancels a
+    // booking, it does not invent a sixth value. SQLite accepted the string
+    // and the test passed on a row the app could never produce. Casting
+    // status to the enum refused it, which is how it was found.
 
     $slots = collect(app(BookingAvailability::class)->dayAvailability($date, 60))
         ->keyBy('start');

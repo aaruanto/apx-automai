@@ -99,7 +99,7 @@ function reminderBooking(User $user, Vehicle $vehicle, array $attributes = []): 
         'booking_date'     => Carbon::today()->addDays(7)->toDateString(),
         'booking_time'     => '10:00:00',
         'duration'         => 30,
-        'status'           => 'confirmed',
+        'status'           => 'booking_confirmed',
         'reference_number' => 'APX-RMD-'.$n++,
     ], $attributes));
 }
@@ -159,7 +159,7 @@ it('reminds separately for each window, and only on the right day', function () 
 it('leaves unconfirmed and cancelled bookings alone', function () {
     $user = reminderCustomer();
 
-    foreach (['pending', 'cancelled', 'completed'] as $status) {
+    foreach (['pending_review', 'cancelled', 'service_completed'] as $status) {
         reminderBooking($user, reminderVehicle($user), ['status' => $status]);
     }
 
@@ -391,7 +391,7 @@ it('stamps the vehicle service date when a booking completes', function () {
 
     $booking = reminderBooking($user, $vehicle, [
         'booking_date' => Carbon::today()->toDateString(),
-        'status'       => 'completed',
+        'status'       => 'service_completed',
     ]);
 
     app(ServiceHistory::class)->recordCompletion($booking->load('vehicle'));
@@ -413,7 +413,7 @@ it('never rewinds the service date', function () {
     // make the vehicle look overdue when it was serviced today.
     $backdated = reminderBooking($user, $vehicle, [
         'booking_date' => Carbon::today()->subMonth()->toDateString(),
-        'status'       => 'completed',
+        'status'       => 'service_completed',
     ]);
 
     app(ServiceHistory::class)->recordCompletion($backdated->load('vehicle'));

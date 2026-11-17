@@ -504,6 +504,14 @@
         .badge-cancelled::before { background: var(--red); }
         .badge-inprogress { background: rgba(59,130,246,0.12); color: var(--info); }
         .badge-inprogress::before { background: var(--info); }
+        /* The three the six-status ladder added — see the matching comment in
+           layouts/admin.blade.php for why these shades and no new hex. */
+        .badge-arrived { background: rgba(180,83,9,0.12); color: var(--warning-dark); }
+        .badge-arrived::before { background: var(--warning-dark); }
+        .badge-inspection { background: rgba(37,99,235,0.12); color: var(--info-dark); }
+        .badge-inspection::before { background: var(--info-dark); }
+        .badge-completed { background: rgba(22,163,74,0.12); color: var(--success-dark); }
+        .badge-completed::before { background: var(--success-dark); }
 
         /* ── FOOTER ─────────────────────────────── */
         footer {

@@ -129,7 +129,7 @@ it('lets the slot be taken again once the earlier booking is cancelled', functio
 
     dupBook($user, $vehicle, $service, $date, '10:00')->assertOk();
 
-    expect(Booking::where('status', 'pending')->count())->toBe(1);
+    expect(Booking::where('status', 'pending_review')->count())->toBe(1);
 });
 
 it('allows a different vehicle on the same account at the same time', function () {

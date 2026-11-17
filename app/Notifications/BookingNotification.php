@@ -227,7 +227,7 @@ class BookingNotification extends Notification
      * the admin create site.
      *
      * The only customer-facing notification that fires while the booking is
-     * still 'pending', so it is also the only one that must not name the
+     * still Pending Review, so it is also the only one that must not name the
      * reference number — hence disclosesReference: false, which keeps it out
      * of the body, the payload and linkFor()'s URL alike. The customer is
      * given the number by BookingConfirmed and not before.

@@ -195,10 +195,21 @@
                 <div style="width:100%;display:flex;flex-direction:column;gap:6px;">
                     @php
                         $statusBreakdown = [
-                            ['label'=>'Completed',   'count'=>$statusCounts['completed'] ?? 0,   'color'=>'#16a34a'],
-                            ['label'=>'Confirmed',   'count'=>$statusCounts['confirmed'] ?? 0,   'color'=>'#22c55e'],
-                            ['label'=>'Pending',     'count'=>$statusCounts['pending'] ?? 0,     'color'=>'#f59e0b'],
-                            ['label'=>'In Progress', 'count'=>$statusCounts['in_progress'] ?? 0, 'color'=>'#3b82f6'],
+                            ['label'=>'Completed',   'count'=>$statusCounts['service_completed'] ?? 0,   'color'=>'#16a34a'],
+                            ['label'=>'Confirmed',   'count'=>$statusCounts['booking_confirmed'] ?? 0,   'color'=>'#22c55e'],
+                            ['label'=>'Pending',     'count'=>$statusCounts['pending_review'] ?? 0,      'color'=>'#f59e0b'],
+                            // The three statuses that mean a car is on the
+                            // premises, summed. They were one status before,
+                            // so a single slice for Service In Progress would
+                            // now be a third of what this slice used to
+                            // measure. A // comment, not a Blade one: Blade
+                            // does not strip {{-- --}} inside an @php block,
+                            // so it reaches the compiled PHP as a syntax error.
+                            ['label'=>'In The Shop',
+                             'count'=>($statusCounts['arrived'] ?? 0)
+                                     + ($statusCounts['vehicle_inspection'] ?? 0)
+                                     + ($statusCounts['service_in_progress'] ?? 0),
+                             'color'=>'#3b82f6'],
                             ['label'=>'Cancelled',   'count'=>$statusCounts['cancelled'] ?? 0,   'color'=>'#E8192C'],
                         ];
                         $total = array_sum(array_column($statusBreakdown, 'count')) ?: 1;
@@ -344,10 +355,10 @@ new Chart(document.getElementById('statusDonut'), {
         labels:['Completed','Confirmed','Pending','In Progress','Cancelled'],
         datasets:[{
             data:[
-                {!! $statusCounts['completed']   ?? 0 !!},
-                {!! $statusCounts['confirmed']   ?? 0 !!},
-                {!! $statusCounts['pending']     ?? 0 !!},
-                {!! $statusCounts['in_progress'] ?? 0 !!},
+                {!! $statusCounts['service_completed'] ?? 0 !!},
+                {!! $statusCounts['booking_confirmed'] ?? 0 !!},
+                {!! $statusCounts['pending_review'] ?? 0 !!},
+                {!! ($statusCounts['arrived'] ?? 0) + ($statusCounts['vehicle_inspection'] ?? 0) + ($statusCounts['service_in_progress'] ?? 0) !!},
                 {!! $statusCounts['cancelled']   ?? 0 !!}
             ],
             backgroundColor:['#16a34a','#22c55e','#f59e0b','#3b82f6','#E8192C'],

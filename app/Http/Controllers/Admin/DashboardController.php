@@ -66,7 +66,10 @@ class DashboardController extends Controller
                 'date'      => $b->booking_date,
                 'mechanic'  => $b->mechanic->name ?? 'Unassigned',
                 'status'    => $b->status,
-                'label'     => ucfirst(str_replace('_', ' ', $b->status)),
+                // The enum's label, not the stored value with its underscores
+                // swapped out — that spelling would read "Service in progress"
+                // where every other screen says "Service In Progress".
+                'label'     => $b->status->label(),
             ])->values(),
             // Folded in here so the bell needs no poller of its own.
             'unread'     => auth()->user()->unreadNotifications()->count(),
@@ -97,7 +100,10 @@ class DashboardController extends Controller
         }
 
         $status = $request->query('status');
-        $status = in_array($status, ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled'], true)
+        // Asked of the enum rather than listed here, so a step added to the
+        // ladder is filterable on the dashboard without anyone remembering to
+        // come back and extend a copy of it.
+        $status = in_array($status, \App\Enums\BookingStatus::values(), true)
             ? $status
             : null;
 
@@ -163,13 +169,16 @@ class DashboardController extends Controller
     {
         // A status filter narrows the cards to that status; the other two then
         // read zero, which is honest rather than ignoring the filter.
-        $completed = $filters['status'] && $filters['status'] !== 'completed'
-            ? 0
-            : (clone $this->base($filters))->where('status', 'completed')->count();
+        $done    = \App\Enums\BookingStatus::ServiceCompleted->value;
+        $waiting = \App\Enums\BookingStatus::PendingReview->value;
 
-        $pending = $filters['status'] && $filters['status'] !== 'pending'
+        $completed = $filters['status'] && $filters['status'] !== $done
             ? 0
-            : (clone $this->base($filters))->where('status', 'pending')->count();
+            : (clone $this->base($filters))->where('status', $done)->count();
+
+        $pending = $filters['status'] && $filters['status'] !== $waiting
+            ? 0
+            : (clone $this->base($filters))->where('status', $waiting)->count();
 
         return [
             'completed' => $completed,
@@ -281,7 +290,11 @@ class DashboardController extends Controller
         $bookings = $this->base($filters)
             // Revenue means work that was actually completed, unless the admin
             // has asked to look at another status specifically.
-            ->when($filters['status'], fn ($q, $s) => $q->where('status', $s), fn ($q) => $q->where('status', 'completed'))
+            ->when(
+                $filters['status'],
+                fn ($q, $s) => $q->where('status', $s),
+                fn ($q) => $q->where('status', \App\Enums\BookingStatus::ServiceCompleted)
+            )
             ->with('services')
             ->get();
 

@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\BookingStatus;
+
 /**
  * The reference number is a ticket, so it is disclosed once — on confirmation.
  *
@@ -77,7 +79,7 @@ function refWhole(int $i = 0): string
  * the same test re-runs the first request's closure, and the mailbox then
  * shows the first booking's acknowledgment twice. See CLAUDE.md.
  */
-function refBooking(string $status = 'pending', ?User $customer = null): Booking
+function refBooking(string $status = 'pending_review', ?User $customer = null): Booking
 {
     $unique   = substr(str_replace('.', '', uniqid('', true)), -6);
     $customer = $customer ?: User::factory()->create([
@@ -133,7 +135,7 @@ it('sends a guest an acknowledgment whose subject carries no reference', functio
     $this->postJson('/booking/guest', refGuestPayload())->assertOk();
 
     $booking = Booking::sole();
-    expect($booking->status)->toBe('pending');
+    expect($booking->status)->toBe(BookingStatus::PendingReview);
 
     // Two messages, not one: a brand-new guest also gets GuestAccountCreated
     // with their setup link. So this asserts the acknowledgment is among them
@@ -177,7 +179,8 @@ it('keeps what the acknowledgment is actually for', function () {
     $whole = strtolower(refWhole());
 
     expect($whole)->toContain(strtolower($service->name));
-    expect($whole)->toContain('pending');
+    // "Pending review" in the body, lowercased above for matching.
+    expect($whole)->toContain('pending review');
     // And that a second email is coming, so "no number" cannot read as
     // "we lost your booking".
     expect($whole)->toContain('confirm');
@@ -205,10 +208,10 @@ it('discloses the reference when an admin confirms', function () {
             'service_ids'  => $booking->services->pluck('id')->all(),
             'booking_date' => $booking->booking_date,
             'booking_time' => $booking->booking_time,
-            'status'       => 'confirmed',
+            'status'       => 'booking_confirmed',
         ])->assertRedirect();
 
-    expect($booking->fresh()->status)->toBe('confirmed');
+    expect($booking->fresh()->status)->toBe(BookingStatus::BookingConfirmed);
 
     expect(refSent())->toHaveCount(1);
     expect(refSubjects()[0])->toContain($booking->reference_number);
@@ -216,7 +219,7 @@ it('discloses the reference when an admin confirms', function () {
 });
 
 it('words the confirmation as the ticket to bring', function () {
-    $booking  = refBooking('confirmed');
+    $booking  = refBooking('booking_confirmed');
     $rendered = strtolower((new BookingConfirmed($booking))->render());
 
     expect($rendered)->toContain(strtolower($booking->reference_number));
@@ -267,7 +270,7 @@ it('leaves no reference badge on the landing pages success screen', function () 
 
 it('labels a pending booking Pending review on the dashboard', function () {
     $customer = User::factory()->create(['role' => 'customer']);
-    $booking  = refBooking('pending', $customer);
+    $booking  = refBooking('pending_review', $customer);
 
     $this->actingAs($customer)->get('/customer/dashboard')->assertOk()
         ->assertDontSee($booking->reference_number)
@@ -278,7 +281,7 @@ it('shows the reference on the dashboard once it is confirmed', function () {
     // A separate test, not a second assertion above: actingAs persists for a
     // whole test, and so would the first booking's pending row.
     $customer = User::factory()->create(['role' => 'customer']);
-    $booking  = refBooking('confirmed', $customer);
+    $booking  = refBooking('booking_confirmed', $customer);
 
     $this->actingAs($customer)->get('/customer/dashboard')->assertOk()
         ->assertSee($booking->reference_number);
@@ -286,7 +289,7 @@ it('shows the reference on the dashboard once it is confirmed', function () {
 
 it('withholds the reference from the dashboard poll while pending', function () {
     $customer = User::factory()->create(['role' => 'customer']);
-    $booking  = refBooking('pending', $customer);
+    $booking  = refBooking('pending_review', $customer);
 
     $this->actingAs($customer)->getJson('/customer/dashboard/live')->assertOk()
         ->assertJsonPath('bookings.0.reference', null)
@@ -297,7 +300,7 @@ it('withholds the reference from the dashboard poll while pending', function () 
 
 it('discloses the reference to the dashboard poll once confirmed', function () {
     $customer = User::factory()->create(['role' => 'customer']);
-    $booking  = refBooking('confirmed', $customer);
+    $booking  = refBooking('booking_confirmed', $customer);
 
     $this->actingAs($customer)->getJson('/customer/dashboard/live')->assertOk()
         ->assertJsonPath('bookings.0.reference', $booking->reference_number);
@@ -308,7 +311,7 @@ it('keeps a pending reference out of the customers loyalty history', function ()
     // said "Redeemed against ZREF-…" while the booking was still pending —
     // the reference again, by a side door.
     $customer = User::factory()->create(['role' => 'customer']);
-    $booking  = refBooking('pending', $customer);
+    $booking  = refBooking('pending_review', $customer);
 
     expect($booking->disclosableReference())->toBeNull();
 
@@ -371,7 +374,14 @@ it('discloses the reference from the model only after pending', function () {
 
     expect($booking->disclosableReference())->toBeNull();
 
-    foreach (['confirmed', 'in_progress', 'completed'] as $status) {
+    // Every status except the one the reference is withheld on. Read off the
+    // enum, so the two steps the ladder gained are covered without this list
+    // having to be remembered — and a seventh would be too.
+    foreach (\App\Enums\BookingStatus::cases() as $status) {
+        if ($status === \App\Enums\BookingStatus::PendingReview) {
+            continue;
+        }
+
         $booking->update(['status' => $status]);
         expect($booking->fresh()->disclosableReference())->toBe($booking->reference_number);
     }

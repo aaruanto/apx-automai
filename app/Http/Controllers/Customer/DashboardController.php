@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Customer;
 
+use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Bundle;
@@ -41,11 +42,18 @@ class DashboardController extends Controller
         $vehicles = Vehicle::where('user_id', $user->id)->get();
         $services = Service::all();
 
-        $upcoming      = $bookings->whereIn('status', ['confirmed', 'pending'])->count();
-        $completed     = $bookings->where('status', 'completed')->count();
+        // Grouped through the enum, so the six-step ladder reaches the
+        // customer's four counters without this screen having to know which
+        // steps exist. A car that has arrived or is being inspected counts as
+        // in progress, not as upcoming.
+        $byGroup = $bookings->groupBy(fn (Booking $b) => $b->status->customerGroup());
+
+        $upcoming      = $byGroup->get('upcoming', collect())->count();
+        $completedSet  = $byGroup->get('completed', collect());
+        $completed     = $completedSet->count();
         $totalBookings = $bookings->count();
         // Completed work only, from the per-booking price snapshots.
-        $totalSpent    = $bookings->where('status', 'completed')->sum(fn ($b) => $b->total_price);
+        $totalSpent    = $completedSet->sum(fn ($b) => $b->total_price);
 
         $bookingsJs = $bookings->map(function($b) {
             return [
@@ -74,7 +82,13 @@ class DashboardController extends Controller
                 'vehicleProfile' => $b->vehicle_profile,
                 'vehicle_id'=> $b->vehicle_id,
                 'amount'    => 'TBA',
-                'status'    => in_array($b->status, ['confirmed', 'pending']) ? 'upcoming' : $b->status,
+                // The tab this booking falls under, and separately the real
+                // label for the card. A customer whose car is being inspected
+                // should read "Vehicle Inspection", not "In Progress" — the
+                // grouping is for the filters, not for what they are told.
+                'status'       => $b->status->customerGroup(),
+                'statusLabel'  => $b->status->label(),
+                'statusBadge'  => $b->status->badgeClass(),
                 // So a customer can see why a booking of theirs was cancelled,
                 // including when the shop or the no-show sweep did it.
                 'cancelReason' => $b->cancel_reason,
@@ -203,10 +217,11 @@ class DashboardController extends Controller
 
         return response()->json([
             'stats' => [
-                'upcoming'  => $bookings->whereIn('status', ['confirmed', 'pending'])->count(),
-                'completed' => $bookings->where('status', 'completed')->count(),
+                'upcoming'  => $bookings->filter(fn (Booking $b) => $b->status->customerGroup() === 'upcoming')->count(),
+                'completed' => $bookings->filter(fn (Booking $b) => $b->status->customerGroup() === 'completed')->count(),
                 'total'     => $bookings->count(),
-                'spent'     => $bookings->where('status', 'completed')->sum(fn ($b) => $b->total_price),
+                'spent'     => $bookings->filter(fn (Booking $b) => $b->status->customerGroup() === 'completed')
+                                        ->sum(fn (Booking $b) => $b->total_price),
             ],
             'bookings' => $bookings->take(20)->map(fn (Booking $b) => [
                 // The merge key, and it is the id rather than the reference
@@ -220,7 +235,9 @@ class DashboardController extends Controller
                 'date'      => $b->booking_date,
                 'time'      => $b->booking_time,
                 'mechanic'  => $b->mechanic->name ?? 'TBA',
-                'status'    => $b->status,
+                'status'       => $b->status->customerGroup(),
+                'statusLabel'  => $b->status->label(),
+                'statusBadge'  => $b->status->badgeClass(),
             ])->values(),
             'unread'     => $user->unreadNotifications()->count(),
             'updated_at' => now()->toIso8601String(),
@@ -370,7 +387,7 @@ class DashboardController extends Controller
                 'booking_date' => $data['booking_date'],
                 'booking_time' => $data['booking_time'],
                 'notes'        => $data['notes'] ?? null,
-                'status'       => 'pending',
+                'status'       => BookingStatus::PendingReview,
             ]);
 
             // Price it. Server side, from database rows — nothing the browser
@@ -395,7 +412,7 @@ class DashboardController extends Controller
 
         $this->notifyAdminsOfBooking($booking);
 
-        // No 'reference'. The booking is created 'pending', and the reference
+        // No 'reference'. The booking is created Pending Review, and the
         // is withheld until an admin confirms it — the success modal used to
         // print it the instant the booking was saved. booking_id is still
         // returned because the list is keyed on it and it means nothing at
@@ -637,7 +654,7 @@ class DashboardController extends Controller
     {
         $booking = Booking::where('id', $id)
                           ->where('user_id', Auth::id())
-                          ->whereIn('status', ['pending', 'confirmed'])
+                          ->whereIn('status', BookingStatus::startableValues())
                           ->firstOrFail();
 
         // Optional here, unlike the admin side: a customer cancelling their

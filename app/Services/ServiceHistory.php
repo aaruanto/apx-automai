@@ -13,7 +13,8 @@ use Carbon\Carbon;
  * see. Maintaining it from the booking the shop just completed means it is
  * correct without anyone being asked to remember.
  *
- * Called from every place a booking can reach 'completed'. It is idempotent
+ * Called from every place a booking can reach Service Completed — which is
+ * BookingProgress, and only BookingProgress, now. It is idempotent
  * and only ever moves the date forward, so a re-save, a backdated walk-in or
  * two bookings completed out of order cannot rewind a vehicle's history and
  * make it look overdue when it is not.

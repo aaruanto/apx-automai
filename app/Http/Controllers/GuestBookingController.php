@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\BookingStatus;
 use App\Support\BookingPolicy;
 use App\Support\PlateNumber;
 use App\Support\EmailRule;
@@ -269,7 +270,7 @@ class GuestBookingController extends Controller
                     'mechanic_id'  => null,
                     'booking_date' => $request->booking_date,
                     'booking_time' => $request->booking_time,
-                    'status'       => 'pending',
+                    'status'       => BookingStatus::PendingReview,
                     // Extra services used to be appended to the note as
                     // "[Additional services: ...]" because only one could be
                     // stored. They are real pivot rows now, so the note is the
@@ -351,7 +352,7 @@ class GuestBookingController extends Controller
             }
         })->afterResponse();
 
-        // No 'reference' here, deliberately. The booking is 'pending' and the
+        // No 'reference' here, deliberately. The booking is Pending Review and
         // reference is withheld until an admin confirms it — the success
         // screen used to print it under "Bring this number when you arrive",
         // which told the customer they had an appointment nobody had agreed

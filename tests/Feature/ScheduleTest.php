@@ -37,7 +37,7 @@ function schedBooking(string $date, string $time, int $minutes = 30): array
     return [[
         'user_id' => $customer->id, 'vehicle_id' => $vehicle->id,
         'service_ids' => [$service->id],
-        'booking_date' => $date, 'booking_time' => $time, 'status' => 'pending',
+        'booking_date' => $date, 'booking_time' => $time, 'status' => 'pending_review',
     ], $customer];
 }
 
@@ -161,7 +161,7 @@ it('leaves an existing out-of-hours booking readable', function () {
     $booking = App\Models\Booking::create([
         'user_id' => $customer->id, 'vehicle_id' => $vehicle->id, 'service_id' => $service->id,
         'booking_date' => nextWeekday(), 'booking_time' => '19:30',
-        'duration' => 30, 'status' => 'pending', 'reference_number' => 'OLD-'.$unique,
+        'duration' => 30, 'status' => 'pending_review', 'reference_number' => 'OLD-'.$unique,
     ]);
 
     $this->actingAs(User::factory()->create(['role' => 'admin']))

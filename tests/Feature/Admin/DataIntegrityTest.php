@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\BookingStatus;
+
 use App\Models\AuditLog;
 use App\Models\Booking;
 use App\Models\Service;
@@ -50,14 +52,18 @@ function editPayload(Booking $b, array $overrides = []): array
         'service_ids'  => $b->services()->pluck('services.id')->all(),
         'booking_date' => $b->booking_date,
         'booking_time' => $b->booking_time,
-        'status'       => $b->status,
+        // ->value, not the enum: this builds an HTTP payload, and a form posts
+        // the stored string. Handing the enum object to put() sent something
+        // the status rule refused, which made every edit in this file fail
+        // validation — including the ones that are only about notes.
+        'status'       => $b->status->value,
     ], $overrides);
 }
 
 // ── 4: the price snapshot ────────────────────────────────────────────────
 
 it('keeps the price a completed booking was done at', function () {
-    [$b, $service] = intBooking('completed', 1500);
+    [$b, $service] = intBooking('service_completed', 1500);
 
     $service->update(['price' => 2000]);
 
@@ -69,7 +75,7 @@ it('keeps the price a completed booking was done at', function () {
 });
 
 it('keeps existing prices but quotes a newly added service at todays rate', function () {
-    [$b, $oil] = intBooking('confirmed', 1500);
+    [$b, $oil] = intBooking('booking_confirmed', 1500);
     $brakes    = Service::create(['name' => 'Brakes', 'price' => 2500, 'duration' => 30]);
 
     $oil->update(['price' => 9999]);
@@ -85,11 +91,11 @@ it('keeps existing prices but quotes a newly added service at todays rate', func
 // ── 2 and 3: completed is locked, status is forward only ─────────────────
 
 it('refuses to move a completed booking back to pending', function () {
-    [$b] = intBooking('completed');
+    [$b] = intBooking('service_completed');
 
-    $this->actingAs(intAdmin())->put("/admin/bookings/{$b->id}", editPayload($b, ['status' => 'pending']));
+    $this->actingAs(intAdmin())->put("/admin/bookings/{$b->id}", editPayload($b, ['status' => 'pending_review']));
 
-    expect($b->fresh()->status)->toBe('completed');
+    expect($b->fresh()->status)->toBe(BookingStatus::ServiceCompleted);
 });
 
 it('refuses any backward status move', function (string $from, string $to) {
@@ -99,11 +105,11 @@ it('refuses any backward status move', function (string $from, string $to) {
         ->put("/admin/bookings/{$b->id}", editPayload($b, ['status' => $to]))
         ->assertSessionHasErrors('status');
 
-    expect($b->fresh()->status)->toBe($from);
+    expect($b->fresh()->status)->toBe(BookingStatus::from($from));
 })->with([
-    ['in_progress', 'pending'],
-    ['in_progress', 'confirmed'],
-    ['confirmed', 'pending'],
+    ['service_in_progress', 'pending_review'],
+    ['service_in_progress', 'booking_confirmed'],
+    ['booking_confirmed', 'pending_review'],
 ]);
 
 it('still allows moving forward, including skipping ahead', function (string $from, string $to) {
@@ -113,16 +119,16 @@ it('still allows moving forward, including skipping ahead', function (string $fr
         ->put("/admin/bookings/{$b->id}", editPayload($b, ['status' => $to]))
         ->assertSessionHasNoErrors();
 
-    expect($b->fresh()->status)->toBe($to);
+    expect($b->fresh()->status)->toBe(BookingStatus::from($to));
 })->with([
-    ['pending', 'confirmed'],
-    ['confirmed', 'in_progress'],
-    ['in_progress', 'completed'],
-    ['pending', 'completed'],
+    ['pending_review', 'booking_confirmed'],
+    ['booking_confirmed', 'service_in_progress'],
+    ['service_in_progress', 'service_completed'],
+    ['pending_review', 'service_completed'],
 ]);
 
 it('still lets notes be edited on a completed booking', function () {
-    [$b] = intBooking('completed');
+    [$b] = intBooking('service_completed');
 
     $this->actingAs(intAdmin())
         ->put("/admin/bookings/{$b->id}", editPayload($b, ['notes' => 'paid in cash']));
@@ -131,7 +137,7 @@ it('still lets notes be edited on a completed booking', function () {
 });
 
 it('does not reschedule a completed booking', function () {
-    [$b] = intBooking('completed');
+    [$b] = intBooking('service_completed');
     $was = $b->booking_date;
 
     $this->actingAs(intAdmin())->put("/admin/bookings/{$b->id}",
@@ -143,7 +149,7 @@ it('does not reschedule a completed booking', function () {
 // ── 5: the plate ─────────────────────────────────────────────────────────
 
 it('ignores a plate submitted through the booking edit form', function () {
-    [$b, , $vehicle] = intBooking('confirmed');
+    [$b, , $vehicle] = intBooking('booking_confirmed');
     $was = $vehicle->plate_number;
 
     $this->actingAs(intAdmin())
@@ -164,7 +170,7 @@ it('holds the admin to the same plate format as the customer', function () {
 // ── 6: deleting ──────────────────────────────────────────────────────────
 
 it('will not delete a completed booking', function () {
-    [$b] = intBooking('completed');
+    [$b] = intBooking('service_completed');
 
     $this->actingAs(intAdmin())
         ->deleteJson("/admin/bookings/{$b->id}", ['reason' => 'tidying up'])
@@ -201,13 +207,13 @@ it('deletes with a reason and records who did it', function () {
 // ── 7: the audit trail ───────────────────────────────────────────────────
 
 it('records a status change with both values', function () {
-    [$b] = intBooking('pending');
+    [$b] = intBooking('pending_review');
 
-    $this->actingAs(intAdmin())->put("/admin/bookings/{$b->id}", editPayload($b, ['status' => 'confirmed']));
+    $this->actingAs(intAdmin())->put("/admin/bookings/{$b->id}", editPayload($b, ['status' => 'booking_confirmed']));
 
     $log = AuditLog::where('action', 'booking.status_changed')->sole();
-    expect($log->old_values['status'])->toBe('pending');
-    expect($log->new_values['status'])->toBe('confirmed');
+    expect($log->old_values['status'])->toBe('pending_review');
+    expect($log->new_values['status'])->toBe('booking_confirmed');
     expect($log->actor_name)->toBe('The Admin');
 });
 
@@ -216,7 +222,7 @@ it('records a reschedule and a service change', function () {
     // an admin changing the date proposes the move rather than making it: the
     // proposal is recorded when it is raised, and the move when the customer
     // has agreed and it is applied. A service change still saves outright.
-    [$b, $oil] = intBooking('confirmed');
+    [$b, $oil] = intBooking('booking_confirmed');
     $extra = Service::create(['name' => 'Extra', 'price' => 500, 'duration' => 30]);
     $admin = intAdmin();
 
@@ -253,7 +259,7 @@ it('records a price change but not a rename', function () {
 });
 
 it('writes no log entry when nothing meaningful changed', function () {
-    [$b] = intBooking('confirmed');
+    [$b] = intBooking('booking_confirmed');
 
     $this->actingAs(intAdmin())->put("/admin/bookings/{$b->id}", editPayload($b, ['notes' => 'just a note']));
 
@@ -262,21 +268,21 @@ it('writes no log entry when nothing meaningful changed', function () {
 });
 
 it('shows the history on the booking it describes', function () {
-    [$b] = intBooking('pending');
+    [$b] = intBooking('pending_review');
     $admin = intAdmin();
 
-    $this->actingAs($admin)->put("/admin/bookings/{$b->id}", editPayload($b, ['status' => 'confirmed']));
+    $this->actingAs($admin)->put("/admin/bookings/{$b->id}", editPayload($b, ['status' => 'booking_confirmed']));
 
     $this->actingAs($admin)->get("/admin/bookings/{$b->id}/edit")->assertOk()
         ->assertSee('Change History')
-        ->assertSee('Status changed from pending to confirmed')
+        ->assertSee('Status changed from pending_review to booking_confirmed')
         ->assertSee('The Admin');
 });
 
 // ── 1: customer identity stays read-only ─────────────────────────────────
 
 it('still refuses to edit customer identity', function () {
-    [$b] = intBooking('confirmed');
+    [$b] = intBooking('booking_confirmed');
     $customer = $b->user;
 
     $this->actingAs(intAdmin())->put("/admin/bookings/{$b->id}", editPayload($b, [

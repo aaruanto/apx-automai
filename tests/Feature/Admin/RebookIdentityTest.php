@@ -107,7 +107,7 @@ it('rebooks a customer who has no phone number, without inventing a second accou
 
     expect(User::count())->toBe($usersBefore);
 
-    $new = Booking::where('status', 'pending')->sole();
+    $new = Booking::where('status', 'pending_review')->sole();
     expect($new->user_id)->toBe($original->user_id);
     expect($new->vehicle_id)->toBe($original->vehicle_id);
 });
@@ -130,7 +130,7 @@ it('rebooks the right one of three customers sharing a name', function () {
         ->assertRedirect()
         ->assertSessionHasNoErrors();
 
-    $new = Booking::where('status', 'pending')->sole();
+    $new = Booking::where('status', 'pending_review')->sole();
 
     // The booking follows the identity it was rebooked from, not the phone.
     expect($new->user_id)->toBe($original->user_id);
@@ -151,7 +151,7 @@ it('does not re-point a rebook at another account when the phone is corrected', 
         ->assertSessionHasNoErrors();
 
     expect(User::count())->toBe($usersBefore);
-    expect(Booking::where('status', 'pending')->sole()->user_id)->toBe($original->user_id);
+    expect(Booking::where('status', 'pending_review')->sole()->user_id)->toBe($original->user_id);
 });
 
 // ── the plate check must survive all of this ────────────────────────────
@@ -172,7 +172,7 @@ it('still refuses a walk-in on a plate that belongs to someone else', function (
         'booking_time'   => '11:00',
     ])->assertSessionHasErrors('plate');
 
-    expect(Booking::where('status', 'pending')->count())->toBe(0);
+    expect(Booking::where('status', 'pending_review')->count())->toBe(0);
 });
 
 it('refuses a vehicle_id that belongs to a different customer', function () {
@@ -188,7 +188,7 @@ it('refuses a vehicle_id that belongs to a different customer', function () {
         'plate'      => $theirs->vehicle->plate_number,
     ])->assertSessionHasErrors('plate');
 
-    expect(Booking::where('status', 'pending')->count())->toBe(0);
+    expect(Booking::where('status', 'pending_review')->count())->toBe(0);
 });
 
 it('ignores a user_id that does not exist', function () {
@@ -201,7 +201,7 @@ it('ignores a user_id that does not exist', function () {
         ->assertRedirect()
         ->assertSessionHasNoErrors();
 
-    expect(Booking::where('status', 'pending')->sole()->user_id)->toBe($original->user_id);
+    expect(Booking::where('status', 'pending_review')->sole()->user_id)->toBe($original->user_id);
 });
 
 // ── the form has to carry the identity in the first place ───────────────
@@ -274,7 +274,7 @@ it('lets a rebook post the customers own existing address', function () {
         ->assertRedirect()
         ->assertSessionHasNoErrors();
 
-    expect(Booking::where('status', 'pending')->sole()->user_id)->toBe($original->user_id);
+    expect(Booking::where('status', 'pending_review')->sole()->user_id)->toBe($original->user_id);
 });
 
 it('keeps the phone on an account it creates', function () {

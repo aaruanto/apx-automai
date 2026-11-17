@@ -13,7 +13,7 @@ use Illuminate\Queue\SerializesModels;
  * The acknowledgment, sent the moment a booking request is saved.
  *
  * This is a receipt, not a ticket. It deliberately carries no reference
- * number, in the subject or the body: the booking is still 'pending' when
+ * number, in the subject or the body: the booking is still Pending Review when
  * this goes out, and a number printed next to "bring this when you arrive"
  * told the customer they had an appointment before the shop had agreed to
  * one. Customers turned up on the strength of it. The reference is disclosed

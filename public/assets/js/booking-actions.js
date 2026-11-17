@@ -63,9 +63,14 @@
             accent: 'success',
             confirmStyle: 'success',
             icon: 'fa-person-walking-arrow-right',
-            title: 'Start service?',
-            message: 'Confirm the customer has arrived. This moves the booking to In Progress.',
-            confirmText: 'Yes, start service',
+            // Marking arrival and starting work are two steps now. This action
+            // says the car is here; Vehicle Inspection and Service In Progress
+            // are advanced on the queue board, by whoever actually starts
+            // them. The copy used to promise "moves the booking to In
+            // Progress", which was true then and would be a lie now.
+            title: 'Mark as arrived?',
+            message: 'Confirm the customer and vehicle are here. This puts the booking on the queue board.',
+            confirmText: 'Yes, mark arrived',
             cancelText: 'Cancel',
             onConfirm: function () { send(id, btn, onSuccess); }
         });

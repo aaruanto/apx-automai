@@ -33,7 +33,7 @@ Hi **{{ $name }}**,
 @if($booking->status === 'cancelled')
 No visit is needed. If this was not what you expected, or you would like to
 book again, you can do so from your dashboard.
-@elseif($booking->status === 'completed')
+@elseif($booking->status === \App\Enums\BookingStatus::ServiceCompleted)
 Your vehicle is **ready for pickup** at the branch below. Please bring your
 reference number when you collect it.
 @else

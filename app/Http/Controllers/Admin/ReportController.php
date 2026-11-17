@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Service;
@@ -90,15 +91,18 @@ class ReportController extends Controller
                             : 0;
 
         // -- Status breakdown ----------------------------------------------
-        // 'completed' was missing, so finished work appeared in no slice of
-        // this chart at all — the same blind spot that made revenue vanish.
-        $statusCounts = [
-            'completed'   => $completedCount,
-            'confirmed'   => Booking::whereBetween('booking_date', [$from, $to])->where('status', 'confirmed')->count(),
-            'pending'     => Booking::whereBetween('booking_date', [$from, $to])->where('status', 'pending')->count(),
-            'in_progress' => Booking::whereBetween('booking_date', [$from, $to])->where('status', 'in_progress')->count(),
-            'cancelled'   => $cancelledCount,
-        ];
+        // Generated from the enum. 'completed' used to be missing from this
+        // hand-written list, so finished work appeared in no slice of the
+        // chart at all — the same blind spot that made revenue vanish — and
+        // the two new ladder steps would have been the next omission.
+        $statusCounts = Booking::whereBetween('booking_date', [$from, $to])
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $statusCounts = collect(BookingStatus::cases())
+            ->mapWithKeys(fn (BookingStatus $s) => [$s->value => (int) ($statusCounts[$s->value] ?? 0)])
+            ->all();
 
         // -- Revenue chart: daily points, weekly beyond 30 days ------------
         $revenueChartLabels = [];
@@ -134,7 +138,7 @@ class ReportController extends Controller
                         ->selectRaw('COUNT(DISTINCT bookings.id) as bookings_count')
                         ->selectRaw(
                             'COALESCE(SUM(CASE WHEN bookings.status = ? THEN booking_service.price ELSE 0 END), 0) as revenue',
-                            ['completed']
+                            [BookingStatus::ServiceCompleted->value]
                         )
                         ->leftJoin('booking_service', 'booking_service.service_id', '=', 'services.id')
                         ->leftJoin('bookings', function ($join) use ($from, $to) {
@@ -162,7 +166,8 @@ class ReportController extends Controller
             $mEnd   = $cursor->copy()->endOfMonth();
 
             $mTotal     = Booking::whereBetween('booking_date', [$mStart, $mEnd])->count();
-            $mConfirmed = Booking::whereBetween('booking_date', [$mStart, $mEnd])->where('status', 'confirmed')->count();
+            $mConfirmed = Booking::whereBetween('booking_date', [$mStart, $mEnd])
+                ->where('status', BookingStatus::BookingConfirmed)->count();
             $mCancelled = Booking::whereBetween('booking_date', [$mStart, $mEnd])->where('status', 'cancelled')->count();
             $mRevenue   = $this->revenueBetween($mStart, $mEnd);
 
@@ -221,7 +226,7 @@ class ReportController extends Controller
         return (float) DB::table('booking_service')
             ->join('bookings', 'bookings.id', '=', 'booking_service.booking_id')
             ->whereBetween('bookings.booking_date', [$from, $to])
-            ->where('bookings.status', 'completed')
+            ->where('bookings.status', BookingStatus::ServiceCompleted->value)
             // A query builder join bypasses the SoftDeletes scope, so deleted
             // bookings would otherwise keep earning.
             ->whereNull('bookings.deleted_at')
@@ -232,7 +237,7 @@ class ReportController extends Controller
     private function completedBetween(Carbon $from, Carbon $to): int
     {
         return Booking::whereBetween('booking_date', [$from, $to])
-            ->where('status', 'completed')->count();
+            ->where('status', BookingStatus::ServiceCompleted)->count();
     }
 
     /**
@@ -249,7 +254,7 @@ class ReportController extends Controller
     private function discountStats(Carbon $from, Carbon $to): array
     {
         $bookings = Booking::whereBetween('booking_date', [$from, $to])
-            ->where('status', 'completed');
+            ->where('status', BookingStatus::ServiceCompleted);
 
         $pointValue = (float) \App\Models\Setting::get('loyalty_point_value');
 
@@ -278,7 +283,10 @@ class ReportController extends Controller
             'cancelledCount'     => 0,
             'bookingsGrowth'     => 0,
             'revenueGrowth'      => 0,
-            'statusCounts'       => ['confirmed' => 0, 'pending' => 0, 'in_progress' => 0, 'cancelled' => 0],
+            // Every status at zero, from the enum, so the empty state has the
+            // same shape as a real one and the chart does not have to care
+            // which it was handed.
+            'statusCounts'       => array_fill_keys(BookingStatus::values(), 0),
             'revenueChartLabels' => [],
             'revenueChartData'   => [],
             'serviceStats'       => [],

@@ -103,7 +103,7 @@ it('edits a mechanic without touching their bookings', function () {
     $booking = Booking::create([
         'user_id' => $customer->id, 'vehicle_id' => $vehicle->id, 'service_id' => $service->id,
         'mechanic_id' => $m->id, 'booking_date' => today()->addDay()->toDateString(),
-        'booking_time' => '09:00', 'status' => 'confirmed', 'reference_number' => 'APX-MEC1',
+        'booking_time' => '09:00', 'status' => 'booking_confirmed', 'reference_number' => 'APX-MEC1',
     ]);
 
     $this->actingAs(dirAdmin())->put("/admin/mechanics/{$m->id}", [

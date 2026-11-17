@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\BookingStatus;
+
 use App\Models\AuditLog;
 use App\Models\Booking;
 use App\Models\RescheduleRequest;
@@ -58,7 +60,7 @@ function rsBooking(array $attributes = []): Booking
         'service_ids'  => [$service->id],
         'booking_date' => nextWeekdayAfter(3),
         'booking_time' => '10:00',
-        'status'       => 'confirmed',
+        'status'       => 'booking_confirmed',
     ], $attributes));
 
     $n++;
@@ -73,7 +75,8 @@ function rsProposeMove(User $admin, Booking $booking, string $date, string $time
         'service_ids'        => $booking->services->pluck('id')->all(),
         'booking_date'       => $date,
         'booking_time'       => $time,
-        'status'             => $booking->status,
+        // ->value: an HTTP payload carries the stored string, not the enum.
+        'status'             => $booking->status->value,
         'notes'              => $booking->notes,
         'reschedule_reason'  => $reason,
     ], fn ($v) => $v !== null));
@@ -100,7 +103,7 @@ it('leaves the booking exactly where it was when a change is proposed', function
     expect($fresh->booking_date)->toBe($originalDate)
         ->and($fresh->booking_time)->toBe($originalTime)
         // The status is untouched, which is what keeps the slot held.
-        ->and($fresh->status)->toBe('confirmed')
+        ->and($fresh->status)->toBe(BookingStatus::BookingConfirmed)
         ->and($fresh->hasPendingReschedule())->toBeTrue();
 });
 
@@ -132,7 +135,7 @@ it('keeps the original slot occupied while a change is pending', function () {
 
     expect(fn () => $availability->reserve([
         'user_id' => $extra->id, 'vehicle_id' => $veh->id, 'service_ids' => [$svc->id],
-        'booking_date' => $date, 'booking_time' => $time, 'status' => 'pending',
+        'booking_date' => $date, 'booking_time' => $time, 'status' => 'pending_review',
     ]))->toThrow(App\Exceptions\SlotUnavailableException::class);
 });
 
@@ -323,7 +326,7 @@ it('still saves notes and status while a slot change is only proposed', function
         'service_ids'       => $booking->services->pluck('id')->all(),
         'booking_date'      => nextWeekdayAfter(10),
         'booking_time'      => '14:00',
-        'status'            => 'in_progress',
+        'status'            => 'service_in_progress',
         'notes'             => 'Customer will drop keys early',
         'reschedule_reason' => 'Mechanic called in sick',
     ]);
@@ -331,7 +334,7 @@ it('still saves notes and status while a slot change is only proposed', function
     $fresh = $booking->fresh();
 
     expect($fresh->notes)->toBe('Customer will drop keys early')
-        ->and($fresh->status)->toBe('in_progress')
+        ->and($fresh->status)->toBe(BookingStatus::ServiceInProgress)
         // but the slot has not moved
         ->and($fresh->hasPendingReschedule())->toBeTrue();
 });

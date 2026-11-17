@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\BookingStatus;
+
 use App\Models\AuditLog;
 use App\Models\Booking;
 use App\Models\Service;
@@ -48,7 +50,7 @@ function ccCustomer(): User
     ]);
 }
 
-function ccBooking(User $user, string $status = 'confirmed'): Booking
+function ccBooking(User $user, string $status = 'booking_confirmed'): Booking
 {
     static $n = 1;
 
@@ -73,9 +75,9 @@ function ccBooking(User $user, string $status = 'confirmed'): Booking
 /** Points earned on a completed booking, so there is something to reverse. */
 function ccEarnPoints(Booking $booking): int
 {
-    $booking->update(['status' => 'completed']);
+    $booking->update(['status' => 'service_completed']);
     app(LoyaltyService::class)->earnFor($booking->fresh());
-    $booking->update(['status' => 'confirmed']);
+    $booking->update(['status' => 'booking_confirmed']);
 
     return app(LoyaltyService::class)->balanceFor($booking->user);
 }
@@ -227,7 +229,7 @@ it('will not let a customer cancel somebody elses booking', function () {
         ->patchJson('/customer/bookings/'.$booking->id.'/cancel', ['reason' => 'Not mine'])
         ->assertStatus(404);
 
-    expect($booking->fresh()->status)->toBe('confirmed')
+    expect($booking->fresh()->status)->toBe(BookingStatus::BookingConfirmed)
         ->and(ccMail())->toHaveCount(0);
 });
 
@@ -253,7 +255,7 @@ it('reverses points and tells the customer when the no-show sweep cancels', func
 
     $this->artisan('bookings:cancel-no-shows')->assertSuccessful();
 
-    expect($booking->fresh()->status)->toBe('cancelled')
+    expect($booking->fresh()->status)->toBe(BookingStatus::Cancelled)
         ->and(app(LoyaltyService::class)->balanceFor($user->fresh()))->toBe($balanceBefore)
         ->and(AuditLog::where('action', 'booking.cancelled')->count())->toBe(1)
         ->and(ccMail())->toHaveCount(1);

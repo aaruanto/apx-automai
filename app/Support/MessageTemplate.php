@@ -137,7 +137,7 @@ class MessageTemplate
             // no sender-ID approval to satisfy and shows a full from-address.
             'sms_body'        => 'Hi {first_name}! APX Motors: your {service} is on {date}, {time}. Ref {reference}. Please arrive 10 mins early.',
             // ── Booking confirmed ──────────────────────────────────────────
-            // Sent once, when an admin moves a booking to "confirmed". Email
+            // Sent once, when a booking reaches Booking Confirmed. Email
             // already does this; the text exists because a confirmation is the
             // message a customer is actively waiting for, and the one most
             // worth the credit.

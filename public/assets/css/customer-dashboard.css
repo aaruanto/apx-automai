@@ -554,7 +554,14 @@
         .badge-pending    { background: rgba(245,158,11,0.15);  color: #F59E0B; }
         .badge-inprogress { background: rgba(59,130,246,0.15);  color: #3B82F6; }
         .badge-cancelled  { background: rgba(232,25,44,0.15);   color: #E8192C; }
+        /* Muted on purpose, and left that way: on the customer's own screen a
+           finished booking is history, where on the admin side it is the
+           outcome and reads green. One class name, two meanings, which is
+           what a stylesheet is for. */
         .badge-completed  { background: rgba(255,255,255,0.07); color: var(--text-muted); }
+        /* The two new ladder steps a customer can actually be in. */
+        .badge-arrived    { background: rgba(180,83,9,0.18);   color: var(--warning-dark, #B45309); }
+        .badge-inspection { background: rgba(37,99,235,0.18);  color: var(--info-dark, #2563EB); }
 
         .dataTable-pagination a,
         .dataTable-selector,

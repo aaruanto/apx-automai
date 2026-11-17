@@ -159,7 +159,7 @@ it('leaves the time blank when the day is at the shop-wide cap', function () {
     // One booking already on the target date reaches a cap of one. The grid
     // still has capacity, so only the cap makes this unbookable.
     $filler = rpCancelled('10:00');
-    $filler->update(['status' => 'pending', 'booking_date' => '2026-11-03']);
+    $filler->update(['status' => 'pending_review', 'booking_date' => '2026-11-03']);
 
     $prefill = rpPrefill($this->actingAs(rpAdmin())
         ->get('/admin/bookings/'.$booking->id.'/rebook')
@@ -193,7 +193,7 @@ it('still shows the assigned mechanic when editing a booking', function () {
 
     $mechanic = Mechanic::create(['name' => 'Ramon Cruz', 'status' => 'active']);
     $booking  = rpCancelled('10:00', mechanicId: $mechanic->id);
-    $booking->update(['status' => 'pending']);
+    $booking->update(['status' => 'pending_review']);
 
     // Editing is not rebooking: that booking already holds that mechanic at
     // that slot, and the edit screen must show what is true.

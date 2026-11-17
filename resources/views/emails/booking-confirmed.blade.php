@@ -7,7 +7,7 @@
     already has: it is where the number comes from, which is why it leads with
     it and says plainly that it is the thing to bring.
 
-    Shared, not duplicated. Only an admin moving a booking to 'confirmed'
+    Shared, not duplicated. Only a booking reaching Booking Confirmed
     sends it (Admin\BookingController::update), so "confirmed" is safe to
     state as fact here.
 --}}

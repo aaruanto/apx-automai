@@ -29,7 +29,7 @@ function beroAdmin(): User
     return User::factory()->create(['role' => 'admin']);
 }
 
-function beroBooking(string $email, string $status = 'pending'): Booking
+function beroBooking(string $email, string $status = 'pending_review'): Booking
 {
     static $n = 1;
 
@@ -112,7 +112,7 @@ it('does not change the address even when one is posted directly', function () {
                                 ? $booking->booking_date->format('Y-m-d')
                                 : $booking->booking_date,
         'booking_time'   => '09:00',
-        'status'         => 'pending',
+        'status'         => 'pending_review',
         'notes'          => 'Checked in by phone.',
         'customer_email' => 'attacker@evil.test',
         'customer_name'  => 'Someone Else',

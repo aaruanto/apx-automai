@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\BookingStatus;
+
 use App\Models\Booking;
 use App\Models\Service;
 use App\Models\User;
@@ -21,7 +23,7 @@ function cancelAdmin(): User
     return User::factory()->create(['role' => 'admin', 'name' => 'Admin Person']);
 }
 
-function bookingFor(string $status = 'confirmed'): Booking
+function bookingFor(string $status = 'booking_confirmed'): Booking
 {
     $unique   = substr(str_replace('.', '', uniqid('', true)), -6);
     $customer = User::factory()->create(['role' => 'customer']);
@@ -51,7 +53,7 @@ it('records the reason, who cancelled and when', function () {
         ->assertJson(['success' => true, 'status' => 'cancelled']);
 
     $booking->refresh();
-    expect($booking->status)->toBe('cancelled');
+    expect($booking->status)->toBe(BookingStatus::Cancelled);
     expect($booking->cancel_reason)->toBe('Customer rescheduled by phone');
     expect($booking->cancelled_by)->toBe($admin->id);
     expect($booking->cancelled_at)->not->toBeNull();
@@ -76,7 +78,7 @@ it('refuses to cancel without a reason', function (array $payload) {
         ->patchJson("/admin/bookings/{$booking->id}/cancel", $payload)
         ->assertStatus(422);
 
-    expect($booking->refresh()->status)->toBe('confirmed');
+    expect($booking->refresh()->status)->toBe(BookingStatus::BookingConfirmed);
 })->with([
     'missing'   => [[]],
     'empty'     => [['reason' => '']],
@@ -89,7 +91,7 @@ it('refuses to cancel a booking that is already cancelled or completed', functio
     $this->actingAs(cancelAdmin())
         ->patchJson("/admin/bookings/{$booking->id}/cancel", ['reason' => 'Changed my mind'])
         ->assertStatus(422);
-})->with(['cancelled', 'completed']);
+})->with(['cancelled', 'service_completed']);
 
 it('cannot reach cancelled through the edit form status dropdown', function () {
     // The side door: this bypassed the required reason entirely.
@@ -106,12 +108,12 @@ it('cannot reach cancelled through the edit form status dropdown', function () {
         ])
         ->assertSessionHasErrors('status');
 
-    expect($booking->refresh()->status)->toBe('confirmed');
+    expect($booking->refresh()->status)->toBe(BookingStatus::BookingConfirmed);
     expect($booking->cancel_reason)->toBeNull();
 });
 
 it('still allows the other statuses through the edit form', function () {
-    $booking = bookingFor('pending');
+    $booking = bookingFor('pending_review');
 
     $this->actingAs(cancelAdmin())
         ->put("/admin/bookings/{$booking->id}", [
@@ -120,11 +122,11 @@ it('still allows the other statuses through the edit form', function () {
             'service_id'   => $booking->service_id,
             'booking_date' => $booking->booking_date,
             'booking_time' => $booking->booking_time,
-            'status'       => 'confirmed',
+            'status'       => 'booking_confirmed',
         ])
         ->assertSessionHasNoErrors();
 
-    expect($booking->refresh()->status)->toBe('confirmed');
+    expect($booking->refresh()->status)->toBe(BookingStatus::BookingConfirmed);
 });
 
 it('keeps cancelled bookings in the admin list and on the cancelled page', function () {
@@ -144,7 +146,7 @@ it('keeps cancelled bookings in the admin list and on the cancelled page', funct
 });
 
 it('records the customer as the canceller when they cancel their own booking', function () {
-    $booking  = bookingFor('pending');
+    $booking  = bookingFor('pending_review');
     $customer = User::find($booking->user_id);
 
     $this->actingAs($customer)
@@ -152,13 +154,13 @@ it('records the customer as the canceller when they cancel their own booking', f
         ->assertOk();
 
     $booking->refresh();
-    expect($booking->status)->toBe('cancelled');
+    expect($booking->status)->toBe(BookingStatus::Cancelled);
     expect($booking->cancelled_by)->toBe($customer->id);
     expect($booking->cancel_reason)->toBe('Car sold');
 });
 
 it('still records a customer cancellation that gives no reason', function () {
-    $booking  = bookingFor('pending');
+    $booking  = bookingFor('pending_review');
     $customer = User::find($booking->user_id);
 
     $this->actingAs($customer)
@@ -176,7 +178,7 @@ it('will not let a customer cancel somebody elses booking', function () {
         ->patchJson("/customer/bookings/{$booking->id}/cancel", ['reason' => 'Not mine'])
         ->assertStatus(404);
 
-    expect($booking->refresh()->status)->toBe('confirmed');
+    expect($booking->refresh()->status)->toBe(BookingStatus::BookingConfirmed);
 });
 
 it('frees the slot but stays in reporting', function () {

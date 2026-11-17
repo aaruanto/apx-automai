@@ -64,9 +64,9 @@ function customerWithAMix(): User
     $customer = countsCustomer();
     $dates    = nextWeekdays(5);
 
-    countsBooking($customer, 'pending', $dates[0]);
-    countsBooking($customer, 'confirmed', $dates[1]);
-    countsBooking($customer, 'completed', $dates[2]);
+    countsBooking($customer, 'pending_review', $dates[0]);
+    countsBooking($customer, 'booking_confirmed', $dates[1]);
+    countsBooking($customer, 'service_completed', $dates[2]);
     countsBooking($customer, 'cancelled', $dates[3]);
     countsBooking($customer, 'cancelled', $dates[4]);
 
