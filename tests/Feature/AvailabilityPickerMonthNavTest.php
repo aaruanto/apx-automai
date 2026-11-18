@@ -67,6 +67,21 @@ it('switches the next arrow back on once a service is chosen', function () {
     expect($js)->toContain('this.els.nextBtn.disabled = false;');
 });
 
+it('says only Available or Unavailable on a time slot', function () {
+    $js = pickerSource();
+
+    // It used to read "Available: 2" — how many of the three bays are free
+    // in that window. The customer is booking one car, so 1 and 3 mean the
+    // same thing to them, and the number only invited the reading that the
+    // shop was nearly full or that a 3 was the better slot to take.
+    expect($js)->toContain("slot.bookable ? 'Available' : 'Unavailable'");
+    expect($js)->not->toContain("'Available: '");
+
+    // The count itself still reaches the page and still colours the
+    // calendar. This is a change of wording, not of what the server reports.
+    expect($js)->toContain('slot.remaining');
+});
+
 it('serves the one shared picker to every booking form', function () {
     Service::create(['name' => 'Picker Service', 'price' => 1200, 'duration' => 45, 'is_active' => true]);
 

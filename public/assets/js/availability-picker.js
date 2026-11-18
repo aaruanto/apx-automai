@@ -285,7 +285,19 @@
             label.textContent = slot.label;
             var count = document.createElement('span');
             count.className = 'avp-slot-count';
-            count.textContent = slot.bookable ? ('Available: ' + slot.remaining) : 'Unavailable';
+            // Available or Unavailable, and nothing else.
+            //
+            // This read "Available: 2", which is how many of the three bays
+            // are free in that window. It answers a question the customer
+            // does not have and cannot act on — they are booking one car, so
+            // 1 and 3 mean exactly the same thing to them — while inviting
+            // the reading that the shop is nearly full, or that a 3 is a
+            // better slot to take than a 1.
+            //
+            // slot.remaining is still in the payload and still drives the
+            // calendar's colouring. It is the wording on the button that
+            // changes, not what the server reports.
+            count.textContent = slot.bookable ? 'Available' : 'Unavailable';
 
             btn.appendChild(label);
             btn.appendChild(count);

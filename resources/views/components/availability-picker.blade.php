@@ -9,9 +9,9 @@
 ])
 {{--
     Two-panel availability picker: a month calendar (green = has open
-    capacity, red = unavailable) on the left, a time-slot list ("Available:
-    N" / "Unavailable") on the right. Purely presentational — all the logic
-    lives in /assets/js/availability-picker.js. A page wires it up with:
+    capacity, red = unavailable) on the left, a time-slot list ("Available" /
+    "Unavailable") on the right. Purely presentational — all the logic lives
+    in /assets/js/availability-picker.js. A page wires it up with:
 
         const picker = new AvailabilityPicker({
             root: '#{{ $id }}',
