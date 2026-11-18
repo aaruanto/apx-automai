@@ -117,7 +117,25 @@ class MessageTemplate
             '{days_until}' => (string) Carbon::today()->diffInDays(Carbon::parse($booking->booking_date)),
         ];
 
-        return str_replace(array_keys($map), array_values($map), $text);
+        $filled = str_replace(array_keys($map), array_values($map), $text);
+
+        // Tidy what an empty placeholder leaves behind.
+        //
+        // {transmission} is blank whenever a vehicle's gearbox was never
+        // recorded, which is most of the ones already on file — so a template
+        // reading "your {service} ({transmission}) on {date}" would send
+        // "your Change Oil () on November 18" to exactly the customers the
+        // shop knows least about.
+        //
+        // Narrow on purpose: an empty parenthetical and the space before it,
+        // then any doubled space it leaves. It does not touch parentheses with
+        // anything in them, so an email body that legitimately contains some
+        // is unaffected. Same reasoning as the collapse on {vehicle} above,
+        // which exists because "Honda Click  2023" reached a real customer.
+        $filled = preg_replace('/ *\(\s*\)/', '', $filled);
+        $filled = preg_replace('/[ \t]{2,}/', ' ', $filled);
+
+        return $filled;
     }
 
     public static function defaults(): array
@@ -146,7 +164,21 @@ class MessageTemplate
             // Motors" to match the sender ID, and neither {branch} nor
             // {contact} — the branch name carries an em-dash that would force
             // UCS-2, and an unset contact number leaves a dangling "on .".
-            'confirmation_sms' => 'Hi {first_name}! APX Motors: your {service} on {date}, {time} is CONFIRMED. Ref {reference}. See you then!',
+            // {transmission} is in here because the panel asked for the
+            // vehicle to be shown everywhere a booking is, and this is the
+            // one message that goes out at the moment the customer can still
+            // tell the shop it is wrong before the car arrives.
+            //
+            // Measured after gsmSafe(), as the rule requires: the worst
+            // realistic filling — a long first name, the longest service name
+            // in the catalogue and "(Automatic)" — comes to 148 characters,
+            // inside the 160 of a single GSM-7 segment. Every word here is
+            // plain ASCII, so nothing forces the message to UCS-2 and cuts
+            // that allowance to 70.
+            //
+            // The parentheses disappear when the transmission was never
+            // recorded; see fill().
+            'confirmation_sms' => 'Hi {first_name}! APX Motors: your {service} ({transmission}) on {date}, {time} is CONFIRMED. Ref {reference}. See you then!',
             // ── Booking cancelled ──────────────────────────────────────────
             // Goes out from BookingCancellation, so it covers the shop
             // cancelling, the customer cancelling and the no-show sweep alike.

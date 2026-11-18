@@ -493,3 +493,85 @@ it('tells the customer dashboard what each of their vehicles is', function () {
     expect(strpos($html, 'id="mVehicleSelect"'))
         ->toBeLessThan(strpos($html, '<div class="modal-service-chip">'));
 });
+
+it('names the transmission in the confirmation text without costing a segment', function () {
+    // The last of the "show it everywhere" surfaces, and the one with a
+    // budget: a text is 160 GSM-7 characters and one non-GSM-7 character cuts
+    // that to 70. "Automatic" is plain ASCII, so it does not.
+    $sms     = app(\App\Services\SmsService::class);
+    $template = \App\Support\MessageTemplate::load()['confirmation_sms'];
+
+    $customer = trCustomer();
+    $vehicle  = trVehicle($customer, 'automatic', 'TRS 9111');
+
+    $booking = Booking::create([
+        'user_id' => $customer->id, 'vehicle_id' => $vehicle->id,
+        'service_id' => Service::create([
+            // The longest name in the seeded catalogue, so this measures the
+            // worst realistic case rather than a convenient one.
+            'name' => 'Automatic Transmission Service', 'price' => 3200, 'duration' => 60,
+        ])->id,
+        'booking_date' => nextWeekday(), 'booking_time' => '10:30',
+        'status' => 'pending_review', 'reference_number' => 'TRS-9111',
+        'vehicle_type' => 'car', 'transmission' => 'automatic',
+    ]);
+
+    $filled = $sms->gsmSafe(\App\Support\MessageTemplate::fill($template, $booking));
+    $parts  = $sms->segments($filled);
+
+    expect($filled)->toContain('Automatic');
+    expect($parts['encoding'])->toBe('GSM-7');
+    expect($parts['segments'])->toBe(1);
+});
+
+it('leaves no empty brackets when the transmission was never recorded', function () {
+    // Most vehicles already on file have no transmission, so this is the
+    // common case — and a template reading "your {service} ({transmission})"
+    // would send "your Change Oil () on ..." to exactly the customers the
+    // shop knows least about.
+    $customer = trCustomer();
+    $vehicle  = trVehicle($customer, null, 'TRS 9222');
+
+    $booking = Booking::create([
+        'user_id' => $customer->id, 'vehicle_id' => $vehicle->id,
+        'service_id' => Service::create(['name' => 'Engine Flush', 'price' => 800, 'duration' => 30])->id,
+        'booking_date' => nextWeekday(), 'booking_time' => '10:00',
+        'status' => 'pending_review', 'reference_number' => 'TRS-9222',
+        'vehicle_type' => 'car', 'transmission' => null,
+    ]);
+
+    $filled = \App\Support\MessageTemplate::fill(
+        \App\Support\MessageTemplate::load()['confirmation_sms'], $booking
+    );
+
+    expect($filled)->not->toContain('()');
+    expect($filled)->not->toContain('  ');
+    expect($filled)->toContain('Engine Flush on');
+});
+
+it('keeps parentheses that have something in them', function () {
+    // The tidy-up is narrow by design: three services in the catalogue carry
+    // brackets in their own names, and stripping those would rename them.
+    $customer = trCustomer();
+    $vehicle  = trVehicle($customer, null, 'TRS 9333');
+
+    $booking = Booking::create([
+        'user_id' => $customer->id, 'vehicle_id' => $vehicle->id,
+        'service_id' => Service::create(['name' => 'Change Oil (Diesel)', 'price' => 2200, 'duration' => 45])->id,
+        'booking_date' => nextWeekday(), 'booking_time' => '10:00',
+        'status' => 'pending_review', 'reference_number' => 'TRS-9333',
+        'vehicle_type' => 'car', 'transmission' => null,
+    ]);
+
+    $filled = \App\Support\MessageTemplate::fill(
+        \App\Support\MessageTemplate::load()['confirmation_sms'], $booking
+    );
+
+    expect($filled)->toContain('Change Oil (Diesel)');
+});
+
+it('offers the transmission as a placeholder the shop can use anywhere', function () {
+    // It is in the documented list, so it appears on the Message Templates
+    // screen as something the shop can drop into any body they write.
+    expect(\App\Support\MessageTemplate::PLACEHOLDERS)->toHaveKey('{transmission}');
+});
