@@ -40,7 +40,56 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     config()->set('mail.default', 'array');
     Mail::purge('array');
+    \App\Models\Setting::flushCache();
 });
+
+afterEach(function () {
+    // refHeldForReview() freezes the clock; a frozen clock leaking into the
+    // next test is a confusing failure.
+    \Carbon\Carbon::setTestNow();
+});
+
+/**
+ * Make the next guest booking land in Pending Review, and answer with the
+ * date to book it on.
+ *
+ * The acknowledgment below is the pre-approval email, and a booking is
+ * accepted on the spot now unless it is for TODAY on a day that has already
+ * taken its full intake — see BookingAcceptance. So the only way to send
+ * yourself an acknowledgment is to be that booking, which means a frozen
+ * clock (today has to be an open day with hours left in it) and a day that
+ * is already full.
+ *
+ * The booking that fills the day is created rather than booked through a
+ * first request: dispatch(...)->afterResponse() registers an application
+ * terminating callback that Application::terminate() never clears, so a
+ * second request in the same test re-runs the first one's mail. See
+ * CLAUDE.md.
+ */
+function refHeldForReview(): string
+{
+    $today = freezeOnOpenMorning();
+
+    \App\Models\Setting::set('max_bookings', 1);
+
+    $filler = User::factory()->create(['role' => 'customer', 'email' => 'reffill'.uniqid().'@gmail.com']);
+
+    Booking::create([
+        'user_id'    => $filler->id,
+        'vehicle_id' => Vehicle::create([
+            'user_id' => $filler->id, 'make' => 'Toyota', 'model' => 'Vios',
+            'year' => 2020, 'plate_number' => 'RFL '.substr(str_replace('.', '', uniqid('', true)), -4),
+        ])->id,
+        'service_id'       => refService()->id,
+        'booking_date'     => $today,
+        'booking_time'     => '09:00',
+        'duration'         => 30,
+        'status'           => 'booking_confirmed',
+        'reference_number' => 'ZFIL-'.substr(str_replace('.', '', uniqid('', true)), -6),
+    ]);
+
+    return $today;
+}
 
 /** Every message actually handed to the transport. */
 function refSent(): array
@@ -132,9 +181,12 @@ function refGuestPayload(array $overrides = []): array
 // ── the acknowledgment: a receipt, not a ticket ──────────────────────────
 
 it('sends a guest an acknowledgment whose subject carries no reference', function () {
-    $this->postJson('/booking/guest', refGuestPayload())->assertOk();
+    $today = refHeldForReview();
 
-    $booking = Booking::sole();
+    $this->postJson('/booking/guest', refGuestPayload(['booking_date' => $today, 'booking_time' => '11:00']))
+        ->assertOk();
+
+    $booking = Booking::whereDate('booking_date', $today)->latest('id')->first();
     expect($booking->status)->toBe(BookingStatus::PendingReview);
 
     // Two messages, not one: a brand-new guest also gets GuestAccountCreated
@@ -152,9 +204,12 @@ it('sends a guest an acknowledgment whose subject carries no reference', functio
 });
 
 it('sends a guest an acknowledgment whose body carries no reference', function () {
-    $this->postJson('/booking/guest', refGuestPayload())->assertOk();
+    $today = refHeldForReview();
 
-    $booking = Booking::sole();
+    $this->postJson('/booking/guest', refGuestPayload(['booking_date' => $today, 'booking_time' => '11:00']))
+        ->assertOk();
+
+    $booking = Booking::whereDate('booking_date', $today)->latest('id')->first();
 
     // Every message this path sent, not just the first: the acknowledgment
     // and the guest's account-setup link both land in the same inbox.
@@ -172,9 +227,14 @@ it('sends a guest an acknowledgment whose body carries no reference', function (
 it('keeps what the acknowledgment is actually for', function () {
     // Stripping the ticket must not strip the receipt: the customer still
     // needs to know what they asked for and that it is not settled yet.
+    $today   = refHeldForReview();
     $service = refService();
 
-    $this->postJson('/booking/guest', refGuestPayload(['service_ids' => [$service->id]]))->assertOk();
+    $this->postJson('/booking/guest', refGuestPayload([
+        'service_ids'  => [$service->id],
+        'booking_date' => $today,
+        'booking_time' => '11:00',
+    ]))->assertOk();
 
     $whole = strtolower(refWhole());
 

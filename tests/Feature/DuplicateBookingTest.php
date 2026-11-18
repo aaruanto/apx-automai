@@ -129,7 +129,13 @@ it('lets the slot be taken again once the earlier booking is cancelled', functio
 
     dupBook($user, $vehicle, $service, $date, '10:00')->assertOk();
 
-    expect(Booking::where('status', 'pending_review')->count())->toBe(1);
+    // One live booking in that slot, and the cancelled one still on record.
+    // Asked as "not cancelled" rather than by naming a status: a new booking
+    // is Booking Confirmed now unless today is full (BookingAcceptance), and
+    // this test is about the slot being free again, not about which status a
+    // fresh booking lands in.
+    expect(Booking::where('status', '!=', 'cancelled')->count())->toBe(1);
+    expect(Booking::where('status', 'cancelled')->count())->toBe(1);
 });
 
 it('allows a different vehicle on the same account at the same time', function () {

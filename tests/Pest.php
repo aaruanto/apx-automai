@@ -106,3 +106,32 @@ function nextWeekdays(int $count, int $from = 1): array
 
     return $dates;
 }
+
+/**
+ * Freeze the clock on a weekday morning and answer with that day's date.
+ *
+ * For the tests that are about TODAY — the daily cap holding a same-day
+ * booking back for review — and they cannot be written against the real
+ * clock. Run at 7pm, or any time on a Sunday afternoon, "today" has no
+ * opening hours left and reserve() refuses every slot on it before the rule
+ * under test is ever reached: the test would pass all morning and fail all
+ * evening, which is a test that reports the time of day.
+ *
+ * So the clock is pinned to 08:00 on a day the shop is open 9 to 6 — a
+ * weekday, via nextWeekdayAfter(), for the same reason every other date in
+ * this suite comes from there. Carbon::now() is then that instant
+ * everywhere, so "today" is a known full opening day and a 10:00 slot on it
+ * is bookable.
+ *
+ * Call Carbon::setTestNow() with no argument to let go of it; a test file
+ * using this should do that in an afterEach, because a frozen clock leaking
+ * into the next test is a very confusing failure.
+ */
+function freezeOnOpenMorning(string $at = '08:00'): string
+{
+    $date = nextWeekdayAfter(1);
+
+    Carbon\Carbon::setTestNow(Carbon\Carbon::parse($date.' '.$at, config('app.timezone')));
+
+    return $date;
+}

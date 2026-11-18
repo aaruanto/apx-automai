@@ -94,14 +94,18 @@ it('lets the claimed customer sign in and see that booking on their dashboard', 
 
     $this->assertAuthenticatedAs($guest->fresh());
 
-    // The booking is on the dashboard, identified by its service rather than
-    // its reference: the booking is still 'pending', and a pending booking
-    // now reads "Pending review" where the reference used to be. The point
-    // of this test is that the history survived the claim, not how the row
-    // is labelled — see BookingReferenceDisclosureTest for the labelling.
+    // The booking is on the dashboard, identified by its service: the point
+    // of this test is that the history survived the claim.
+    //
+    // Its reference is on screen too, which it was not when this was written.
+    // The booking was Pending Review then, and a pending booking reads
+    // "Pending review" where its number would be; it is accepted on the spot
+    // now (BookingAcceptance), so the number is the customer's to have — see
+    // Booking::disclosableReference() and BookingReferenceDisclosureTest,
+    // which own that rule.
     $this->get('/customer/dashboard')->assertOk()
         ->assertSee($booking->service->name)
-        ->assertDontSee($booking->reference_number);
+        ->assertSee($booking->reference_number);
 });
 
 it('grants the account discount it refused while they were a guest', function () {

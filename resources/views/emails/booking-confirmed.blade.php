@@ -46,6 +46,8 @@ Good news — APX Motors Service Center has **confirmed** your booking. Your ref
 **Status:** Confirmed ✅
 @endcomponent
 
+@include('emails.partials.guest-verification-call', ['booking' => $booking])
+
 Please arrive **10 minutes early** so we can serve you right away.
 
 If you need to reschedule or cancel, let us know as early as you can — just reply to this email or call the shop.

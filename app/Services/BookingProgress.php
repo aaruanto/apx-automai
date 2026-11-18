@@ -73,6 +73,34 @@ class BookingProgress
     }
 
     /**
+     * A booking that was accepted the moment it was made.
+     *
+     * BookingAcceptance confirms a new booking outright unless today is full,
+     * so for most bookings there is no later transition to hang the
+     * confirmation on — the booking is simply born confirmed. Without this,
+     * the customer would be told on screen that they are booked and then
+     * never receive the reference number, because the one place that
+     * discloses it is the transition this booking never makes.
+     *
+     * So it runs the same consequences the admin's Confirm runs, from one
+     * method, rather than a second copy of them in two controllers. No audit
+     * row: nothing changed, the booking was created this way, and the
+     * creation itself is already recorded.
+     *
+     * A booking held for review is deliberately silent here. Its controller
+     * sends the acknowledgment instead, which says what is actually true —
+     * that the shop has it and has not agreed to it yet.
+     */
+    public function autoAccepted(Booking $booking): void
+    {
+        if ($booking->status !== BookingStatus::BookingConfirmed) {
+            return;
+        }
+
+        $this->confirmed($booking);
+    }
+
+    /**
      * The shop has agreed to the slot.
      *
      * This is the one transition that discloses the reference number — see

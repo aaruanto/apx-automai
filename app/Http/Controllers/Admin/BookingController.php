@@ -925,10 +925,7 @@ class BookingController extends Controller
         // says — dayAvailability() reads capacity and the clock, not Settings'
         // daily limit — so carrying a time onto it would prefill a slot
         // reserve() is bound to refuse.
-        $cap    = $availability->dailyCap();
-        $atCap  = $cap > 0 && $availability->bookingsOnDate($dateString) >= $cap;
-
-        $stillBookable = ! $atCap && collect($availability->dayAvailability($dateString, $duration))
+        $stillBookable = ! $availability->dayIsFull($dateString) && collect($availability->dayAvailability($dateString, $duration))
             ->contains(fn (array $slot) => $slot['start'] === $time && $slot['bookable']);
 
         return [$dateString, $stillBookable ? $time : ''];

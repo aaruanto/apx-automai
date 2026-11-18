@@ -80,7 +80,12 @@ class DashboardController extends Controller
                 'mon'       => date('M', strtotime($b->booking_date)),
                 'yr'        => date('Y', strtotime($b->booking_date)),
                 'time'      => date('g:i A', strtotime($b->booking_time)),
-                'mechanic'  => $b->mechanic->name ?? 'TBA',
+                // The mechanic assigned to the job, or TBA until one is.
+                // Eager-loaded above, so this is not a query per row, and
+                // ?-> rather than -> because the relation is legitimately
+                // null — nobody is assigned at creation, and a mechanic
+                // whose record has since been deleted reads the same way.
+                'mechanic'  => $b->mechanic?->name ?? 'TBA',
                 'vehicle'   => trim(($b->vehicle?->make_model ?? '') . ' (' . ($b->vehicle?->display_plate ?? 'Not provided') . ')'),
                 // "Car · Automatic", from the booking's own snapshot rather
                 // than the vehicle — so correcting the car later does not
@@ -89,7 +94,10 @@ class DashboardController extends Controller
                 // treats as nothing to show.
                 'vehicleProfile' => $b->vehicle_profile,
                 'vehicle_id'=> $b->vehicle_id,
-                'amount'    => 'TBA',
+                // 'amount' used to be here, as the literal string 'TBA' for
+                // every booking. The card slot that printed it shows the
+                // mechanic now; there was never any money on it to show, and
+                // a key nothing fills in is a key nothing should read.
                 // The tab this booking falls under, and separately the real
                 // label for the card. A customer whose car is being inspected
                 // should read "Vehicle Inspection", not "In Progress" — the
@@ -242,7 +250,12 @@ class DashboardController extends Controller
                 'services'  => $b->service_list,
                 'date'      => $b->booking_date,
                 'time'      => $b->booking_time,
-                'mechanic'  => $b->mechanic->name ?? 'TBA',
+                // Same as the page's own list: the real name, TBA until one
+                // is assigned. The poll sends it so a mechanic assigned while
+                // the customer has the page open appears without a reload —
+                // which it could not do before, because the page compared
+                // b.staff against fresh.staff and neither key existed.
+                'mechanic'  => $b->mechanic?->name ?? 'TBA',
                 'status'       => $b->status->customerGroup(),
                 'statusLabel'  => $b->status->label(),
                 'statusBadge'  => $b->status->badgeClass(),
@@ -395,7 +408,10 @@ class DashboardController extends Controller
                 'booking_date' => $data['booking_date'],
                 'booking_time' => $data['booking_time'],
                 'notes'        => $data['notes'] ?? null,
-                'status'       => BookingStatus::PendingReview,
+                // No status. reserve() decides it through BookingAcceptance,
+                // the same as the guest form — confirmed on the spot unless
+                // the booking is for today and today is already full, in
+                // which case the shop reviews it.
             ]);
 
             // Price it. Server side, from database rows — nothing the browser
@@ -420,14 +436,43 @@ class DashboardController extends Controller
 
         $this->notifyAdminsOfBooking($booking);
 
-        // No 'reference'. The booking is created Pending Review, and the
-        // is withheld until an admin confirms it — the success modal used to
-        // print it the instant the booking was saved. booking_id is still
-        // returned because the list is keyed on it and it means nothing at
-        // the counter.
+        // A booking accepted on the spot gets its confirmation — the bell
+        // entry, the email carrying the reference number, and the text — the
+        // same way an admin's Confirm sends them. One held for review gets
+        // nothing from here: the modal tells the customer it is with the shop,
+        // and the shop's decision is what mails them next.
+        //
+        // afterResponse for the reason the guest controller gives at length:
+        // one SMTP round trip is about 3.3 seconds, and a customer staring at
+        // a stuck "Confirm Booking" button is how you lose a booking that has
+        // already been saved.
+        if ($booking->status === BookingStatus::BookingConfirmed) {
+            $confirmed = $booking->fresh();
+
+            dispatch(function () use ($confirmed) {
+                app(\App\Services\BookingProgress::class)->autoAccepted($confirmed);
+            })->afterResponse();
+        }
+
+        // Still no 'reference'. It is disclosed by the confirmation email and
+        // nowhere earlier — see Booking::disclosableReference(). booking_id is
+        // returned because the list is keyed on it and it means nothing at the
+        // counter.
         return response()->json([
             'success'    => true,
             'booking_id' => $booking->id,
+            // So the optimistic row the page inserts carries the status the
+            // booking really has. It used to hardcode Pending Review, which
+            // is now the uncommon case — a customer saw their own booking
+            // labelled pending until they reloaded.
+            'status'       => $booking->status->customerGroup(),
+            'status_label' => $booking->status->label(),
+            'status_badge' => $booking->status->badgeClass(),
+            // The success panel's own question, asked the same way the guest
+            // form's response asks it: 'status' here is the tab group, which
+            // is 'upcoming' for both halves of the answer and so cannot tell
+            // the panel which wording to show.
+            'pending_review' => $booking->status === BookingStatus::PendingReview,
         ]);
     }
 

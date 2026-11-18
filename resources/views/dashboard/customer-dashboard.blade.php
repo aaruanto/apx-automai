@@ -491,7 +491,23 @@
                                     <div class="booking-service">{{ $b->service_list }}</div>
                                     <div class="booking-meta">
                                         <span><i class="fas fa-clock"></i>{{ date('g:i A', strtotime($b->booking_time)) }}</span>
-                                        <span><i class="fas fa-user"></i>{{ $b->staff->name ?? 'TBA' }}</span>
+                                        {{-- The mechanic on the job, or TBA
+                                             until one is assigned. This read
+                                             $b->staff, which is not a
+                                             relation on Booking — it was one
+                                             when a mechanic was a user
+                                             account with role 'staff', and
+                                             the rename to mechanics left this
+                                             behind. Eloquent answers an
+                                             unknown relation with null rather
+                                             than throwing, so the panel
+                                             printed TBA for every booking
+                                             forever, including the ones with
+                                             a mechanic standing over them.
+                                             Eager-loaded in
+                                             Customer\DashboardController, so
+                                             this is not a query per row. --}}
+                                        <span><i class="fas fa-user"></i>{{ $b->mechanic?->name ?? 'TBA' }}</span>
                                         <span><i class="fas fa-car"></i>{{ trim(($b->vehicle?->make_model ?? '') . ' (' . ($b->vehicle?->display_plate ?? 'Not provided') . ')') }}</span>
                                     </div>
                                 </div>
@@ -1219,8 +1235,16 @@
                             to. The server no longer returns it, and the confirmation
                             email is where it is disclosed.
                         --}}
-                        <h3>Request Received!</h3>
-                        <p>Your request is in and is pending review. Once our staff confirm it, we will email you your reference number &mdash; that is the one to bring with you.</p>
+                        {{-- Both wordings, and the JS shows the one that is
+                             true. A booking is accepted on the spot unless
+                             today is already full, so the pending wording —
+                             which is all this screen could say — was wrong
+                             for nearly every booking the moment auto-accept
+                             landed. The markup still defaults to pending: it
+                             is the cautious half, and it is what the server
+                             reports when anything is missing. --}}
+                        <h3 id="modalSuccessTitle">Request Received!</h3>
+                        <p id="modalSuccessNote">Your request is in and is pending review. Once our staff confirm it, we will email you your reference number &mdash; that is the one to bring with you.</p>
                         <div class="ref" id="modalRefNo">Pending review</div>
                         <p style="font-size:0.78rem;">
                             <i class="fas fa-calendar" style="color:var(--red);margin-right:4px;"></i>
@@ -1505,7 +1529,7 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
             const ms = !currentSearch ||
                 b.service.toLowerCase().includes(currentSearch) ||
                 b.id.toLowerCase().includes(currentSearch) ||
-                b.staff.toLowerCase().includes(currentSearch) ||
+                (b.mechanic || '').toLowerCase().includes(currentSearch) ||
                 b.vehicle.toLowerCase().includes(currentSearch);
             return mf && ms;
         });
@@ -1547,7 +1571,6 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                         </div>
                         <div class="bk-meta">
                             <span><i class="fas fa-clock"></i>${b.time}</span>
-                            <span><i class="fas fa-user"></i>${esc(b.staff)}</span>
                             <span><i class="fas fa-car"></i>${esc(b.vehicle)}</span>
                             ${b.vehicleProfile ? `<span><i class="fas fa-gears"></i>${esc(b.vehicleProfile)}</span>` : ''}
                         </div>
@@ -1556,7 +1579,24 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
                     </div>
                     <div class="bk-status-col">
                         <span class="badge ${badge}"><i class="fas ${meta.icon}"></i>${label}</span>
-                        <span class="bk-amount">${b.amount}</span>
+                        <!--
+                            Who is on the job, under the status it is in.
+
+                            This slot printed b.amount, which the server set
+                            to the literal string 'TBA' for every booking
+                            ever — a price that was never going to be filled
+                            in, since the card has no money on it and the
+                            totals live on the dashboard's own figures. So the
+                            one "TBA" the customer could see said nothing.
+
+                            The mechanic is the thing a customer actually
+                            wants under a confirmed booking, and TBA is the
+                            honest answer until the shop assigns one. The
+                            server sends that fallback (Customer\DashboardController),
+                            and the || repeats it for the optimistic row a
+                            fresh booking inserts before any reload.
+                        -->
+                        <span class="bk-amount" title="Assigned mechanic"><i class="fas fa-user" style="font-size:0.78rem;opacity:0.65;margin-right:5px;"></i>${esc(b.mechanic || 'TBA')}</span>
                     </div>
                 </div>
             </div>`;
@@ -2115,10 +2155,11 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
     // Add new booking to array instantly
     const d = new Date(date);
     BOOKINGS.unshift({
-        // A booking is created Pending Review, so it has no reference to show
-        // yet — the same label the server sends for pending rows in
-        // bookingsJs, so the optimistic row and a reload agree.
-        id:        'Pending review',
+        // No reference, whatever the status. It is disclosed by the
+        // confirmation email and nowhere earlier, so a confirmed booking
+        // reads "Confirmed" here and carries its number in the customer's
+        // inbox — bookingsJs says the same on the next reload.
+        id:        data.pending_review === false ? 'Confirmed' : 'Pending review',
         dbId:      data.booking_id,
         service:   selectedService.name,
         serviceId: selectedService.dbId,
@@ -2127,16 +2168,19 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
         mon:       d.toLocaleString('en', { month: 'short' }),
         yr:        String(d.getFullYear()),
         time:      time,
-        staff:     'TBA',
+        // Nobody is assigned to a booking the moment it is made, so this is
+        // TBA by fact rather than as a placeholder.
+        mechanic:  'TBA',
         vehicle:   (() => { const v = MY_VEHICLES.find(v => v.id == vehicleId); return v ? v.name + ' (' + v.plate + ')' : 'N/A'; })(),
-        amount:    'TBA',
-        // A booking is created Pending Review, which groups as upcoming. The
-        // label and badge are given explicitly so this optimistic row looks
-        // like the ones the server sends, rather than falling back to the
-        // group's own wording.
-        status:      'upcoming',
-        statusLabel: 'Pending Review',
-        statusBadge: 'badge-pending',
+        // From the server, not assumed. A booking is accepted on the spot
+        // unless today is already full, so this row used to be stamped
+        // "Pending Review" and the customer saw their just-confirmed booking
+        // mislabelled until they reloaded. The fallbacks are the pending
+        // wording, which is the case the server is reporting when anything is
+        // missing.
+        status:      data.status       || 'upcoming',
+        statusLabel: data.status_label || 'Pending Review',
+        statusBadge: data.status_badge || 'badge-pending',
     });
 
     // Update counts
@@ -2151,8 +2195,16 @@ const BOOKINGS = {!! json_encode($bookingsJs) !!};
     // Show success screen
     document.getElementById('modalFormView').style.display = 'none';
     document.getElementById('modalSuccessView').classList.add('show');
-    // modalRefNo is a fixed "Pending review" in the markup — nothing is
-    // written into it. data.reference no longer exists in the response.
+    // The booking's real status, said three ways: the heading, the note and
+    // the badge where the reference would have gone. Still no reference —
+    // data.reference does not exist in the response and the confirmation
+    // email is where the number comes from.
+    if (data.pending_review === false) {
+        document.getElementById('modalSuccessTitle').textContent = 'Booking Confirmed!';
+        document.getElementById('modalSuccessNote').textContent  =
+            'Your booking is confirmed. We have emailed you your reference number — that is the one to bring with you.';
+        document.getElementById('modalRefNo').textContent = data.status_label || 'Booking Confirmed';
+    }
     document.getElementById('modalSuccessDate').textContent    = date + ' at ' + time;
     document.getElementById('modalSuccessService').textContent = selectedService.name;
 } else {
@@ -2963,12 +3015,12 @@ document.addEventListener('click', function(e) {
                         const label  = fresh.reference ? '#' + fresh.reference : 'Pending review';
                         if (b.status !== status
                             || b.statusLabel !== fresh.statusLabel
-                            || b.staff !== fresh.staff
+                            || b.mechanic !== fresh.mechanic
                             || b.id !== label) {
                             b.status      = status;
                             b.statusLabel = fresh.statusLabel;
                             b.statusBadge = fresh.statusBadge;
-                            b.staff       = fresh.staff;
+                            b.mechanic    = fresh.mechanic;
                             b.id          = label;
                             changed       = true;
                         }

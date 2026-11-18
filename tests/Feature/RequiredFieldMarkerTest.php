@@ -119,14 +119,19 @@ it('marks a required field in the public booking modal and leaves the optional o
 
     $html = $this->get('/')->assertOk()->getContent();
 
-    // guest_name, guest_email, vehicle_make, vehicle_model, vehicle_year and
-    // vehicle_plate are `required` in GuestBookingController. notes is not —
-    // and neither is guest_phone, which that controller does not validate at
-    // all.
+    // guest_name, guest_email, guest_phone, vehicle_make, vehicle_model,
+    // vehicle_year and vehicle_plate are all `required` in
+    // GuestBookingController. notes is not.
+    //
+    // guest_phone was the exception, and it was the exception in the worst
+    // way: the field was marked optional here and was not validated by that
+    // controller at all, so the only guard on it was the one a browser can
+    // skip. It is required on both sides now — a guest booking the shop
+    // cannot ring is a booking it cannot verify.
     expect(labelIsMarked($html, 'Full name'))->toBeTrue();
     expect(labelIsMarked($html, 'Plate number'))->toBeTrue();
+    expect(labelIsMarked($html, 'Phone Number'))->toBeTrue();
     expect(labelIsMarked($html, 'Notes / special request'))->toBeFalse();
-    expect(labelIsMarked($html, 'Phone'))->toBeFalse();
 });
 
 it('renders the component marker as decoration, hidden from a screen reader', function () {

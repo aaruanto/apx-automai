@@ -134,6 +134,10 @@ it('applies the same cap to guest bookings', function () {
     $this->postJson('/booking/guest', [
         'guest_name'    => 'Capped Guest',
         'guest_email'   => 'capped.guest@gmail.com',
+        // Required since the guest form grew a verification call to make.
+        // Here because without it this request is refused by validation, and
+        // a test about the daily cap would be passing for the wrong reason.
+        'guest_phone'   => '09171234567',
         'booking_date'  => $date,
         'booking_time'  => '14:00',
         'service_ids'   => [$service->id],

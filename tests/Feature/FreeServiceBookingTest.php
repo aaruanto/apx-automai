@@ -86,6 +86,7 @@ it('refuses a guest booking of only complimentary services', function () {
     $this->postJson('/booking/guest', [
         'guest_name'    => 'Freebie Tester',
         'guest_email'   => 'freebie@gmail.com',
+        'guest_phone'   => '09171234567',
         'booking_date'  => nextWeekday(),
         'booking_time'  => '10:00',
         'service_ids'   => [$free->id],
@@ -106,6 +107,7 @@ it('allows a guest booking that pairs a complimentary service with paid work', f
     $this->postJson('/booking/guest', [
         'guest_name'    => 'Mix Tester',
         'guest_email'   => 'mix@gmail.com',
+        'guest_phone'   => '09171234567',
         'booking_date'  => nextWeekday(),
         'booking_time'  => '10:00',
         'service_ids'   => [$paid->id, $free->id],
@@ -197,6 +199,7 @@ it('prices a guest booking so the complimentary service is free and the paid wor
     $this->postJson('/booking/guest', [
         'guest_name'    => 'Price Tester',
         'guest_email'   => 'price@gmail.com',
+        'guest_phone'   => '09171234567',
         'booking_date'  => nextWeekday(),
         'booking_time'  => '10:00',
         'service_ids'   => [$paid->id, $free->id],

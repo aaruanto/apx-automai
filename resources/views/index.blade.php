@@ -1497,7 +1497,26 @@
                             <div class="col-6"><label class="form-label required" for="apx-f-email">Email</label><input type="email" class="form-control" id="apx-f-email" placeholder="juan@email.com" required></div>
                         </div>
                         <div class="row g-2 mb-3">
-                            <div class="col-12"><label class="form-label" for="apx-f-phone">Phone</label><input type="text" class="form-control" id="apx-f-phone" placeholder="09xxxxxxxxx"></div>
+                            {{-- Required, and marked as such.
+
+                                 It was optional here and unvalidated on the
+                                 server, which left the shop with guest
+                                 bookings it had no way to ring about — under
+                                 a name and an email address nobody has
+                                 checked, for a car it has not seen. The
+                                 verification call the success screen now
+                                 promises is the reason this field has to be
+                                 there and has to be a real mobile number.
+
+                                 type="tel" and inputmode bring up the phone
+                                 keypad; pattern is the same shape the server
+                                 enforces (App\Support\PhoneNumber) so the
+                                 browser cannot wave through what the server
+                                 will refuse. The server still cleans spaces
+                                 and hyphens out first, so it accepts a
+                                 little more than this does — which is the
+                                 harmless direction. --}}
+                            <div class="col-12"><label class="form-label required" for="apx-f-phone">Phone Number</label><input type="tel" class="form-control" id="apx-f-phone" name="guest_phone" placeholder="09XXXXXXXXX" inputmode="tel" autocomplete="tel" maxlength="20" pattern="(09[0-9]{9}|\+639[0-9]{9})" required></div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label required">Preferred date &amp; time</label>
@@ -1569,7 +1588,14 @@
                         <div class="apx-success-icon">
                             <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M5 13l5 5L21 7" stroke="#28a745" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         </div>
-                        <h5 style="font-family:'Barlow',sans-serif; font-weight:700; margin:0 0 6px;">Booking request received!</h5>
+                        {{-- Pending wording in the markup, and the JS swaps
+                             it for the confirmed one when that is what the
+                             server did. Pending is the default because it is
+                             the cautious half: a screen that over-promises
+                             sends a customer to the shop on a day nobody
+                             agreed to, which is the fault this whole screen
+                             was rebuilt around. --}}
+                        <h5 id="apx-success-title" style="font-family:'Barlow',sans-serif; font-weight:700; margin:0 0 6px;">Booking request received!</h5>
                         {{--
                             No reference number on this screen, and nothing telling the
                             customer to bring one. It used to print the reference in a
@@ -1583,10 +1609,37 @@
                             nothing on the page to fill in even by accident.
                         --}}
                         <div class="apx-ref-badge" id="apx-ref-number">Pending review</div>
-                        <p style="font-size:0.85rem; color:#777; margin:12px 0 0;">
+                        <p id="apx-success-note" style="font-size:0.85rem; color:#777; margin:12px 0 0;">
                             We have emailed you a copy of your request. Our staff will review it, and
                             <strong>once it is confirmed you will get a second email with your reference
                             number</strong> — that is the one to bring with you.
+                        </p>
+
+                        {{--
+                            The verification call.
+
+                            Only this screen needs it, because only a guest
+                            booking has nothing behind it: no account, no
+                            password, an email address nobody has checked and
+                            a plate the shop has not seen. A signed-in
+                            customer is already who they say they are, which
+                            is why the equivalent screen on the dashboard says
+                            nothing of the kind.
+
+                            The number is printed back deliberately. It is the
+                            one field the shop will use to reach them, and the
+                            moment to notice a wrong digit is while the modal
+                            is still open — not when a call never comes.
+
+                            Filled from the server's response, not from the
+                            input: what matters is the number that was saved.
+                        --}}
+                        <p id="apx-success-verify" style="font-size:0.82rem; color:#777; margin:14px 0 0; padding:10px 12px; background:rgba(13,110,253,0.07); border:1px solid rgba(13,110,253,0.25); border-radius:7px; text-align:left;">
+                            <i class="fas fa-phone-volume" style="color:#0d6efd; margin-right:6px;"></i>
+                            We will call you on <strong id="apx-success-phone">the number you gave us</strong>
+                            to confirm your booking details and check that we can reach you.
+                            Please keep your phone handy — <strong>if that number is wrong, book again with
+                            the right one</strong> or call the shop.
                         </p>
 
                         {{--
@@ -2421,10 +2474,47 @@
                 btn.disabled = false;
                 btn.textContent = 'Confirm booking ✓';
                 if (data.success) {
-                    // The badge is a fixed "Pending review" in the markup —
-                    // nothing is written into it here. data.reference no
-                    // longer exists in the response; the reference is
-                    // withheld until an admin confirms the booking.
+                    // Still no reference: data.reference does not exist in
+                    // the response, and the number is disclosed by email.
+                    // What the server does report is the status the booking
+                    // came out as, because a booking is accepted on the spot
+                    // unless it is for today and today is already full.
+
+                    // The number the shop will ring, read back so a wrong
+                    // digit is noticeable now. Falls back to what was typed,
+                    // and then to the generic wording, so the sentence reads
+                    // properly even if the field is missing.
+                    document.getElementById('apx-success-phone').textContent =
+                        data.phone
+                        || (document.getElementById('apx-f-phone').value || '').trim()
+                        || 'the number you gave us';
+
+                    // Confirmed on the spot: say so, and do not promise a
+                    // second email that is already in their inbox. Left as
+                    // the pending wording otherwise — including the review
+                    // notice, which has to read well beside the call notice
+                    // above it, since a booking held back by today's limit
+                    // gets both.
+                    if (data.pending_review === false) {
+                        document.getElementById('apx-success-title').textContent = 'Booking confirmed!';
+                        document.getElementById('apx-ref-number').textContent =
+                            data.status_label || 'Booking Confirmed';
+                        document.getElementById('apx-success-note').innerHTML =
+                            'Your booking is confirmed. We have emailed you <strong>your reference number'
+                            + '</strong> — that is the one to bring with you.';
+                    } else {
+                        // Set rather than left alone: the modal is not
+                        // reloaded between bookings, so a second booking in
+                        // the same visit would otherwise still be wearing the
+                        // first one's confirmed heading and badge.
+                        document.getElementById('apx-success-title').textContent = 'Booking request received!';
+                        document.getElementById('apx-ref-number').textContent   = 'Pending review';
+                        document.getElementById('apx-success-note').innerHTML =
+                            'Today is fully booked, so <strong>this request is waiting for our review</strong>'
+                            + ' — we have emailed you a copy of it. We will tell you on the call above'
+                            + ' whether we can still fit you in today, and once it is confirmed you will'
+                            + ' get a second email with your reference number.';
+                    }
 
                     // Honour what the server actually did. account_setup_email is
                     // true only when a "set up your account" mail really went out,

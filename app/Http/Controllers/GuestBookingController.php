@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\BookingStatus;
 use App\Support\BookingPolicy;
+use App\Support\PhoneNumber;
 use App\Support\PlateNumber;
 use App\Support\EmailRule;
 
@@ -35,9 +36,24 @@ class GuestBookingController extends Controller
         // or a customer typing "abc 1234 " is refused rather than tidied.
         $request->merge(['vehicle_plate' => PlateNumber::normalise($request->input('vehicle_plate'))]);
 
+        // Same order, same reason. "0917 123 4567" is one number typed the
+        // way people write it, and the pattern below accepts no spaces — so
+        // cleaning first is the difference between tidying it and refusing
+        // it. See App\Support\PhoneNumber for why this stops at separators
+        // and does not rewrite 09 as +63.
+        $request->merge(['guest_phone' => PhoneNumber::normalise($request->input('guest_phone'))]);
+
         $request->validate([
             'guest_name'     => 'required|string|max:255',
             'guest_email'    => ['required', EmailRule::strict(), 'max:255'],
+            // Required, and it was not validated at all — read only as a
+            // firstOrCreate default, so a guest booking could be saved with
+            // no number or with "dunno" in the field. A guest has no account
+            // to be reached through and an email address nobody has checked;
+            // the phone number is the only way the shop can confirm the
+            // booking is real, which is exactly what it now tells them it
+            // will do on the success screen.
+            'guest_phone'    => PhoneNumber::rules(),
             'booking_date'   => 'required|date|after_or_equal:today',
             'booking_time'   => 'required',
             // A bundle supplies its own services, so one or the other.
@@ -57,6 +73,7 @@ class GuestBookingController extends Controller
             'transmission'   => 'nullable|in:manual,automatic',
         ], [
             ...PlateNumber::messages('vehicle_plate'),
+            ...PhoneNumber::messages('guest_phone'),
         ]);
 
         // ── Block real accounts from booking as a guest ───────────────────
@@ -287,7 +304,12 @@ class GuestBookingController extends Controller
                     'mechanic_id'  => null,
                     'booking_date' => $request->booking_date,
                     'booking_time' => $request->booking_time,
-                    'status'       => BookingStatus::PendingReview,
+                    // No status. reserve() decides it through
+                    // BookingAcceptance — confirmed on the spot, unless the
+                    // booking is for today and today is already full, which
+                    // holds it for the shop to review. Stated in one place
+                    // because the customer form asks the same question and
+                    // the two must not answer it differently.
                     // Extra services used to be appended to the note as
                     // "[Additional services: ...]" because only one could be
                     // stored. They are real pivot rows now, so the note is the
@@ -350,7 +372,24 @@ class GuestBookingController extends Controller
 
         dispatch(function () use ($booking, $guestEmail, $sendAccountLink, $user) {
             try {
-                Mail::to($guestEmail)->send(new BookingReceived($booking));
+                // Whichever of the two is true.
+                //
+                // A booking held for review gets the acknowledgment, which
+                // says the shop has it and has not agreed to it yet. One
+                // accepted on the spot gets the confirmation instead, with
+                // the reference number — the acknowledgment's wording
+                // ("waiting for our review", "once it is confirmed we will
+                // email you again") would be a second email that never
+                // arrives, about a booking that was never pending.
+                //
+                // Through BookingProgress so an auto-accepted booking gets
+                // exactly what an admin's Confirm gets: the bell entry, the
+                // email and the text, from one place.
+                if ($booking->status === BookingStatus::PendingReview) {
+                    Mail::to($guestEmail)->send(new BookingReceived($booking));
+                } else {
+                    app(\App\Services\BookingProgress::class)->autoAccepted($booking);
+                }
 
                 // Send the setup link, if one is owed. Decided before the
                 // response went out, so what the customer was told on screen
@@ -369,16 +408,29 @@ class GuestBookingController extends Controller
             }
         })->afterResponse();
 
-        // No 'reference' here, deliberately. The booking is Pending Review and
-        // reference is withheld until an admin confirms it — the success
-        // screen used to print it under "Bring this number when you arrive",
-        // which told the customer they had an appointment nobody had agreed
-        // to yet. BookingConfirmed is the only place it is disclosed.
-        // booking_id is still returned: it is the dashboard's merge key and
-        // means nothing at the counter.
+        // No 'reference' here, deliberately, and still none now that most
+        // bookings are confirmed the moment they are made. The reference is
+        // disclosed once, by email — the success screen used to print it
+        // under "Bring this number when you arrive", and the email is a
+        // thing the customer still has at the counter on the day, which a
+        // modal they closed is not. booking_id is still returned: it is the
+        // dashboard's merge key and means nothing at the counter.
         return response()->json([
             'success'        => true,
             'booking_id'     => $booking->id,
+            // What the booking actually came out as, so the success screen
+            // says one thing and the booking says another never happens. It
+            // used to be a fixed "Pending review" badge and a fixed
+            // paragraph about staff reviewing the request, which is now
+            // wrong for nearly every booking.
+            'status'         => $booking->status->value,
+            'status_label'   => $booking->status->label(),
+            'pending_review' => $booking->status === BookingStatus::PendingReview,
+            // Their own number, read back from the booking rather than
+            // echoed from the request, so the notice shows what was actually
+            // saved. This is how a guest catches a typo in the one field the
+            // shop will use to reach them.
+            'phone'          => $user->phone,
             'create_account' => $request->boolean('create_account'),
             'register_url'   => route('register'),
             // What the success screen needs: not what was asked for, but what

@@ -32,6 +32,8 @@ Thanks for booking with APX Motors Service Center. Your request is in and is **w
 
 Our staff will check the slot and get back to you. **Once it is confirmed we will email you again**, and that email will carry your reference number — the one to bring with you on the day.
 
+@include('emails.partials.guest-verification-call', ['booking' => $booking])
+
 Nothing to do for now. If you need to change or cancel this request, just reply to this email and we will sort it out.
 
 Thank you for choosing **APX Motors Service Center**!

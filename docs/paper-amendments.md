@@ -472,6 +472,94 @@ any row from the Customers screen.
 
 ---
 
+## 16. Bookings are accepted automatically — AMEND THE PAPER
+
+**The paper said:** a customer submits a booking request and an administrator
+reviews and approves it; the booking is confirmed once approved.
+
+**What the system does now.** A booking is **confirmed the moment it is made**.
+There is one exception: a booking for **today**, on a day that has already
+taken its configured maximum (Settings → Max Bookings Per Day), is saved as
+**Pending Review** instead, and the shop decides. Any other date that is full
+is still refused outright, because a customer told Thursday is full can pick
+Friday at no cost, and one asking for today cannot pick another today.
+
+The approve and reject flow in the admin panel is unchanged and is what handles
+those held bookings. It is now the exception path rather than every booking's
+first step.
+
+Why: the manuscript's own justification for approval was that the shop must not
+be committed to a slot it cannot serve. The capacity rules already guarantee
+that — three concurrent jobs (`BookingAvailability::MECHANIC_CAPACITY`),
+opening hours, and the daily maximum — so a booking that passes them is one the
+shop can serve, and holding it for a human only delayed telling the customer
+so. The one case the rules cannot settle is same-day work on a day that is
+already full, which is a judgement about whether today can absorb one more car.
+That is the case still handed to the admin.
+
+Where it lives: `App\Services\BookingAcceptance`, asked by
+`BookingAvailability::reserve()` — the one method every booking path goes
+through, so the customer form, the guest form and anything added later cannot
+answer it differently. The date is compared against `Asia/Manila`, not UTC;
+eight hours of difference would otherwise make a morning booking look like
+yesterday's and auto-confirm it past a full day.
+
+**What counts towards the daily maximum:** every booking on that date except a
+cancellation, including work already completed. A cap is the day's intake
+limit, so a job finished at 10am has spent one of the day's places. This count
+previously ignored completed work, which meant each completion handed its place
+back and a cap of 20 could admit any number of bookings over one day.
+
+**Also check §11.** The confirmation email — the one place the reference number
+is disclosed — is now sent at creation for a booking accepted on the spot, not
+only by an admin's approval. The rule itself is unchanged: the number goes out
+when the shop has agreed to the slot, and the booking that is held for review
+still gets the acknowledgment with no number in it.
+
+An admin-created walk-in is deliberately **not** auto-accepted. It stays
+Pending Review, because the admin typing it in is the reviewer and the customer
+is already standing at the counter.
+
+---
+
+## 17. A guest booking needs a phone number, and we ring it — AMEND THE PAPER
+
+**The paper said:** the guest booking form collects name, email, vehicle
+details and preferred schedule; the phone number is optional.
+
+**What the system does now.** The phone number is **required**, and it must be
+a Philippine mobile number — `09XXXXXXXXX` or `+639XXXXXXXXX`. It is enforced
+on the server (`App\Support\PhoneNumber`, used by `GuestBookingController`),
+not only in the browser, which is where the only check used to be: the field
+was marked optional on the form and was read on the server with no rule at all,
+so a guest booking could be saved with no number or with "dunno" in the field.
+
+Separators are tidied rather than refused — `0917 123 4567` is accepted and
+stored as `09171234567` — and the number is kept in the form its owner typed
+it. The `+63` form is produced only on the way out to an SMS gateway, by
+`SmsService::normalise()`.
+
+**And the guest is told why.** After submitting, the success screen says the
+shop will **call that number** to confirm the booking details and check the
+number is reachable, and prints the number back so a wrong digit is noticeable
+while the screen is still open. The same line appears in the guest's email —
+one partial, `emails/partials/guest-verification-call.blade.php`, included by
+both the acknowledgment and the confirmation, so the promise cannot be worded
+two ways.
+
+This is for **guest bookings only**. A signed-in customer has already proved
+they hold the address they booked with, so there is nothing to verify, and an
+unexpected "we will call you" would read as though something were wrong with
+their booking.
+
+Why it matters: a guest booking is the only kind with nothing behind it — no
+account, no password, an email address nobody has checked and a plate the shop
+has not seen. Now that such a booking is confirmed automatically (§16), the
+call is what stands in for the approval step that used to catch a booking
+nobody meant to make.
+
+---
+
 ## Figures to regenerate
 
 All four diagrams in [`docs/diagrams/`](diagrams/) have been updated to match

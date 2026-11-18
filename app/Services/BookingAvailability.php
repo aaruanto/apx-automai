@@ -137,13 +137,45 @@ class BookingAvailability
         return (int) (Setting::get('max_bookings') ?: 0);
     }
 
-    /** Active bookings already held for a date. */
+    /**
+     * How much of a day's intake is already taken.
+     *
+     * Everything the shop holds for that day except a cancellation, which is
+     * a booking that never happened and so frees its place — that much is
+     * unchanged, and DailyBookingCapTest pins it.
+     *
+     * Service Completed counts, and used to not. This read asked the enum for
+     * occupyingValues(), which is the list of statuses still holding a
+     * mechanic: the right question about a slot and the wrong one about a day.
+     * A cap is the shop's intake limit, so a job finished at 10am has spent
+     * one of the day's places whether or not anyone is still standing over it
+     * — counting it as free let a cap of 20 admit any number of bookings over
+     * one day, as each completion handed its place back. It only became
+     * visible when BookingAcceptance started asking this about TODAY, the one
+     * date whose bookings are finished while more are still arriving.
+     */
     public function bookingsOnDate(string $date, ?int $excludeBookingId = null): int
     {
         return Booking::whereDate('booking_date', $date)
-            ->whereIn('status', $this->activeStatuses())
+            ->where('status', '!=', BookingStatus::Cancelled)
             ->when($excludeBookingId, fn ($q) => $q->where('id', '!=', $excludeBookingId))
             ->count();
+    }
+
+    /**
+     * Whether $date has taken everything it is configured to take.
+     *
+     * The cap and the count asked as one question, because they were asked as
+     * two in three places — assertAvailable(), the rebook prefill, and now
+     * BookingAcceptance — each repeating `$cap > 0 && count >= $cap`. The
+     * `> 0` half is the part worth having in one place: a cap of zero means no
+     * limit at all, and a copy that forgets it closes the shop.
+     */
+    public function dayIsFull(string $date, ?int $excludeBookingId = null): bool
+    {
+        $cap = $this->dailyCap();
+
+        return $cap > 0 && $this->bookingsOnDate($date, $excludeBookingId) >= $cap;
     }
 
     /**
@@ -198,7 +230,23 @@ class BookingAvailability
             // Hours first: a slot outside opening hours is not a capacity
             // question, and the message should say so.
             $this->assertWithinHours($attributes['booking_date'], $start, $end);
-            $this->assertAvailable($attributes['booking_date'], $start, $end, null, lock: true);
+
+            // A booking for today on a day that is already full is accepted
+            // and held for review rather than refused — so for today, and
+            // only for today, the daily limit is not a wall. Every other date
+            // keeps it: a customer told a Thursday is full can pick Friday,
+            // and a customer told today is full cannot pick another today.
+            //
+            // The per-slot capacity check inside assertAvailable() still runs
+            // either way, and still takes its lockForUpdate(), which is what
+            // the status decision below relies on.
+            $acceptance = app(BookingAcceptance::class);
+            $isToday    = $acceptance->isToday($attributes['booking_date']);
+
+            $this->assertAvailable(
+                $attributes['booking_date'], $start, $end, null,
+                lock: true, enforceDailyCap: ! $isToday,
+            );
 
             // Then: does this car already have a booking over the same window?
             //
@@ -218,6 +266,24 @@ class BookingAvailability
 
             $attributes['duration']          = $duration;
             $attributes['reference_number'] ??= $this->nextReference();
+
+            // Accepted on the spot, or held for the shop to look at.
+            //
+            // Here rather than in the controllers for the reason every other
+            // shared rule is here: the customer form, the guest form and
+            // anything written next year all come through reserve(), so there
+            // is one answer and no copies to drift apart. A caller that knows
+            // better still wins — the admin create path states Pending Review
+            // explicitly, because an admin typing in a walk-in is the reviewer
+            // and should not have their own booking auto-approved out from
+            // under them.
+            //
+            // Inside the transaction, and after the lockForUpdate() above, on
+            // purpose: the decision reads the day's count, so two submissions
+            // arriving together for the last place of a full day must not both
+            // read "not full". The lock the slot check has already taken on
+            // that date's rows is what serialises them.
+            $attributes['status'] ??= $acceptance->statusFor($attributes['booking_date']);
 
             // What the vehicle is, recorded onto the booking.
             //
@@ -424,10 +490,19 @@ class BookingAvailability
     }
 
     /**
+     * @param  bool  $enforceDailyCap  See the daily limit below. Only
+     *         reserve() ever passes false, and only for today.
+     *
      * @throws SlotUnavailableException
      */
-    public function assertAvailable(string $date, Carbon $start, Carbon $end, ?int $excludeBookingId = null, bool $lock = false): void
-    {
+    public function assertAvailable(
+        string $date,
+        Carbon $start,
+        Carbon $end,
+        ?int $excludeBookingId = null,
+        bool $lock = false,
+        bool $enforceDailyCap = true,
+    ): void {
         if ($this->maxOverlap($date, $start, $end, $excludeBookingId, $lock) >= self::MECHANIC_CAPACITY) {
             throw new SlotUnavailableException(
                 'That time slot is unavailable. Please choose another time.'
@@ -436,9 +511,14 @@ class BookingAvailability
 
         // Shop-wide daily limit (Settings -> Max Bookings Per Day). Checked after
         // the slot test so the more specific message wins when both apply.
-        $cap = $this->dailyCap();
-
-        if ($cap > 0 && $this->bookingsOnDate($date, $excludeBookingId) >= $cap) {
+        //
+        // Skippable because a full day is no longer a refusal for TODAY: the
+        // booking is taken and held for the shop to decide on, which is
+        // BookingAcceptance's whole subject. The per-slot rule above is not
+        // skippable by anyone — three mechanics is three mechanics, and a
+        // fourth car in one window is a promise the shop cannot keep however
+        // the booking got there.
+        if ($enforceDailyCap && $this->dayIsFull($date, $excludeBookingId)) {
             throw new SlotUnavailableException(
                 'That date is unavailable. Please choose another day.'
             );
